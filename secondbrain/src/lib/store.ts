@@ -1,0 +1,114 @@
+import { create } from 'zustand';
+import { DiaryEntry, AudioTranscription, getEntryByDate, saveEntry, getTranscriptionsByEntryId } from './supabase';
+
+interface DiaryState {
+  currentDate: string;
+  currentEntry: DiaryEntry | null;
+  isLoading: boolean;
+  isEditing: boolean;
+  transcriptions: AudioTranscription[];
+  error: string | null;
+  
+  // Acciones
+  setCurrentDate: (date: string) => void;
+  fetchCurrentEntry: (userId: string) => Promise<void>;
+  saveCurrentEntry: (content: string, userId: string) => Promise<void>;
+  toggleEditMode: () => void;
+  fetchTranscriptions: () => Promise<void>;
+  resetError: () => void;
+}
+
+// Helper para formatear la fecha en YYYY-MM-DD
+const formatDate = (date: Date): string => {
+  return date.toISOString().split('T')[0];
+};
+
+export const useDiaryStore = create<DiaryState>((set, get) => ({
+  // Estado inicial
+  currentDate: formatDate(new Date()),
+  currentEntry: null,
+  isLoading: false,
+  isEditing: false,
+  transcriptions: [],
+  error: null,
+  
+  // Acciones
+  setCurrentDate: (date: string) => {
+    set({ currentDate: date });
+  },
+  
+  fetchCurrentEntry: async (userId: string) => {
+    const { currentDate } = get();
+    set({ isLoading: true, error: null });
+    
+    try {
+      const entry = await getEntryByDate(currentDate, userId);
+      set({ 
+        currentEntry: entry,
+        isEditing: !entry, // Si no hay entrada, activamos modo edición
+      });
+      
+      // Si hay una entrada, cargamos las transcripciones
+      if (entry) {
+        await get().fetchTranscriptions();
+      } else {
+        set({ transcriptions: [] });
+      }
+    } catch (error) {
+      console.error('Error fetching entry:', error);
+      set({ error: 'No se pudo cargar la entrada del diario' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  saveCurrentEntry: async (content: string, userId: string) => {
+    const { currentDate, currentEntry } = get();
+    set({ isLoading: true, error: null });
+    
+    try {
+      const updatedEntry = await saveEntry({
+        id: currentEntry?.id,
+        date: currentDate,
+        content,
+        user_id: userId
+      });
+      
+      if (updatedEntry) {
+        set({ 
+          currentEntry: updatedEntry,
+          isEditing: false
+        });
+      }
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      set({ error: 'No se pudo guardar la entrada del diario' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  toggleEditMode: () => {
+    set((state) => ({ isEditing: !state.isEditing }));
+  },
+  
+  fetchTranscriptions: async () => {
+    const { currentEntry } = get();
+    
+    if (!currentEntry) return;
+    
+    set({ isLoading: true });
+    
+    try {
+      const transcriptions = await getTranscriptionsByEntryId(currentEntry.id);
+      set({ transcriptions });
+    } catch (error) {
+      console.error('Error fetching transcriptions:', error);
+      set({ error: 'No se pudieron cargar las transcripciones' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  resetError: () => set({ error: null })
+}));
