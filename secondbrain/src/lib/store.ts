@@ -66,22 +66,41 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     const { currentDate, currentEntry } = get();
     set({ isLoading: true, error: null });
     
+    console.log('⭐ Store: Guardando entrada para fecha:', currentDate);
+    console.log('⭐ Store: Contenido:', content);
+    console.log('⭐ Store: Usuario:', userId);
+    console.log('⭐ Store: Entrada actual:', currentEntry);
+    
     try {
-      const updatedEntry = await saveEntry({
-        id: currentEntry?.id,
+      // Preparamos los datos para guardar
+      const entryData: Partial<DiaryEntry> = {
         date: currentDate,
         content,
         user_id: userId
-      });
+      };
+      
+      // Si hay una entrada existente, incluimos su ID
+      if (currentEntry?.id) {
+        entryData.id = currentEntry.id;
+      }
+      
+      console.log('⭐ Store: Datos a guardar:', entryData);
+      
+      // Guardamos la entrada
+      const updatedEntry = await saveEntry(entryData);
       
       if (updatedEntry) {
+        console.log('✅ Store: Entrada guardada correctamente:', updatedEntry);
         set({ 
           currentEntry: updatedEntry,
           isEditing: false
         });
+      } else {
+        console.error('❌ Store: No se pudo guardar la entrada');
+        set({ error: 'No se pudo guardar la entrada del diario' });
       }
     } catch (error) {
-      console.error('Error saving entry:', error);
+      console.error('❌ Store: Error saving entry:', error);
       set({ error: 'No se pudo guardar la entrada del diario' });
     } finally {
       set({ isLoading: false });

@@ -39,24 +39,38 @@ export interface AudioTranscription {
 
 // Funciones para interactuar con la base de datos
 export async function getEntryByDate(date: string, userId: string): Promise<DiaryEntry | null> {
+  console.log('⭐ Buscando entrada para fecha:', date, 'y usuario:', userId);
+  
+  // Cambiamos .single() por .maybeSingle() para manejar el caso de no encontrar resultados
   const { data, error } = await supabase
     .from('diary_entries')
     .select('*')
     .eq('date', date)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
   
   if (error) {
-    console.error('Error fetching entry:', error);
+    console.error('❌ Error fetching entry:', error);
     return null;
+  }
+  
+  if (data) {
+    console.log('✅ Entrada encontrada:', data);
+  } else {
+    console.log('ℹ️ No se encontró entrada para esta fecha');
   }
   
   return data;
 }
 
 export async function saveEntry(entry: Partial<DiaryEntry>): Promise<DiaryEntry | null> {
+  console.log('⭐ Intentando guardar entrada:', entry);
+  console.log('⭐ URL de Supabase:', supabaseUrl);
+  console.log('⭐ Cliente de Supabase inicializado:', !!supabase);
+
   // Si ya existe un ID, actualizamos
   if (entry.id) {
+    console.log('⭐ Actualizando entrada existente, ID:', entry.id);
     const { data, error } = await supabase
       .from('diary_entries')
       .update({
@@ -68,31 +82,37 @@ export async function saveEntry(entry: Partial<DiaryEntry>): Promise<DiaryEntry 
       .single();
     
     if (error) {
-      console.error('Error updating entry:', error);
+      console.error('❌ Error updating entry:', error);
       return null;
     }
     
+    console.log('✅ Entrada actualizada correctamente:', data);
     return data;
   } 
   // Si no existe ID, creamos uno nuevo
   else {
+    console.log('⭐ Creando nueva entrada para fecha:', entry.date);
+    const newEntry = {
+      date: entry.date,
+      content: entry.content || '',
+      user_id: entry.user_id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    console.log('⭐ Datos a insertar:', newEntry);
+
     const { data, error } = await supabase
       .from('diary_entries')
-      .insert({
-        date: entry.date,
-        content: entry.content || '',
-        user_id: entry.user_id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      .insert(newEntry)
       .select()
       .single();
     
     if (error) {
-      console.error('Error creating entry:', error);
+      console.error('❌ Error creating entry:', error);
       return null;
     }
     
+    console.log('✅ Nueva entrada creada correctamente:', data);
     return data;
   }
 }

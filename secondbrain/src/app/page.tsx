@@ -2,54 +2,91 @@
 
 import { useEffect, useState } from 'react';
 import Sidebar from '@/components/Sidebar';
-import DiaryEditor from '@/components/DiaryEditor';
-import AudioRecorder from '@/components/AudioRecorder';
-import TranscriptionsList from '@/components/TranscriptionsList';
+import IntegratedDiary from '@/components/IntegratedDiary';
 import { useDiaryStore } from '@/lib/store';
+import { FiMenu, FiX } from 'react-icons/fi';
 
 export default function Home() {
-  const { fetchCurrentEntry } = useDiaryStore();
+  const { fetchCurrentEntry, currentDate } = useDiaryStore();
   const [isClient, setIsClient] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  // Identificador de usuario temporal (en una aplicación real, esto vendría de la autenticación)
+  // Identificador de usuario temporal
   const tempUserId = 'user-1';
   
-  // Este efecto se ejecuta solo en el cliente
+  // Obtener los datos de la entrada actual cuando cambia la fecha
+  useEffect(() => {
+    if (isClient) {
+      fetchCurrentEntry(tempUserId);
+    }
+  }, [fetchCurrentEntry, isClient, currentDate]);
+
+  // Evitar errores de hidratación
   useEffect(() => {
     setIsClient(true);
-    // Cargar la entrada del día actual
-    fetchCurrentEntry(tempUserId);
-  }, [fetchCurrentEntry]);
+  }, []);
 
-  // No renderizar nada durante la hidratación para evitar errores
   if (!isClient) {
-    return null;
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <p className="text-slate-500 text-lg">Cargando aplicación...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">🧠 Second Brain</h1>
+    <main className="flex min-h-screen bg-slate-50">
+      {/* Sidebar con overlay cuando está abierto en móvil */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar - diseño flotante en móvil */}
+      <aside 
+        className={`
+          fixed md:relative z-30 h-screen bg-white transition-all duration-300 ease-in-out
+          ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} 
+          md:translate-x-0 md:shadow-lg md:w-80 w-[85%] max-w-xs
+        `}
+      >
+        <div className="p-4 flex items-center justify-between border-b border-slate-200 md:border-0">
+          <h1 className="text-xl font-bold text-slate-800">SecondBrain</h1>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden text-slate-500 hover:text-slate-700"
+            aria-label="Close sidebar"
+          >
+            <FiX size={20} />
+          </button>
+        </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Barra lateral (calendario) */}
-          <div className="lg:col-span-1">
-            <Sidebar userId={tempUserId} />
-          </div>
-          
-          {/* Contenido principal */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Editor del diario */}
-            <DiaryEditor userId={tempUserId} />
-            
-            {/* Grabador de audio */}
-            <AudioRecorder userId={tempUserId} />
-            
-            {/* Lista de transcripciones */}
-            <TranscriptionsList />
-          </div>
+        <div className="h-[calc(100vh-64px)] overflow-y-auto">
+          {isClient && <Sidebar userId={tempUserId} />}
+        </div>
+      </aside>
+
+      {/* Contenido principal */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Header minimalista solo en móvil */}
+        <header className="md:hidden bg-white p-4 flex items-center border-b border-slate-200 shadow-sm">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="text-slate-700 hover:text-slate-900 mr-4"
+            aria-label="Open sidebar"
+          >
+            <FiMenu size={24} />
+          </button>
+          <h1 className="text-xl font-semibold text-slate-800">SecondBrain</h1>
+        </header>
+        
+        {/* Área principal */}
+        <div className="flex-1 overflow-y-auto p-0 md:p-6">
+          {isClient && <IntegratedDiary userId={tempUserId} />}
         </div>
       </div>
-    </div>
+    </main>
   );
 }
