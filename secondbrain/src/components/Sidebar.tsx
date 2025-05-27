@@ -8,15 +8,44 @@ import { getEntriesByMonth } from '@/lib/supabase';
 // Importante: Asegúrate de que los estilos globales del calendario se importen en globals.css o en el layout principal
 // import 'react-calendar/dist/Calendar.css'; // Ya no es necesario aquí si se maneja globalmente
 
+// Helper para formatear la fecha en YYYY-MM-DD respetando la zona horaria local (España)
+const formatDateToString = (date: Date): string => {
+  // Usamos métodos que respetan la zona horaria local
+  const year = date.getFullYear();
+  // El mes en JavaScript es 0-indexed, necesitamos sumar 1 y asegurar formato de dos dígitos
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+};
+
+// Helper para obtener la fecha actual como string en zona horaria local
+const getTodayString = (): string => {
+  return formatDateToString(new Date());
+};
+
 interface SidebarProps {
   userId: string;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ userId }) => {
+  // Obtenemos la fecha actual del sistema cada vez que se carga el componente
+  const today = new Date();
+  const todayString = formatDateToString(today);
+  
   const { currentDate, setCurrentDate, fetchCurrentEntry } = useDiaryStore();
-  const [date, setDate] = useState<Date | null>(currentDate ? new Date(currentDate + 'T00:00:00') : new Date()); // Inicializar con la fecha actual del store o la fecha actual
+  const [date, setDate] = useState<Date>(today); // Siempre inicializamos con la fecha actual
   const [entriesDates, setEntriesDates] = useState<string[]>([]);
-  const [currentView, setCurrentView] = useState<Date>(new Date(currentDate || Date.now()));
+  const [currentView, setCurrentView] = useState<Date>(today);
+  
+  // Al cargar el componente, asegurarnos de que se seleccione el día actual
+  useEffect(() => {
+    // Establecemos la fecha actual en el store
+    setCurrentDate(todayString);
+    // Cargamos la entrada para hoy
+    fetchCurrentEntry(userId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const loadEntriesForMonth = async () => {
@@ -77,11 +106,13 @@ const Sidebar: React.FC<SidebarProps> = ({ userId }) => {
       <div className="calendar-container mx-auto max-w-xs sm:max-w-sm md:max-w-md lg:max-w-full">
         <Calendar
           onChange={handleDateChange}
-          value={date as Date}
+          value={date}
           onActiveStartDateChange={handleViewChange}
           tileClassName={tileClassName}
           locale="es"
           className="border-none shadow-none lg:border lg:shadow-sm lg:rounded-lg"
+          maxDate={new Date(2100, 11, 31)} // Fecha máxima razonable
+          minDate={new Date(2000, 0, 1)}   // Fecha mínima razonable
         />
       </div>
       

@@ -18,14 +18,25 @@ interface DiaryState {
   resetError: () => void;
 }
 
-// Helper para formatear la fecha en YYYY-MM-DD
+// Helper para formatear la fecha en YYYY-MM-DD respetando la zona horaria local (España)
 const formatDate = (date: Date): string => {
-  return date.toISOString().split('T')[0];
+  // Usamos métodos que respetan la zona horaria local
+  const year = date.getFullYear();
+  // El mes en JavaScript es 0-indexed, necesitamos sumar 1 y asegurar formato de dos dígitos
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+};
+
+// Obtener la fecha actual formateada en zona horaria local
+const getTodayFormatted = (): string => {
+  return formatDate(new Date());
 };
 
 export const useDiaryStore = create<DiaryState>((set, get) => ({
-  // Estado inicial
-  currentDate: formatDate(new Date()),
+  // Estado inicial - siempre usamos la fecha actual
+  currentDate: getTodayFormatted(),
   currentEntry: null,
   isLoading: false,
   isEditing: false,

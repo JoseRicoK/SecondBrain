@@ -8,10 +8,9 @@ import {
   FiSave, 
   FiX, 
   FiMic,
-  FiPause,
-  FiPlay,
   FiStopCircle,
-  FiVolume2
+  FiVolume2,
+  FiZap
 } from 'react-icons/fi';
 
 interface IntegratedDiaryProps {
@@ -37,13 +36,12 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isStylizing, setIsStylizing] = useState(false);
   
   // Referencias
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Efectos para sincronizar el estado con la entrada actual
@@ -83,6 +81,58 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
     }
   };
   
+  // Estilizar el texto con ChatGPT
+  const handleStylize = async () => {
+    if (!content || content.trim() === '') {
+      setError('No hay contenido para estilizar');
+      return;
+    }
+    
+    try {
+      setIsStylizing(true);
+      setError(null);
+      
+      console.log('⭐ Enviando texto a estilizar...');
+      
+      const response = await fetch('/api/stylize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: content }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al estilizar el texto');
+      }
+      
+      const data = await response.json() as StylizeResponse;
+      console.log('✅ Texto estilizado recibido');
+      
+      // Actualizar el contenido con el texto estilizado
+      setContent(data.stylizedText);
+      
+      // Dar feedback visual al usuario
+      const stylizeElement = document.createElement('div');
+      stylizeElement.className = 'fixed bottom-6 right-6 bg-purple-500 text-white px-4 py-2 rounded-full z-50';
+      stylizeElement.textContent = 'Texto estilizado correctamente';
+      document.body.appendChild(stylizeElement);
+      
+      setTimeout(() => {
+        if (document.body.contains(stylizeElement)) {
+          document.body.removeChild(stylizeElement);
+        }
+      }, 3000);
+      
+    } catch (err) {
+      console.error('❌ Error al estilizar:', err);
+      setError(`No se pudo estilizar el texto: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+    } finally {
+      setIsStylizing(false);
+    }
+  };
+  
   const handleToggleEditMode = () => {
     if (storeIsEditing) {
       // Cancelar edición y restaurar contenido original
@@ -99,107 +149,187 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
   };
   
   // FUNCIONES PARA GRABACIÓN DE AUDIO -----
+
+  // Interfaces para las respuestas de las APIs
+  interface TranscriptionResponse {
+    text: string;
+  }
+  
+  interface StylizeResponse {
+    stylizedText: string;
+  }
+
   
   // Iniciar grabación
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
+      // Reiniciar estados
+      setAudioBlob(null);
+      setError(null);
       audioChunksRef.current = [];
+      
+      console.log('⭐ Solicitando permisos de micrófono...');
+      
+      // Configurar con mejor calidad de audio
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000, // Calidad de estudio
+          channelCount: 1      // Mono
+        }
+      });
+      console.log('⭐ Permisos de micrófono concedidos.');
+
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus', // Formato recomendado para calidad y compatibilidad
+        audioBitsPerSecond: 128000 // 128 kbps para buena calidad de voz
+      });
+      
+      mediaRecorderRef.current = mediaRecorder;
       
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+          console.log('📦 Chunk de audio recibido, tamaño:', event.data.size);
         }
       };
       
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        setAudioBlob(audioBlob);
+        console.log('ONSTOP: Grabación finalizada. Fragmentos:', audioChunksRef.current.length);
+
+        if (audioChunksRef.current.length === 0) {
+          console.log('ONSTOP: No se capturó audio.');
+          setError('No se capturó audio. Intenta de nuevo.');
+          setAudioBlob(null); 
+          return;
+        }
+
+        const newAudioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' });
+        audioChunksRef.current = []; 
+
+        if (newAudioBlob.size === 0) { 
+            console.log('ONSTOP: Se creó un blob de audio vacío.');
+            setError('Se creó un blob de audio vacío, no se puede transcribir.');
+            setAudioBlob(null);
+            return;
+        }
         
-        // Detener los tracks de audio
+        console.log('ONSTOP: Audio blob creado, tamaño:', newAudioBlob.size, 'bytes');
+        // Detener las pistas del stream actual ANTES de procesar la transcripción
+        // y antes de que un nuevo stream pueda ser creado por otra llamada a startRecording.
         stream.getTracks().forEach(track => track.stop());
+        console.log('ONSTOP: Pistas de stream detenidas.');
+
+        // Siempre transcribir el audio cuando la grabación se detenga
+        console.log('ONSTOP: Iniciando transcripción automática...');
+        setAudioBlob(newAudioBlob); // Para el indicador "Procesando..."
+        setError(null);
+        setIsProcessing(true);
+        processTranscription(newAudioBlob);
       };
       
-      mediaRecorder.start();
+      mediaRecorder.start(); // Iniciar grabación (por defecto, ondataavailable se llama cuando se detiene o según timeslice)
+      // Para obtener chunks periódicamente, se podría usar mediaRecorder.start(1000); si fuera necesario.
       setIsRecording(true);
-      setError(null);
+      console.log('START_RECORDING: Grabación iniciada, isRecording=true');
+      
+      // Limitar la grabación a 60 segundos máximo
+      setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          console.log('TIMEOUT: Tiempo máximo de grabación alcanzado (1 minuto). Deteniendo automáticamente.');
+          stopRecording(); // Esto llamará a mediaRecorder.stop() que a su vez disparará onstop.
+        }
+      }, 60000); // 60 segundos 
+      
     } catch (err) {
-      console.error('Error al iniciar la grabación:', err);
-      setError('No se pudo acceder al micrófono. Verifica los permisos.');
+      console.error('START_RECORDING_ERROR: Error al iniciar la grabación:', err);
+      setError('No se pudo iniciar la grabación. Verifica los permisos del micrófono.');
+      setIsRecording(false);
     }
   };
   
   // Detener grabación
   const stopRecording = () => {
+    console.log('STOP_RECORDING: Intentando detener. MediaRecorder:', !!mediaRecorderRef.current, 'IsRecording:', isRecording);
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stop(); 
       setIsRecording(false);
+      console.log('STOP_RECORDING: MediaRecorder.stop() llamado, isRecording set to false.');
+    } else {
+      console.log('STOP_RECORDING: No hay grabador activo o no se está grabando.');
     }
   };
-  
-  // Reproducir audio grabado
-  const playAudio = () => {
-    if (audioBlob && audioPlayerRef.current) {
-      audioPlayerRef.current.play();
-      setIsPlaying(true);
-    }
-  };
-  
-  // Pausar reproducción
-  const pauseAudio = () => {
-    if (audioPlayerRef.current) {
-      audioPlayerRef.current.pause();
-      setIsPlaying(false);
-    }
-  };
-  
+
   // Procesar la transcripción
-  const processTranscription = async () => {
-    if (!audioBlob || !currentEntry) {
-      setError('No hay audio para transcribir o no hay entrada del diario actual.');
-      return;
-    }
-    
-    setIsProcessing(true);
-    setError(null);
+  const processTranscription = async (blobToProcess: Blob) => {
+    console.log('PROCESS_TRANSCRIPTION: Iniciando transcripción de audio...');
+    console.log('PROCESS_TRANSCRIPTION: Tamaño del audio:', blobToProcess.size, 'bytes, tipo:', blobToProcess.type);
     
     try {
-      // Crear un objeto FormData para enviar el archivo
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'recording.wav');
-      formData.append('entryId', currentEntry.id);
       
-      // Enviar a la API de transcripción
+      const audioFile = new File(
+        [blobToProcess], 
+        `recording-${Date.now()}.webm`, 
+        { type: 'audio/webm;codecs=opus' }
+      );
+      
+      const formData = new FormData();
+      formData.append('file', audioFile);
+      
+      console.log('⭐ Enviando archivo a API:', audioFile.name, audioFile.type, audioFile.size, 'bytes');
+      
       const response = await fetch('/api/transcribe', {
         method: 'POST',
         body: formData,
       });
       
       if (!response.ok) {
-        throw new Error('Error al procesar la transcripción');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al procesar la transcripción');
       }
       
-      const data = await response.json();
+      const data = await response.json() as TranscriptionResponse;
+      console.log('✅ Transcripción recibida:', data.text);
       
-      // Guardar la transcripción en Supabase
-      await saveAudioTranscription(
-        currentEntry.id,
-        data.audioUrl,
-        data.text
+      if (!data.text || data.text.trim() === '') {
+        throw new Error('La transcripción está vacía. Intenta hablar más cerca del micrófono.');
+      }
+      
+      if (!storeIsEditing) {
+        storeToggleEditMode();
+      }
+      
+      console.log('PROCESS_TRANSCRIPTION_SUCCESS: Intentando actualizar contenido con texto:', data.text);
+      const textToAdd = data.text;
+      // Actualizar el estado local 'content' del editor
+      setContent(prevContent => 
+        prevContent ? `${prevContent}\n${textToAdd}` : textToAdd
       );
+      console.log('PROCESS_TRANSCRIPTION_SUCCESS: Estado de contenido local actualizado.');
       
-      // Actualizar la lista de transcripciones
-      fetchTranscriptions();
+      // El audioBlob (estado) se limpiará en el finally.
       
-      // Limpiar el estado
-      setAudioBlob(null);
+      const transcriptionElement = document.createElement('div');
+      transcriptionElement.className = 'fixed bottom-6 right-6 bg-green-500 text-white px-4 py-2 rounded-full z-50';
+      transcriptionElement.textContent = 'Transcripción completada y añadida al editor.';
+      document.body.appendChild(transcriptionElement);
+      
+      setTimeout(() => {
+        if (document.body.contains(transcriptionElement)) {
+          document.body.removeChild(transcriptionElement);
+        }
+      }, 3000);
+      
     } catch (err) {
-      console.error('Error en la transcripción:', err);
-      setError('No se pudo realizar la transcripción. Inténtalo de nuevo.');
+      console.error('❌ Error en la transcripción:', err);
+      setError(`No se pudo realizar la transcripción: ${err instanceof Error ? err.message : 'Error desconocido'}`);
     } finally {
+      console.log('PROCESS_TRANSCRIPTION_FINALLY: Inicio del bloque finally.');
       setIsProcessing(false);
+      setAudioBlob(null); 
+      console.log('PROCESS_TRANSCRIPTION_FINALLY: Fin del bloque finally. isProcessing y audioBlob reseteados.');
     }
   };
 
@@ -243,6 +373,17 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
           <div className="flex items-center space-x-3">
             {storeIsEditing ? (
               <>
+                {/* Botón de estilización con IA */}
+                <button 
+                  onClick={handleStylize}
+                  disabled={isStylizing || !content}
+                  className={`flex items-center space-x-1 px-3 py-1.5 ${isStylizing ? 'bg-purple-400' : 'bg-purple-500'} text-white rounded-md hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                  title="Estilizar con IA"
+                >
+                  <FiZap size={16} />
+                  <span>Estilizar</span>
+                </button>
+                
                 <button 
                   onClick={handleSave}
                   className="flex items-center space-x-1 px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
@@ -274,7 +415,7 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
                 {!isRecording ? (
                   <button
                     onClick={startRecording}
-                    disabled={isProcessing || !currentEntry}
+                    disabled={isProcessing}
                     className="flex items-center space-x-1 px-3 py-1.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Iniciar grabación"
                   >
@@ -291,37 +432,6 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
                     <span>Detener</span>
                   </button>
                 )}
-                
-                {audioBlob && !isRecording && (
-                  <>
-                    <button
-                      onClick={isPlaying ? pauseAudio : playAudio}
-                      className="flex items-center space-x-1 px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                      title={isPlaying ? "Pausar" : "Reproducir"}
-                    >
-                      {isPlaying ? <FiPause size={16} /> : <FiPlay size={16} />}
-                      <span>{isPlaying ? "Pausar" : "Reproducir"}</span>
-                    </button>
-                    
-                    <button
-                      onClick={processTranscription}
-                      disabled={isProcessing}
-                      className="flex items-center space-x-1 px-3 py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                          <span>Procesando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <FiVolume2 size={16} />
-                          <span>Transcribir</span>
-                        </>
-                      )}
-                    </button>
-                  </>
-                )}
               </>
             )}
           </div>
@@ -329,20 +439,32 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
         
         {/* Contenido principal */}
         <div className="relative">
-          {/* Audio grabado oculto */}
-          {audioBlob && (
-            <audio
-              ref={audioPlayerRef}
-              src={URL.createObjectURL(audioBlob)}
-              onEnded={() => setIsPlaying(false)}
-              className="hidden"
-            />
-          )}
-          
           {/* Mensajes de error */}
           {error && (
             <div className="m-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-md text-sm">
               {error}
+            </div>
+          )}
+          
+          {/* Indicador de procesamiento de transcripción */}
+          {isProcessing && audioBlob && (
+            <div className="m-4 p-3 bg-blue-100 border border-blue-300 text-blue-700 rounded-md text-sm flex items-center">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Procesando transcripción...
+            </div>
+          )}
+          
+          {/* Indicador de estilización */}
+          {isStylizing && (
+            <div className="m-4 p-3 bg-purple-100 border border-purple-300 text-purple-700 rounded-md text-sm flex items-center">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Estilizando texto con IA...
             </div>
           )}
           
@@ -384,57 +506,12 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
             )}
           </div>
           
-          {/* Transcripciones integradas */}
-          {transcriptions && transcriptions.length > 0 && !storeIsEditing && (
-            <div className="border-t border-slate-200 p-4">
-              <h3 className="text-lg font-medium text-slate-700 mb-3">Transcripciones</h3>
-              <div className="space-y-4">
-                {transcriptions.map((transcription) => (
-                  <div 
-                    key={transcription.id} 
-                    className="p-3 bg-slate-50 border border-slate-200 rounded-lg"
-                  >
-                    <div className="flex items-start">
-                      <FiVolume2 className="text-blue-500 mt-1 mr-3 flex-shrink-0" size={18} />
-                      <div className="flex-1">
-                        <p className="text-xs text-slate-500 font-medium">
-                          {format(
-                            new Date(transcription.created_at), 
-                            "d 'de' MMMM, HH:mm", 
-                            { locale: es }
-                          )}
-                        </p>
-                        <div className="mt-1 text-slate-700 text-sm">
-                          {transcription.transcription.split('\n').map((line, index, array) => (
-                            <React.Fragment key={index}>
-                              {line}
-                              {index < array.length - 1 && <br />}
-                            </React.Fragment>
-                          ))}
-                        </div>
-                        
-                        {transcription.audio_url && (
-                          <div className="mt-2">
-                            <audio 
-                              src={transcription.audio_url} 
-                              controls 
-                              className="w-full h-8 text-sm"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
           {/* Estado de grabación */}
           {isRecording && (
-            <div className="fixed bottom-6 right-6 bg-red-500 text-white px-4 py-2 rounded-full flex items-center space-x-2 animate-pulse">
-              <div className="w-3 h-3 bg-white rounded-full"></div>
-              <span>Grabando...</span>
+            <div className="fixed bottom-6 right-6 bg-red-600 text-white px-5 py-3 rounded-full flex items-center space-x-3 shadow-lg z-50">
+              <div className="w-4 h-4 bg-white rounded-full animate-ping"></div>
+              <div className="w-4 h-4 bg-white rounded-full absolute ml-0"></div>
+              <span className="font-medium text-lg">Grabando...</span>
             </div>
           )}
         </div>
