@@ -74,11 +74,12 @@ export async function POST(request: Request) {
       text: transcription
     });
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ API: Error processing audio:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     
     return NextResponse.json(
-      { error: error.message || 'Error processing audio' },
+      { error: errorMessage || 'Error processing audio' },
       { status: 500 }
     );
   }

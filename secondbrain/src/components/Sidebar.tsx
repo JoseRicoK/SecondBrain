@@ -19,10 +19,7 @@ const formatDateToString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-// Helper para obtener la fecha actual como string en zona horaria local
-const getTodayString = (): string => {
-  return formatDateToString(new Date());
-};
+// Eliminamos la función getTodayString que no se está utilizando
 
 interface SidebarProps {
   userId: string;

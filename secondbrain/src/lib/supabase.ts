@@ -24,9 +24,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Crear el cliente de Supabase
+// Usamos una aserción de tipo para el cliente de Supabase,
+// ya que el tipo correcto es muy extenso y específico
 export const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey)
-  : null as any; // Usamos 'as any' para evitar errores de tipo en desarrollo
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  : null as any; // Necesario para desarrollo
 
 // Tipos para nuestras tablas en Supabase
 export interface DiaryEntry {
@@ -54,7 +57,8 @@ export interface Person {
   name: string;
   details: {
     // El campo details es flexible y puede contener cualquier información
-    [key: string]: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: unknown;
   };
   created_at: string;
   updated_at: string;
@@ -310,7 +314,7 @@ export async function savePerson(person: Partial<Person>): Promise<Person | null
 }
 
 // Actualizar detalles específicos de una persona
-export async function updatePersonDetails(personId: string, details: Record<string, any>): Promise<Person | null> {
+export async function updatePersonDetails(personId: string, details: Record<string, unknown>): Promise<Person | null> {
   console.log('⭐ Actualizando detalles de persona:', personId);
   
   // Primero obtenemos la persona actual para no sobrescribir todo el objeto details

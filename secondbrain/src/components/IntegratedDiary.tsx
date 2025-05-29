@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useDiaryStore } from '@/lib/store';
-import { saveAudioTranscription } from '@/lib/supabase';
+// Eliminamos importación no utilizada: saveAudioTranscription
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { 
@@ -9,7 +9,7 @@ import {
   FiX, 
   FiMic,
   FiStopCircle,
-  FiVolume2,
+  // Eliminamos importación no utilizada: FiVolume2
   FiZap,
   FiUsers,
   FiUser
@@ -28,8 +28,8 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
     saveCurrentEntry, 
     fetchCurrentEntry,
     fetchTranscriptions,
-    toggleEditMode: storeToggleEditMode,
-    transcriptions
+    toggleEditMode: storeToggleEditMode
+    // Eliminamos variable no utilizada: transcriptions
   } = useDiaryStore();
   
   // Estado para el contenido del editor
@@ -220,7 +220,7 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
   
   interface PersonExtracted {
     name: string;
-    information: Record<string, any>;
+    information: Record<string, unknown>;
   }
   
   interface StylizeResponse {
@@ -570,7 +570,7 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
                         </svg>
                         <p className="text-slate-500">
                           No hay contenido para esta entrada.<br />
-                          Haz clic en "Editar" para comenzar a escribir.
+                          Haz clic en &quot;Editar&quot; para comenzar a escribir.
                         </p>
                       </div>
                     )}

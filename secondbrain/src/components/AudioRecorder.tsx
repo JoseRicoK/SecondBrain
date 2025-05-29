@@ -3,11 +3,10 @@ import { useDiaryStore } from '@/lib/store';
 import { FaMicrophone, FaStop, FaPlay, FaPause } from 'react-icons/fa';
 import { saveAudioTranscription } from '@/lib/supabase';
 
-interface AudioRecorderProps {
-  userId: string;
-}
+// Este componente actualmente no necesita props
+type AudioRecorderProps = Record<string, never>;
 
-const AudioRecorder: React.FC<AudioRecorderProps> = ({ userId }) => {
+const AudioRecorder: React.FC<AudioRecorderProps> = () => {
   const { currentEntry, fetchTranscriptions } = useDiaryStore();
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);

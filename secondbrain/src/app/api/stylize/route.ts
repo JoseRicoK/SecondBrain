@@ -25,7 +25,7 @@ interface StylizeRequest {
 
 interface PersonExtracted {
   name: string;
-  information: Record<string, any>;
+  information: Record<string, unknown>;
 }
 
 export async function POST(request: Request) {
@@ -337,10 +337,11 @@ Contexto de personas que ya conozco:
       stylizedText,
       peopleExtracted
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error en la API de estilización:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json(
-      { error: `Error al procesar la solicitud: ${error.message}` },
+      { error: `Error al procesar la solicitud: ${errorMessage}` },
       { status: 500 }
     );
   }

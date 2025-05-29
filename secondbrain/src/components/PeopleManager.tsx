@@ -15,7 +15,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [editedDetails, setEditedDetails] = useState<Record<string, any>>({});
+  const [editedDetails, setEditedDetails] = useState<Record<string, unknown>>({});
   const [editedName, setEditedName] = useState<string>("");
   const [collapsed, setCollapsed] = useState(false);
 
@@ -23,6 +23,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
   useEffect(() => {
     loadPeople();
     console.log('Cargando personas. refreshTrigger:', refreshTrigger);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, refreshTrigger]);
   
   // Efecto para seleccionar automáticamente la persona por nombre cuando cambia initialSelectedName
@@ -100,7 +101,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
     setEditMode(false);
   };
 
-  const handleDetailChange = (key: string, value: any) => {
+  const handleDetailChange = (key: string, value: unknown) => {
     setEditedDetails(prev => ({
       ...prev,
       [key]: value
