@@ -10,8 +10,10 @@ import {
   FiMic,
   FiStopCircle,
   FiVolume2,
-  FiZap
+  FiZap,
+  FiUsers
 } from 'react-icons/fi';
+import PeopleManager from './PeopleManager';
 
 interface IntegratedDiaryProps {
   userId: string;
@@ -38,6 +40,8 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isStylizing, setIsStylizing] = useState(false);
+  const [showPeoplePanel, setShowPeoplePanel] = useState(false);
+  const [peopleRefreshTrigger, setPeopleRefreshTrigger] = useState(0);
   
   // Referencias
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -81,7 +85,7 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
     }
   };
   
-  // Estilizar el texto con ChatGPT
+  // Estilizar el texto con ChatGPT y extraer información sobre personas
   const handleStylize = async () => {
     if (!content || content.trim() === '') {
       setError('No hay contenido para estilizar');
@@ -99,7 +103,11 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text: content }),
+        body: JSON.stringify({
+          text: content,
+          userId: userId,
+          extractPeople: true
+        }),
       });
       
       if (!response.ok) {
@@ -110,20 +118,33 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
       const data = await response.json() as StylizeResponse;
       console.log('✅ Texto estilizado recibido');
       
+      // Si se han encontrado personas, mostramos un mensaje informativo
+      const peopleFound = data.peopleExtracted && Array.isArray(data.peopleExtracted) && data.peopleExtracted.length > 0;
+      let feedbackMessage = 'Texto estilizado correctamente';
+      if (peopleFound && data.peopleExtracted) {
+        const peopleNames = data.peopleExtracted.map(p => p.name).join(', ');
+        feedbackMessage += `. Se ha guardado información sobre: ${peopleNames}`;
+        setShowPeoplePanel(true); // Mostrar el panel de personas automáticamente
+        
+        // Forzar actualización del componente PeopleManager
+        setPeopleRefreshTrigger(prev => prev + 1);
+        console.log('Personas identificadas. Actualizando PeopleManager...');
+      }
+      
       // Actualizar el contenido con el texto estilizado
       setContent(data.stylizedText);
       
       // Dar feedback visual al usuario
       const stylizeElement = document.createElement('div');
-      stylizeElement.className = 'fixed bottom-6 right-6 bg-purple-500 text-white px-4 py-2 rounded-full z-50';
-      stylizeElement.textContent = 'Texto estilizado correctamente';
+      stylizeElement.className = 'fixed bottom-6 right-6 bg-purple-500 text-white px-4 py-2 rounded-full z-50 max-w-md';
+      stylizeElement.textContent = feedbackMessage;
       document.body.appendChild(stylizeElement);
       
       setTimeout(() => {
         if (document.body.contains(stylizeElement)) {
           document.body.removeChild(stylizeElement);
         }
-      }, 3000);
+      }, 5000);
       
     } catch (err) {
       console.error('❌ Error al estilizar:', err);
@@ -155,8 +176,14 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
     text: string;
   }
   
+  interface PersonExtracted {
+    name: string;
+    information: Record<string, any>;
+  }
+  
   interface StylizeResponse {
     stylizedText: string;
+    peopleExtracted?: PersonExtracted[];
   }
 
   
@@ -354,24 +381,24 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
       <p className="text-slate-500 max-w-md">
         Selecciona una fecha en el calendario o comienza a escribir para crear una entrada nueva.
       </p>
-    </div>
-  );
+    </div>);
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        {/* Barra de herramientas */}
-        <div className="flex items-center justify-between border-b border-slate-200 p-4 bg-white sticky top-0 z-10">
-          <div className="flex items-center space-x-2">
-            <span className="text-slate-500 text-sm font-medium">
-              {currentEntry?.date
-                ? format(new Date(currentEntry.date), "EEEE, d 'de' MMMM", { locale: es })
-                : "Nueva entrada"}
-            </span>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            {storeIsEditing ? (
+    <div className="max-w-6xl mx-auto">
+      <div className="flex gap-4 flex-col md:flex-row">
+        <div className="flex-1 bg-white rounded-lg shadow-md overflow-hidden">
+          {/* Barra de herramientas */}
+          <div className="flex items-center justify-between border-b border-slate-200 p-4 bg-white sticky top-0 z-10">
+            <div className="flex items-center space-x-2">
+              <span className="text-slate-500 text-sm font-medium">
+                {currentEntry?.date
+                  ? format(new Date(currentEntry.date), "EEEE, d 'de' MMMM", { locale: es })
+                  : "Nueva entrada"}
+              </span>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              {storeIsEditing ? (
               <>
                 {/* Botón de estilización con IA */}
                 <button 
@@ -516,8 +543,29 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
           )}
         </div>
       </div>
+      
+      {/* Panel lateral para personas */}
+      <div className="flex items-center justify-center mt-4">
+        <button
+          onClick={() => setShowPeoplePanel(!showPeoplePanel)}
+          className="flex items-center space-x-2 px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200 transition-colors"
+        >
+          <FiUsers size={16} />
+          <span>{showPeoplePanel ? 'Ocultar personas' : 'Ver personas'}</span>
+        </button>
+      </div>
+      
+      {showPeoplePanel && (
+        <div className="mt-4">
+          <PeopleManager 
+            userId={userId} 
+            refreshTrigger={peopleRefreshTrigger} 
+          />
+        </div>
+      )}
     </div>
-  );
+  </div>
+);
 };
 
 export default IntegratedDiary;
