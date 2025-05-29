@@ -35,7 +35,7 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen bg-slate-50">
+    <main className="flex min-h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar con overlay cuando está abierto en móvil */}
       {isSidebarOpen && (
         <div 
@@ -52,18 +52,17 @@ export default function Home() {
           md:translate-x-0 md:shadow-lg md:w-80 w-[85%] max-w-xs
         `}
       >
-        <div className="p-4 flex items-center justify-between border-b border-slate-200 md:border-0">
-          <h1 className="text-xl font-bold text-slate-800">SecondBrain</h1>
+        <div className="pt-0 px-4 pb-4 flex items-center justify-end border-b border-slate-200 md:hidden">
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="md:hidden text-slate-500 hover:text-slate-700"
+            className="text-slate-500 hover:text-slate-700"
             aria-label="Close sidebar"
           >
             <FiX size={20} />
           </button>
         </div>
         
-        <div className="h-[calc(100vh-64px)] overflow-y-auto">
+        <div className="overflow-y-auto h-[calc(100vh_-_37px)] md:h-full">
           {isClient && <Sidebar userId={tempUserId} />}
         </div>
       </aside>
@@ -74,12 +73,11 @@ export default function Home() {
         <header className="md:hidden bg-white p-4 flex items-center border-b border-slate-200 shadow-sm">
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="text-slate-700 hover:text-slate-900 mr-4"
+            className="text-slate-700 hover:text-slate-900"
             aria-label="Open sidebar"
           >
             <FiMenu size={24} />
           </button>
-          <h1 className="text-xl font-semibold text-slate-800">SecondBrain</h1>
         </header>
         
         {/* Área principal */}

@@ -69,12 +69,12 @@ export async function POST(request: Request) {
     `;
 
     const stylizeCompletion = await openai.chat.completions.create({
-      model: "gpt-4o",  // Puedes cambiar esto a gpt-3.5-turbo si prefieres
+      model: "o4-mini-2025-04-16",  // Modelo más económico que gpt-4o pero con buen rendimiento
       messages: [
         { role: "system", content: "Eres un asistente especializado en mejorar y estilizar entradas de diario." },
         { role: "user", content: stylizePrompt }
-      ],
-      temperature: 0.7,
+      ]
+      // temperatura predeterminada (1) para compatibilidad con o4-mini
     });
 
     const stylizedText = stylizeCompletion.choices[0].message.content;
@@ -165,12 +165,12 @@ Contexto de personas que ya conozco:
       `;
 
       const extractCompletion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "o4-mini-2025-04-16",
         messages: [
           { role: "system", content: "Eres un asistente especializado en extraer información estructurada sobre personas." },
           { role: "user", content: extractPrompt }
         ],
-        temperature: 0.3,
+        // Uso del valor predeterminado de temperature para compatibilidad con o4-mini
         response_format: { type: "json_object" }
       });
 

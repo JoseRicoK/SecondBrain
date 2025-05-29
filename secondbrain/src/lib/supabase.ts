@@ -36,6 +36,7 @@ export interface DiaryEntry {
   created_at: string;
   updated_at: string;
   user_id: string;
+  mentioned_people?: string[]; // IDs de las personas mencionadas en la entrada
 }
 
 export interface AudioTranscription {
@@ -104,6 +105,7 @@ export async function saveEntry(entry: Partial<DiaryEntry>): Promise<DiaryEntry 
       .update({
         content: entry.content,
         updated_at: new Date().toISOString(),
+        mentioned_people: entry.mentioned_people
       })
       .eq('id', entry.id)
       .select()
@@ -126,6 +128,7 @@ export async function saveEntry(entry: Partial<DiaryEntry>): Promise<DiaryEntry 
       user_id: entry.user_id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      mentioned_people: entry.mentioned_people || []
     };
     console.log('⭐ Datos a insertar:', newEntry);
 

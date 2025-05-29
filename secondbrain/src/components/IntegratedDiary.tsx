@@ -11,7 +11,8 @@ import {
   FiStopCircle,
   FiVolume2,
   FiZap,
-  FiUsers
+  FiUsers,
+  FiUser
 } from 'react-icons/fi';
 import PeopleManager from './PeopleManager';
 
@@ -43,6 +44,10 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
   const [showPeoplePanel, setShowPeoplePanel] = useState(false);
   const [peopleRefreshTrigger, setPeopleRefreshTrigger] = useState(0);
   
+  // Estado para las personas detectadas en el texto actual
+  const [detectedPeople, setDetectedPeople] = useState<PersonExtracted[]>([]);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  
   // Referencias
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -52,8 +57,24 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
   React.useEffect(() => {
     if (currentEntry) {
       setContent(currentEntry.content || '');
+      
+      // Si hay personas mencionadas en la entrada, cargarlas
+      if (currentEntry.mentioned_people && currentEntry.mentioned_people.length > 0) {
+        // Convertir los nombres de personas a objetos PersonExtracted
+        const loadedPeople: PersonExtracted[] = currentEntry.mentioned_people.map(name => ({
+          name,
+          information: {} // Información vacía por defecto
+        }));
+        
+        setDetectedPeople(loadedPeople);
+        console.log('Personas cargadas de la entrada:', loadedPeople.length);
+      } else {
+        // Limpiar las personas detectadas si no hay ninguna en la entrada
+        setDetectedPeople([]);
+      }
     } else {
       setContent('');
+      setDetectedPeople([]);
     }
     
     // Reset audio recording state when entry changes
@@ -61,11 +82,12 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
     setIsProcessing(false);
     setIsRecording(false);
     setError(null);
-  }, [currentEntry]);
+  }, [currentEntry, userId]);
   
   // Obtener los datos de la entrada cuando cambia el componente
   React.useEffect(() => {
     fetchCurrentEntry(userId);
+    fetchTranscriptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
@@ -122,17 +144,37 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
       const peopleFound = data.peopleExtracted && Array.isArray(data.peopleExtracted) && data.peopleExtracted.length > 0;
       let feedbackMessage = 'Texto estilizado correctamente';
       if (peopleFound && data.peopleExtracted) {
+        // Guardar las personas detectadas en el estado
+        setDetectedPeople(data.peopleExtracted);
+        
         const peopleNames = data.peopleExtracted.map(p => p.name).join(', ');
         feedbackMessage += `. Se ha guardado información sobre: ${peopleNames}`;
-        setShowPeoplePanel(true); // Mostrar el panel de personas automáticamente
         
         // Forzar actualización del componente PeopleManager
         setPeopleRefreshTrigger(prev => prev + 1);
         console.log('Personas identificadas. Actualizando PeopleManager...');
+      } else {
+        // Si no se encontraron personas, limpiar el estado
+        setDetectedPeople([]);
       }
       
       // Actualizar el contenido con el texto estilizado
       setContent(data.stylizedText);
+      
+      // Guardar automáticamente el contenido estilizado y las personas detectadas
+      console.log('Guardando automáticamente el texto estilizado y personas detectadas...');
+      try {
+        // Crear un array con los nombres de las personas detectadas para guardarlos en la base de datos
+        const peopleNames = data.peopleExtracted?.map(person => person.name) || [];
+        
+        // Guardar tanto el texto estilizado como las personas detectadas
+        await saveCurrentEntry(data.stylizedText, userId, peopleNames);
+        console.log('✅ Guardado automático completado con', peopleNames.length, 'personas');
+        feedbackMessage += ' y guardado automáticamente';
+      } catch (saveError) {
+        console.error('❌ Error en guardado automático:', saveError);
+        feedbackMessage += ' (no se pudo guardar automáticamente)';
+      }
       
       // Dar feedback visual al usuario
       const stylizeElement = document.createElement('div');
@@ -497,40 +539,72 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
           
           {/* Área de edición o visualización */}
           <div className="p-4">
-            {storeIsEditing ? (
-              <textarea
-                ref={textareaRef}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full min-h-[40vh] p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow resize-none"
-                placeholder="Escribe tus pensamientos, reflexiones o tareas del día..."
-              />
-            ) : (
-              <div className="min-h-[40vh]">
-                {!currentEntry ? (
-                  <NoEntryMessage />
-                ) : content ? (
-                  <div className="prose prose-slate max-w-none">
-                    {content.split('\n').map((line, i) => (
-                      <React.Fragment key={i}>
-                        {line}
-                        {i < content.split('\n').length - 1 && <br />}
-                      </React.Fragment>
-                    ))}
-                  </div>
+            <div className="space-y-4">
+              {/* Componente principal: editor o visor */}
+              <div className="w-full">
+                {storeIsEditing ? (
+                  <textarea
+                    ref={textareaRef}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    className="w-full min-h-[40vh] p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow resize-none"
+                    placeholder="Escribe tus pensamientos, reflexiones o tareas del día..."
+                  />
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <svg className="w-16 h-16 text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                    </svg>
-                    <p className="text-slate-500">
-                      No hay contenido para esta entrada.<br />
-                      Haz clic en "Editar" para comenzar a escribir.
-                    </p>
+                  <div className="min-h-[40vh]">
+                    {!currentEntry ? (
+                      <NoEntryMessage />
+                    ) : content ? (
+                      <div className="prose prose-slate max-w-none">
+                        {content.split('\n').map((line, i) => (
+                          <React.Fragment key={i}>
+                            {line}
+                            {i < content.split('\n').length - 1 && <br />}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <svg className="w-16 h-16 text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        <p className="text-slate-500">
+                          No hay contenido para esta entrada.<br />
+                          Haz clic en "Editar" para comenzar a escribir.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
+              
+              {/* Personas detectadas - visible tanto en modo edición como en modo visualización */}
+              {detectedPeople.length > 0 && (
+                <div className="bg-purple-50 rounded-lg p-3 border border-purple-100 animate-fadeIn">
+                  <p className="text-sm font-medium text-purple-700 mb-2 flex items-center">
+                    <FiUsers className="mr-2" /> 
+                    Personas mencionadas en el texto:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {detectedPeople.map((person, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setSelectedPersonId(person.name);
+                          setShowPeoplePanel(true);
+                        }}
+                        className="flex items-center px-3 py-1.5 bg-white border border-purple-200 rounded-full text-sm text-purple-600 hover:bg-purple-100 transition-colors shadow-sm"
+                      >
+                        <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center mr-1.5">
+                          <FiUser size={12} className="text-purple-500" />
+                        </div>
+                        {person.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           
           {/* Estado de grabación */}
@@ -544,25 +618,57 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
         </div>
       </div>
       
-      {/* Panel lateral para personas */}
-      <div className="flex items-center justify-center mt-4">
+      {/* Botón flotante para mostrar/ocultar personas */}
+      <div className="fixed bottom-6 right-6 z-40">
         <button
           onClick={() => setShowPeoplePanel(!showPeoplePanel)}
-          className="flex items-center space-x-2 px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200 transition-colors"
+          className={`flex items-center justify-center p-4 rounded-full shadow-lg transition-all duration-300 ${showPeoplePanel ? 'bg-purple-500 text-white' : 'bg-white text-purple-500'}`}
+          title={showPeoplePanel ? 'Ocultar personas' : 'Ver personas'}
+          aria-label="Mostrar panel de personas"
         >
-          <FiUsers size={16} />
-          <span>{showPeoplePanel ? 'Ocultar personas' : 'Ver personas'}</span>
+          <FiUsers size={28} />
         </button>
       </div>
       
+      {/* Overlay transparente para cerrar el panel al hacer clic fuera */}
       {showPeoplePanel && (
-        <div className="mt-4">
-          <PeopleManager 
-            userId={userId} 
-            refreshTrigger={peopleRefreshTrigger} 
-          />
-        </div>
+        <div 
+          className="fixed inset-0 bg-black/5 backdrop-blur-[1px] z-30 transition-opacity duration-300"
+          onClick={() => setShowPeoplePanel(false)}
+          aria-hidden="true"
+        ></div>
       )}
+      
+      {/* Panel lateral fijo para personas */}
+      <div 
+        className={`fixed top-0 right-0 h-full w-[520px] bg-white shadow-xl border-l border-purple-100 z-40 transform transition-transform duration-300 ease-in-out rounded-l-[40px] ${showPeoplePanel ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        <div className="h-full flex flex-col overflow-hidden">
+          <div className="p-6 bg-gradient-to-r from-purple-100 to-white border-b border-purple-100 flex justify-between items-center sticky top-0 z-10 rounded-tl-[40px] rounded-tr-[40px]">
+            <h2 className="text-xl font-semibold text-purple-700">Personas</h2>
+            <button 
+              onClick={() => {
+                setShowPeoplePanel(false);
+                setSelectedPersonId(null); // Limpiar la selección al cerrar
+              }}
+              className="p-2 rounded-full hover:bg-blue-100 text-blue-500 transition-colors"
+              aria-label="Cerrar panel de personas"
+              title="Cerrar"
+            >
+              <FiX size={20} />
+              <span className="sr-only">Cerrar panel</span>
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <PeopleManager 
+              userId={userId} 
+              refreshTrigger={peopleRefreshTrigger} 
+              className="shadow-none"
+              initialSelectedName={selectedPersonId} // Pasar el nombre de la persona seleccionada
+            />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 );

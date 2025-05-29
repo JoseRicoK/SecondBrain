@@ -12,7 +12,7 @@ interface DiaryState {
   // Acciones
   setCurrentDate: (date: string) => void;
   fetchCurrentEntry: (userId: string) => Promise<void>;
-  saveCurrentEntry: (content: string, userId: string) => Promise<void>;
+  saveCurrentEntry: (content: string, userId: string, mentionedPeople?: string[]) => Promise<void>;
   toggleEditMode: () => void;
   fetchTranscriptions: () => Promise<void>;
   resetError: () => void;
@@ -73,7 +73,7 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     }
   },
   
-  saveCurrentEntry: async (content: string, userId: string) => {
+  saveCurrentEntry: async (content: string, userId: string, mentionedPeople?: string[]) => {
     const { currentDate, currentEntry } = get();
     set({ isLoading: true, error: null });
     
@@ -81,19 +81,22 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     console.log('⭐ Store: Contenido:', content);
     console.log('⭐ Store: Usuario:', userId);
     console.log('⭐ Store: Entrada actual:', currentEntry);
+    console.log('⭐ Store: Personas mencionadas:', mentionedPeople);
     
     try {
       // Preparamos los datos para guardar
       const entryData: Partial<DiaryEntry> = {
         date: currentDate,
         content,
-        user_id: userId
+        user_id: userId,
+        mentioned_people: mentionedPeople
       };
       
       // Si hay una entrada existente, incluimos su ID
       if (currentEntry?.id) {
         entryData.id = currentEntry.id;
-      }
+      };
+      
       
       console.log('⭐ Store: Datos a guardar:', entryData);
       
