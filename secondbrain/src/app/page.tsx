@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import IntegratedDiary from '@/components/IntegratedDiary';
 import { useDiaryStore } from '@/lib/store';
-import { FiMenu, FiX } from 'react-icons/fi';
+import { FiMenu } from 'react-icons/fi';
+import Image from 'next/image';
 
 export default function Home() {
   const { fetchCurrentEntry, currentDate } = useDiaryStore();
   const [isClient, setIsClient] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   
   // Identificador de usuario temporal
   const tempUserId = 'user-1';
@@ -39,7 +41,7 @@ export default function Home() {
       {/* Sidebar con overlay cuando está abierto en móvil */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden" 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-20 md:hidden" 
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -49,21 +51,16 @@ export default function Home() {
         className={`
           fixed md:relative z-30 h-screen bg-white transition-all duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} 
-          md:translate-x-0 md:shadow-lg md:w-80 w-[85%] max-w-xs
+          md:translate-x-0 md:shadow-lg md:w-[400px] w-[90%] max-w-sm
         `}
       >
-        <div className="pt-0 px-4 pb-4 flex items-center justify-end border-b border-slate-200 md:hidden">
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="text-slate-500 hover:text-slate-700"
-            aria-label="Close sidebar"
-          >
-            <FiX size={20} />
-          </button>
-        </div>
-        
-        <div className="overflow-y-auto h-[calc(100vh_-_37px)] md:h-full">
-          {isClient && <Sidebar userId={tempUserId} />}
+        {/* El botón X se moverá al componente Sidebar para superponerse */}
+        <div className="overflow-y-auto h-full">
+          {isClient && <Sidebar 
+            userId={tempUserId} 
+            onClose={() => setIsSidebarOpen(false)} 
+            onSettingsClick={() => setShowSettings(true)}
+          />}
         </div>
       </aside>
 
@@ -78,11 +75,18 @@ export default function Home() {
           >
             <FiMenu size={24} />
           </button>
+          <div className="ml-4">
+            <Image src="/image/Logo-entero-SecondBrain.png" alt="SecondBrain Logo" width={120} height={24} priority />
+          </div>
         </header>
         
         {/* Área principal */}
         <div className="flex-1 overflow-y-auto p-0 md:p-6">
-          {isClient && <IntegratedDiary userId={tempUserId} />}
+          {isClient && <IntegratedDiary 
+            userId={tempUserId} 
+            showSettings={showSettings}
+            onSettingsClose={() => setShowSettings(false)}
+          />}
         </div>
       </div>
     </main>

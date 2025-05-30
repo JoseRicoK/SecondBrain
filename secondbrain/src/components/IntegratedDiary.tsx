@@ -15,12 +15,15 @@ import {
   FiUser
 } from 'react-icons/fi';
 import PeopleManager from './PeopleManager';
+import Settings from './Settings';
 
 interface IntegratedDiaryProps {
   userId: string;
+  showSettings?: boolean;
+  onSettingsClose?: () => void;
 }
 
-const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
+const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId, showSettings = false, onSettingsClose }) => {
   const { 
     currentEntry, 
     isLoading, 
@@ -425,6 +428,35 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
       </p>
     </div>);
 
+  // Si estamos en la vista de configuración, mostrar el componente Settings
+  if (showSettings) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="flex-1 bg-white rounded-lg shadow-md overflow-hidden">
+          {/* Barra de herramientas para settings */}
+          <div className="flex items-center justify-between border-b border-slate-200 p-4 bg-white sticky top-0 z-10">
+            <div className="flex items-center space-x-2">
+              <span className="text-slate-700 text-lg font-medium">Configuración</span>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <button 
+                onClick={onSettingsClose}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 transition-colors"
+              >
+                <span>Volver al diario</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Contenido de Settings */}
+          <Settings userId={userId} />
+        </div>
+      </div>
+    );
+  }
+  
+  // Vista normal del diario
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex gap-4 flex-col md:flex-row">
@@ -555,7 +587,11 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
                     {!currentEntry ? (
                       <NoEntryMessage />
                     ) : content ? (
-                      <div className="prose prose-slate max-w-none">
+                      <div 
+                        onClick={handleToggleEditMode} 
+                        className="prose prose-slate max-w-none p-4 rounded-lg cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200"
+                        title="Haz clic para editar"
+                      >
                         {content.split('\n').map((line, i) => (
                           <React.Fragment key={i}>
                             {line}
@@ -639,19 +675,19 @@ const IntegratedDiary: React.FC<IntegratedDiaryProps> = ({ userId }) => {
         ></div>
       )}
       
-      {/* Panel lateral fijo para personas */}
+      {/* Panel lateral fijo para personas - responsive para dispositivos móviles */}
       <div 
-        className={`fixed top-0 right-0 h-full w-[520px] bg-white shadow-xl border-l border-purple-100 z-40 transform transition-transform duration-300 ease-in-out rounded-l-[40px] ${showPeoplePanel ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed top-0 right-0 h-full w-full sm:w-[95%] md:w-[450px] lg:w-[520px] bg-white shadow-xl border-l border-purple-100 z-40 transform transition-transform duration-300 ease-in-out rounded-l-[40px] ${showPeoplePanel ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="h-full flex flex-col overflow-hidden">
-          <div className="p-6 bg-gradient-to-r from-purple-100 to-white border-b border-purple-100 flex justify-between items-center sticky top-0 z-10 rounded-tl-[40px] rounded-tr-[40px]">
+          <div className="p-4 sm:p-6 bg-gradient-to-r from-purple-100 to-white border-b border-purple-100 flex justify-between items-center sticky top-0 z-10 rounded-tl-[40px] rounded-tr-[40px]">
             <h2 className="text-xl font-semibold text-purple-700">Personas</h2>
             <button 
               onClick={() => {
                 setShowPeoplePanel(false);
                 setSelectedPersonId(null); // Limpiar la selección al cerrar
               }}
-              className="p-2 rounded-full hover:bg-blue-100 text-blue-500 transition-colors"
+              className="p-2 rounded-full hover:bg-purple-100 text-purple-500 transition-colors"
               aria-label="Cerrar panel de personas"
               title="Cerrar"
             >

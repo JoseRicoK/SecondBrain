@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Calendar, { OnArgs } from 'react-calendar';
 import type { CalendarProps } from 'react-calendar';
 import { format } from 'date-fns';
+import { FiX, FiSettings } from 'react-icons/fi';
+import Image from 'next/image';
 import { es } from 'date-fns/locale';
 import { useDiaryStore } from '@/lib/store';
 import { getEntriesByMonth } from '@/lib/supabase';
@@ -23,9 +25,11 @@ const formatDateToString = (date: Date): string => {
 
 interface SidebarProps {
   userId: string;
+  onClose?: () => void; // Prop para manejar el cierre en móviles
+  onSettingsClick?: () => void; // Prop para manejar la navegación a configuración
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ userId }) => {
+const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick }) => {
   // Obtenemos la fecha actual del sistema cada vez que se carga el componente
   const today = new Date();
   const todayString = formatDateToString(today);
@@ -95,19 +99,26 @@ const Sidebar: React.FC<SidebarProps> = ({ userId }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-purple-200 via-white to-white pt-4">
-      {/* Título directamente en el componente principal */}
-      <div className="flex items-center justify-start pl-4 mb-6">
-        <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
-          <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-          </svg>
-        </div>
-        <h1 className="text-xl font-bold tracking-tight text-slate-800">SecondBrain</h1>
+    <div className="relative flex flex-col h-full bg-gradient-to-br from-purple-200 via-white to-white pt-4">
+      {/* Botón de cierre para móviles, superpuesto */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 p-2 text-slate-600 hover:text-slate-800 md:hidden z-10"
+          aria-label="Cerrar menú"
+        >
+          <FiX size={24} />
+        </button>
+      )}
+      {/* Logo para la versión de escritorio */}
+      <div className="pl-6 mb-8 pt-4 hidden md:block">
+        {/* Este logo se mostrará en desktop. El logo de móvil está en page.tsx */}
+        {/* Ajusta width y height según el aspect ratio de tu Logo-simple-SecondBrain.png */}
+        <Image src="/image/Logo-entero-SecondBrain.png" alt="SecondBrain Logo" width={140} height={28} />
       </div>
       
       {/* Sección del calendario con efecto cristal (glassmorphism) */}
-      <div className="bg-white/40 backdrop-blur-sm rounded-[25px] shadow-lg p-5 mb-6 border border-white/30">
+      <div className="bg-white/40 backdrop-blur-sm rounded-[25px] shadow-lg p-6 mx-4 mb-4 border border-white/30">
         <h2 className="text-lg font-semibold text-center text-slate-700 mb-4 flex items-center justify-center">
           <svg className="w-5 h-5 mr-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -134,6 +145,17 @@ const Sidebar: React.FC<SidebarProps> = ({ userId }) => {
             {date ? format(date, "EEEE, d 'de' MMMM", { locale: es }) : 'Ninguna fecha seleccionada'}
           </p>
         </div>
+      </div>
+      
+      {/* Botón de configuración */}
+      <div className="mx-4 mb-8">
+        <button
+          onClick={onSettingsClick}
+          className="w-full flex items-center justify-center px-4 py-3 bg-white/30 backdrop-blur-sm hover:bg-white/50 text-slate-700 rounded-[15px] border border-white/20 transition-colors shadow-sm"
+        >
+          <FiSettings className="mr-2" size={18} />
+          <span className="font-medium">Configuración</span>
+        </button>
       </div>
     </div>
   );

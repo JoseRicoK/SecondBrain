@@ -57,7 +57,6 @@ export interface Person {
   name: string;
   details: {
     // El campo details es flexible y puede contener cualquier información
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: unknown;
   };
   created_at: string;

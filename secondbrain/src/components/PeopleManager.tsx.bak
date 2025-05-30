@@ -147,9 +147,9 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
     });
     
     return (
-      <div className="mt-2 space-y-2 sm:mt-3 sm:space-y-3">
+      <div className="mt-3 space-y-4">
         {sortedEntries.map(([key, value]) => (
-          <div key={key} className="border-b border-slate-100 pb-1 sm:pb-3 last:border-b-0 last:pb-0">
+          <div key={key} className="border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
             <div className="w-full">
               {editMode ? (
                 <div className="mb-2">
@@ -192,22 +192,18 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                 </div>
               ) : (
                 <div>
-                  <div className="font-medium text-slate-700 text-sm uppercase tracking-wide sm:mb-1">{key}</div>
+                  <div className="font-medium text-slate-700 text-sm uppercase tracking-wide mb-1">{key}</div>
                   {Array.isArray(value) ? (
-                    <div 
-                      onClick={handleEditClick} 
-                      className="text-slate-600 text-sm bg-slate-50 px-1 pb-0.5 sm:px-2 sm:py-2 rounded-md sm:mt-0 cursor-pointer hover:bg-slate-100 transition-colors">
+                    <div className="text-slate-600 text-sm bg-slate-50 p-2 rounded-md">
                       {value.length > 0 ? value.map((item, index) => (
-                        <div key={index} className="pb-0.5 sm:py-1 border-b border-slate-100 last:border-b-0 flex">
-                          <span className="text-blue-500 mr-1">•</span> 
+                        <div key={index} className="py-1 border-b border-slate-100 last:border-b-0 flex">
+                          <span className="text-blue-500 mr-2">•</span> 
                           <span>{item}</span>
                         </div>
                       )) : <div className="text-slate-400 italic">Sin información</div>}
                     </div>
                   ) : (
-                    <div 
-                      onClick={handleEditClick}
-                      className="text-slate-600 text-sm whitespace-pre-wrap bg-slate-50 px-1 py-1 sm:px-2 sm:py-2 rounded-md sm:mt-0 cursor-pointer hover:bg-slate-100 transition-colors">
+                    <div className="text-slate-600 text-sm whitespace-pre-wrap bg-slate-50 p-2 rounded-md">
                       {(value as string).trim() ? (value as string) : <span className="text-slate-400 italic">Sin información</span>}
                     </div>
                   )}
@@ -252,7 +248,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
   }
 
   return (
-    <div className={`bg-white rounded-lg ${className.includes('shadow-none') ? '' : 'shadow-md'} px-1 py-1 sm:p-4 ${className} transition-all duration-300`}>
+    <div className={`bg-white rounded-lg ${className.includes('shadow-none') ? '' : 'shadow-md'} p-2 sm:p-4 ${className} transition-all duration-300`}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-slate-800">Personas</h2>
         <button 
@@ -285,7 +281,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
               {people.map(person => (
                 <div key={person.id} className="border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
                   <div 
-                    className={`flex items-center justify-between p-3 cursor-pointer ${selectedPersonId === person.id ? 'bg-purple-50 border-b border-purple-100' : 'bg-white'}`}
+                    className={`flex items-center justify-between p-2 sm:p-3 cursor-pointer ${selectedPersonId === person.id ? 'bg-purple-50 border-b border-purple-100' : 'bg-white'}`}
                     onClick={() => handlePersonClick(person.id)}
                   >
                     <div className="flex items-center">
@@ -304,61 +300,26 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                   </div>
                   
                   {selectedPersonId === person.id && (
-                    <div className="bg-white p-4">
+                    <div className="bg-white p-2 sm:p-4">
                       <div className="flex justify-end mb-3">
                         {editMode ? (
                           <div className="flex space-x-2">
                             <button 
                               onClick={handleCancelEdit}
-                              className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-300 rounded-md transition-colors"
-                              disabled={isLoading}
-                            >
-                              Cancelar
-                            </button>
-                            <button 
-                              onClick={handleSaveEdit}
-                              className="px-3 py-1.5 text-sm bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors"
-                              disabled={isLoading}
-                            >
-                              {isLoading ? 'Guardando...' : 'Guardar'}
-                            </button>
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={handleEditClick}
-                            className="flex items-center text-sm px-3 py-1.5 text-purple-600 hover:text-purple-700 border border-purple-200 rounded-md hover:bg-purple-50 transition-colors"
-                          >
-                            <FiEdit2 size={14} className="mr-2" />
-                            Editar
-                          </button>
-                        )}
                       </div>
-                      
-                      {editMode && (
-                        <div className="mb-4 border-b border-slate-200 pb-4">
-                          <div className="mb-1">
-                            <label 
-                              htmlFor="person-name" 
-                              className="font-medium text-slate-700 text-sm uppercase tracking-wide"
-                            >
-                              Nombre
-                            </label>
-                          </div>
-                          <input
-                            id="person-name"
-                            type="text"
-                            value={editedName}
-                            onChange={(e) => setEditedName(e.target.value)}
-                            className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none transition-shadow"
-                            placeholder="Nombre de la persona"
-                          />
-                        </div>
-                      )}
-                      
-                      {renderPersonDetails(person)}
-                    </div>
-                  )}
-                </div>
+                    )}
+                    
+                    {renderPersonDetails(person)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    )}
+  </div>
+);
               ))}
             </div>
           )}
