@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FiUser, FiEdit2, FiChevronRight, FiChevronDown, FiX, FiEye, FiEyeOff } from 'react-icons/fi';
-import { Person, getPeopleByUserId, savePerson } from '@/lib/supabase';
+import { FiUser, FiEdit2, FiChevronRight, FiChevronDown, FiX, FiEye, FiEyeOff, FiCalendar } from 'react-icons/fi';
+import { Person, PersonDetailCategory, PersonDetailEntry, getPeopleByUserId, savePerson } from '@/lib/supabase';
 
 interface PeopleManagerProps {
   userId: string;
@@ -128,6 +128,40 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
 
   // Orden preferido de las categorías
   const categoryOrder = ['rol', 'relacion', 'detalles', 'relationship', 'role', 'details'];
+
+  // Función auxiliar para formatear fechas
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Función para determinar si un valor es del nuevo formato con fechas
+  const isNewFormat = (value: unknown): value is PersonDetailCategory => {
+    return typeof value === 'object' && value !== null && 'entries' in value;
+  };
+
+  // Función para ordenar entradas por fecha (más recientes primero)
+  const sortEntriesByDate = (entries: PersonDetailEntry[]): PersonDetailEntry[] => {
+    return [...entries].sort((a, b) => {
+      try {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        // Orden descendente: fechas más recientes primero
+        return dateB.getTime() - dateA.getTime();
+      } catch {
+        // Si hay error en las fechas, mantener orden original
+        return 0;
+      }
+    });
+  };
   
   const renderPersonDetails = (person: Person) => {
     const details = editMode ? editedDetails : person.details;
@@ -168,6 +202,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                       <FiX size={16} />
                     </button>
                   </div>
+                  {/* En modo edición, mantenemos la funcionalidad original por simplicidad */}
                   {Array.isArray(value) ? (
                     <textarea
                       id={`detail-${key}`}
@@ -175,6 +210,16 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                       onChange={e => handleDetailChange(key, e.target.value.split('\n'))}
                       className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                       rows={Math.min(4, value.length + 1)}
+                      placeholder={`Información sobre ${key} (un detalle por línea)`}
+                      aria-label={`Información sobre ${key}`}
+                    />
+                  ) : isNewFormat(value) ? (
+                    <textarea
+                      id={`detail-${key}`}
+                      value={sortEntriesByDate(value.entries).map(entry => entry.value).join('\n')}
+                      onChange={e => handleDetailChange(key, e.target.value.split('\n'))}
+                      className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                      rows={Math.min(4, value.entries.length + 1)}
                       placeholder={`Información sobre ${key} (un detalle por línea)`}
                       aria-label={`Información sobre ${key}`}
                     />
@@ -193,7 +238,28 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
               ) : (
                 <div>
                   <div className="font-medium text-slate-700 text-sm uppercase tracking-wide sm:mb-1">{key}</div>
-                  {Array.isArray(value) ? (
+                  {isNewFormat(value) ? (
+                    // Nuevo formato con fechas - ORDENADO POR FECHA (más recientes primero)
+                    <div 
+                      onClick={handleEditClick} 
+                      className="text-slate-600 text-sm bg-slate-50 px-1 pb-0.5 sm:px-2 sm:py-2 rounded-md sm:mt-0 cursor-pointer hover:bg-slate-100 transition-colors">
+                      {value.entries.length > 0 ? sortEntriesByDate(value.entries).map((entry, index) => (
+                        <div key={index} className="pb-0.5 sm:py-1 border-b border-slate-100 last:border-b-0">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start flex-1">
+                              <span className="text-blue-500 mr-1 mt-0.5">•</span> 
+                              <span className="flex-1">{entry.value}</span>
+                            </div>
+                            <div className="flex items-center ml-2 text-xs text-slate-400">
+                              <FiCalendar size={12} className="mr-1" />
+                              {formatDate(entry.date)}
+                            </div>
+                          </div>
+                        </div>
+                      )) : <div className="text-slate-400 italic">Sin información</div>}
+                    </div>
+                  ) : Array.isArray(value) ? (
+                    // Formato antiguo con arrays
                     <div 
                       onClick={handleEditClick} 
                       className="text-slate-600 text-sm bg-slate-50 px-1 pb-0.5 sm:px-2 sm:py-2 rounded-md sm:mt-0 cursor-pointer hover:bg-slate-100 transition-colors">
@@ -205,6 +271,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                       )) : <div className="text-slate-400 italic">Sin información</div>}
                     </div>
                   ) : (
+                    // Formato antiguo con strings
                     <div 
                       onClick={handleEditClick}
                       className="text-slate-600 text-sm whitespace-pre-wrap bg-slate-50 px-1 py-1 sm:px-2 sm:py-2 rounded-md sm:mt-0 cursor-pointer hover:bg-slate-100 transition-colors">
@@ -252,7 +319,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
   }
 
   return (
-    <div className={`bg-white rounded-lg ${className.includes('shadow-none') ? '' : 'shadow-md'} px-1 py-1 sm:p-4 ${className} transition-all duration-300`}>
+    <div className={`bg-white rounded-lg ${className.includes('shadow-none') ? '' : 'shadow-md'} p-2 sm:p-4 ${className} transition-all duration-300`}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-slate-800">Personas</h2>
         <button 
@@ -285,7 +352,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
               {people.map(person => (
                 <div key={person.id} className="border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
                   <div 
-                    className={`flex items-center justify-between p-3 cursor-pointer ${selectedPersonId === person.id ? 'bg-purple-50 border-b border-purple-100' : 'bg-white'}`}
+                    className={`flex items-center justify-between p-2 sm:p-3 cursor-pointer ${selectedPersonId === person.id ? 'bg-purple-50 border-b border-purple-100' : 'bg-white'}`}
                     onClick={() => handlePersonClick(person.id)}
                   >
                     <div className="flex items-center">
@@ -304,20 +371,19 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                   </div>
                   
                   {selectedPersonId === person.id && (
-                    <div className="bg-white p-4">
+                    <div className="bg-white p-2 sm:p-4">
                       <div className="flex justify-end mb-3">
                         {editMode ? (
                           <div className="flex space-x-2">
                             <button 
                               onClick={handleCancelEdit}
-                              className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-300 rounded-md transition-colors"
-                              disabled={isLoading}
+                              className="px-3 py-1.5 text-sm text-slate-600 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors"
                             >
                               Cancelar
                             </button>
                             <button 
                               onClick={handleSaveEdit}
-                              className="px-3 py-1.5 text-sm bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors"
+                              className="px-3 py-1.5 text-sm text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors"
                               disabled={isLoading}
                             >
                               {isLoading ? 'Guardando...' : 'Guardar'}
@@ -326,34 +392,13 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                         ) : (
                           <button 
                             onClick={handleEditClick}
-                            className="flex items-center text-sm px-3 py-1.5 text-purple-600 hover:text-purple-700 border border-purple-200 rounded-md hover:bg-purple-50 transition-colors"
+                            className="flex items-center px-3 py-1.5 text-sm text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
                           >
-                            <FiEdit2 size={14} className="mr-2" />
+                            <FiEdit2 size={14} className="mr-1.5" />
                             Editar
                           </button>
                         )}
                       </div>
-                      
-                      {editMode && (
-                        <div className="mb-4 border-b border-slate-200 pb-4">
-                          <div className="mb-1">
-                            <label 
-                              htmlFor="person-name" 
-                              className="font-medium text-slate-700 text-sm uppercase tracking-wide"
-                            >
-                              Nombre
-                            </label>
-                          </div>
-                          <input
-                            id="person-name"
-                            type="text"
-                            value={editedName}
-                            onChange={(e) => setEditedName(e.target.value)}
-                            className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none transition-shadow"
-                            placeholder="Nombre de la persona"
-                          />
-                        </div>
-                      )}
                       
                       {renderPersonDetails(person)}
                     </div>

@@ -50,14 +50,25 @@ export interface AudioTranscription {
   created_at: string;
 }
 
+// Interfaces para el nuevo formato de detalles con fechas
+export interface PersonDetailEntry {
+  value: string;
+  date: string; // Formato YYYY-MM-DD
+}
+
+export interface PersonDetailCategory {
+  entries: PersonDetailEntry[];
+}
+
 // Tipo para la tabla de personas
 export interface Person {
   id: string;
   user_id: string; // Este valor debe ser un UUID válido
   name: string;
   details: {
-    // El campo details es flexible y puede contener cualquier información
-    [key: string]: unknown;
+    // El campo details ahora usa la nueva estructura con fechas
+    // Ejemplo: { "rol": { "entries": [{"value": "estudiante", "date": "2024-01-15"}] } }
+    [key: string]: PersonDetailCategory | unknown; // unknown para compatibilidad con datos antiguos
   };
   created_at: string;
   updated_at: string;
@@ -331,4 +342,205 @@ export async function updatePersonDetails(personId: string, details: Record<stri
     id: personId,
     details: updatedDetails,
   });
+}
+
+// NUEVAS FUNCIONES PARA MANEJAR LA ESTRUCTURA CON FECHAS
+
+// Función para convertir detalles antiguos al nuevo formato
+export function migrateDetailsToNewFormat(oldDetails: Record<string, unknown>, fallbackDate?: string): Record<string, PersonDetailCategory> {
+  const currentDate = fallbackDate || new Date().toISOString().split('T')[0];
+  const newDetails: Record<string, PersonDetailCategory> = {};
+  
+  for (const [key, value] of Object.entries(oldDetails)) {
+    // Si ya tiene la nueva estructura, mantenerla
+    if (value && typeof value === 'object' && 'entries' in value) {
+      newDetails[key] = value as PersonDetailCategory;
+    }
+    // Si es un array de strings, convertirlo
+    else if (Array.isArray(value)) {
+      newDetails[key] = {
+        entries: value.map(item => ({
+          value: String(item),
+          date: currentDate
+        }))
+      };
+    }
+    // Si es un string simple, convertirlo
+    else if (typeof value === 'string') {
+      newDetails[key] = {
+        entries: [{
+          value: value,
+          date: currentDate
+        }]
+      };
+    }
+    // Para otros tipos, convertir a string
+    else {
+      newDetails[key] = {
+        entries: [{
+          value: String(value),
+          date: currentDate
+        }]
+      };
+    }
+  }
+  
+  return newDetails;
+}
+
+// Función para añadir un nuevo detalle a una categoría específica
+export async function addPersonDetail(personId: string, category: string, value: string, date?: string): Promise<Person | null> {
+  console.log('⭐ Añadiendo detalle a persona:', personId, 'categoría:', category, 'valor:', value);
+  
+  const currentPerson = await getPersonById(personId);
+  if (!currentPerson) return null;
+  
+  const detailDate = date || new Date().toISOString().split('T')[0];
+  const newDetails = { ...currentPerson.details };
+  
+  // Convertir detalles antiguos si es necesario
+  const migratedDetails = migrateDetailsToNewFormat(newDetails, detailDate);
+  
+  // Si la categoría no existe, crearla
+  if (!migratedDetails[category]) {
+    migratedDetails[category] = { entries: [] };
+  }
+  
+  // Añadir el nuevo detalle
+  migratedDetails[category].entries.push({
+    value,
+    date: detailDate
+  });
+  
+  // Guardar los cambios
+  return savePerson({
+    id: personId,
+    details: migratedDetails,
+  });
+}
+
+// Función para obtener detalles de una persona con formato compatible
+export function getPersonDetailsWithDates(person: Person): Record<string, PersonDetailCategory> {
+  if (!person.details) return {};
+  
+  // Si ya tiene el nuevo formato, usarlo directamente
+  const hasNewFormat = Object.values(person.details).some(value => 
+    value && typeof value === 'object' && 'entries' in value
+  );
+  
+  if (hasNewFormat) {
+    return person.details as Record<string, PersonDetailCategory>;
+  }
+  
+  // Si tiene formato antiguo, migrarlo temporalmente para la visualización
+  return migrateDetailsToNewFormat(person.details, person.updated_at.split('T')[0]);
+}
+
+// Función para guardar información de personas extraída de las entradas del diario
+export async function saveExtractedPersonInfo(
+  personName: string, 
+  information: Record<string, unknown>, 
+  userId: string,
+  entryDate?: string
+): Promise<Person | null> {
+  console.log('⭐ Guardando información extraída de persona:', personName);
+  
+  // Convertir userId a UUID válido
+  const validUUID = isValidUUID(userId) ? userId : generateUUID(userId);
+  const detailDate = entryDate || new Date().toISOString().split('T')[0];
+  
+  // Buscar si la persona ya existe
+  let existingPerson = await getPersonByName(personName, validUUID);
+  
+  if (existingPerson) {
+    console.log('✅ Persona existente encontrada, actualizando información...');
+    
+    // Obtener detalles actuales con formato compatible
+    const currentDetails = getPersonDetailsWithDates(existingPerson);
+    
+    // Procesar la nueva información
+    for (const [category, newValue] of Object.entries(information)) {
+      if (!newValue) continue;
+      
+      // Inicializar categoría si no existe o convertir formato antiguo
+      if (!currentDetails[category]) {
+        currentDetails[category] = { entries: [] };
+      } else if (!currentDetails[category].entries) {
+        // Convertir formato antiguo a nuevo formato
+        const oldValue = currentDetails[category];
+        if (Array.isArray(oldValue)) {
+          currentDetails[category] = {
+            entries: oldValue.map(item => ({
+              value: String(item),
+              date: detailDate
+            }))
+          };
+        } else if (typeof oldValue === 'string') {
+          currentDetails[category] = {
+            entries: [{
+              value: oldValue,
+              date: detailDate
+            }]
+          };
+        } else {
+          currentDetails[category] = { entries: [] };
+        }
+      }
+      
+      // Asegurar que entries existe y es un array
+      if (!Array.isArray(currentDetails[category].entries)) {
+        currentDetails[category].entries = [];
+      }
+      
+      // Si es un array, añadir cada elemento como entrada separada
+      if (Array.isArray(newValue)) {
+        for (const item of newValue) {
+          if (item && String(item).trim()) {
+            // Verificar si el detalle ya existe para evitar duplicados
+            const exists = currentDetails[category].entries.some(entry => 
+              entry.value.toLowerCase() === String(item).toLowerCase()
+            );
+            
+            if (!exists) {
+              currentDetails[category].entries.push({
+                value: String(item),
+                date: detailDate
+              });
+            }
+          }
+        }
+      }
+      // Si es un string simple
+      else if (typeof newValue === 'string' && newValue.trim()) {
+        const exists = currentDetails[category].entries.some(entry => 
+          entry.value.toLowerCase() === newValue.toLowerCase()
+        );
+        
+        if (!exists) {
+          currentDetails[category].entries.push({
+            value: newValue,
+            date: detailDate
+          });
+        }
+      }
+    }
+    
+    // Actualizar la persona
+    return savePerson({
+      id: existingPerson.id,
+      details: currentDetails,
+    });
+  } else {
+    console.log('✅ Creando nueva persona...');
+    
+    // Crear nueva persona con formato de detalles con fechas
+    const newDetails = migrateDetailsToNewFormat(information, detailDate);
+    
+    return savePerson({
+      user_id: validUUID,
+      name: personName,
+      details: newDetails,
+      created_at: new Date().toISOString(),
+    });
+  }
 }

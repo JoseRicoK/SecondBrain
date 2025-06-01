@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { getPersonByName, savePerson, isValidUUID, getPeopleByUserId, Person } from '@/lib/supabase';
+import { isValidUUID, getPeopleByUserId, Person, saveExtractedPersonInfo } from '@/lib/supabase';
 import { v5 as uuidv5 } from 'uuid';
 
 // Namespace para generar UUIDs determinísticos (este es un UUID arbitrario)
@@ -21,6 +21,7 @@ interface StylizeRequest {
   text: string;
   userId: string; // Aseguramos que esto sea requerido
   extractPeople?: boolean;
+  entryDate?: string; // Fecha de la entrada del diario para añadir a los detalles
 }
 
 interface PersonExtracted {
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   try {
     // Extraemos y validamos los datos de la solicitud
     const body = await request.json();
-    const { text, userId, extractPeople = true } = body as StylizeRequest;
+    const { text, userId, extractPeople = true, entryDate } = body as StylizeRequest;
 
     if (!text || text.trim() === '') {
       return NextResponse.json(
@@ -197,130 +198,19 @@ Contexto de personas que ya conozco:
           
           console.log('Guardando información de personas con userId original:', userIdString);
           console.log('UUID válido generado:', validUUID);
+          console.log('Fecha de entrada:', entryDate);
           
           try {
             await Promise.all(peopleExtracted.map(async (personData) => {
               if (!personData.name) return; // Ignorar entradas sin nombre
               
-              // Comprobar si la persona ya existe
-              const existingPerson = await getPersonByName(personData.name, validUUID);
-              
-              if (existingPerson) {
-                // Actualizar información existente preservando datos previos
-                const updatedDetails = { ...existingPerson.details };
-                
-                // Manejar cada tipo de dato de manera diferente
-                if (personData.information) {
-                  // Para campos normales como 'rol' y 'relacion', preservar el valor existente
-                  // si no hay nueva información
-                  Object.entries(personData.information).forEach(([key, value]) => {
-                    // Para el campo 'detalles' especialmente, acumular en vez de sobrescribir
-                    if (key === 'detalles' && Array.isArray(value)) {
-                      // Si ya existen detalles, combinarlos sin duplicados
-                      if (updatedDetails.detalles && Array.isArray(updatedDetails.detalles)) {
-                        // Filtrar detalles para evitar duplicados
-                        const existingDetails = new Set(updatedDetails.detalles);
-                        const newDetails = (value as string[]).filter(detail => 
-                          !existingDetails.has(detail) && detail.trim() !== ''
-                        );
-                        
-                        // Añadir solo detalles nuevos
-                        updatedDetails.detalles = [...updatedDetails.detalles, ...newDetails];
-                      } else {
-                        // Si no hay detalles previos, usar los nuevos
-                        updatedDetails.detalles = value;
-                      }
-                    } 
-                    // Para 'rol' y 'relacion', mantener información valiosa usando reglas semánticas
-                    else if (key === 'rol' || key === 'relacion') {
-                      const existingValue = (updatedDetails[key] as string || '').toLowerCase();
-                      const newValue = (value as string || '').toLowerCase();
-                      
-                      console.log(`Campo '${key}' - Valor existente: "${existingValue}" | Valor nuevo: "${newValue}"`);
-                      
-                      // Verificar que los roles no sean relaciones y viceversa
-                      if (key === 'rol') {
-                        // Lista de términos que son relaciones, no roles
-                        const relacionesComunes = ['madre', 'padre', 'hermano', 'hermana', 'hijo', 'hija', 'tio', 'tío', 'tia', 'tía', 
-                                                 'amigo', 'amiga', 'novio', 'novia', 'pareja', 'esposo', 'esposa', 'marido', 'mujer',
-                                                 'compañero', 'compañera', 'conocido', 'conocida', 'familiar'];
-                                                 
-                        if (relacionesComunes.some(term => newValue.includes(term))) {
-                          console.log(`ADVERTENCIA: El valor "${newValue}" parece ser una relación, no un rol. Se ignorará.`);
-                          // Ignoramos este valor ya que es una relación, no un rol
-                          // El rol existente se mantiene o queda como 'desconocido'
-                          if (!existingValue || existingValue === 'desconocido') {
-                            updatedDetails[key] = 'desconocido';
-                            console.log(`Se establece rol='desconocido' por ser inválido`);
-                          }
-                          // No procesamos más este campo
-                          return; // Salimos de esta función anónima
-                        }
-                      }
-                      
-                      // Función para verificar si dos términos son semánticamente equivalentes
-                      const sonEquivalentes = (a: string, b: string): boolean => {
-                        // Pares de términos que consideramos equivalentes
-                        const equivalentes: [string, string][] = [
-                          ['novia', 'pareja'], ['novio', 'pareja'],
-                          ['esposa', 'mujer'], ['esposo', 'marido'],
-                          ['amigo', 'colega'], ['amiga', 'colega'],
-                          ['compañero', 'colega'], ['compañera', 'colega']
-                        ];
-                        
-                        // Verificar si los términos aparecen en alguno de los pares de equivalencia
-                        return equivalentes.some(([term1, term2]) => 
-                          (a.includes(term1) && b.includes(term2)) || (a.includes(term2) && b.includes(term1))
-                        );
-                      };
-                      
-                      // Casos especiales: preservar siempre estos valores si ya existen
-                      if (existingValue && existingValue !== 'desconocido' && existingValue.trim() !== '') {
-                        // Solo actualizar si hay un cambio significativo y no son términos equivalentes
-                        if (newValue && newValue !== 'desconocido' && 
-                            newValue.trim() !== '' && 
-                            newValue !== existingValue && 
-                            !sonEquivalentes(existingValue, newValue)) {
-                          
-                          console.log(`Actualizando '${key}' de "${existingValue}" a "${newValue}" (cambio significativo)`);
-                          updatedDetails[key] = newValue;
-                        } else {
-                          console.log(`Manteniendo valor existente para '${key}': "${existingValue}"`);
-                          // El valor existente se mantiene, no hacemos nada
-                        }
-                      }
-                      // Si no hay valor existente o es genérico, usar el nuevo si tiene contenido
-                      else if (newValue && newValue !== 'desconocido' && newValue.trim() !== '') {
-                        console.log(`Estableciendo '${key}' a "${newValue}" (no había valor previo válido)`);
-                        updatedDetails[key] = newValue;
-                      }
-                      // Si no hay valor existente ni nuevo valor válido, usar 'desconocido'
-                      else if (!existingValue) {
-                        console.log(`Estableciendo valor predeterminado para '${key}': "desconocido"`);
-                        updatedDetails[key] = 'desconocido';
-                      }
-                    }
-                    // Para otros campos, actualizar normalmente
-                    else if (value) {
-                      updatedDetails[key] = value;
-                    }
-                  });
-                }
-                
-                console.log('Actualizando persona con nueva información:', updatedDetails);
-                
-                await savePerson({
-                  id: existingPerson.id,
-                  details: updatedDetails
-                });
-              } else {
-                // Crear nueva persona
-                await savePerson({
-                  user_id: validUUID, // Usamos el UUID válido generado
-                  name: personData.name,
-                  details: personData.information || {}
-                });
-              }
+              // Usar la nueva función que maneja fechas automáticamente
+              await saveExtractedPersonInfo(
+                personData.name,
+                personData.information || {},
+                validUUID,
+                entryDate // Pasar la fecha de la entrada
+              );
             }));
           } catch (saveError) {
             console.error('Error al guardar personas en la base de datos:', saveError);
