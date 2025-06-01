@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     console.log('🔄 Iniciando migración de datos de personas...');
 
@@ -62,12 +62,12 @@ async function manualMigration() {
         continue;
       }
 
-      const updatedDetails: Record<string, any> = {};
+      const updatedDetails: Record<string, unknown> = {};
       let needsUpdate = false;
 
       for (const [key, value] of Object.entries(person.details)) {
         // Verificar si ya está en el nuevo formato
-        if (value && typeof value === 'object' && 'entries' in value && Array.isArray(value.entries)) {
+        if (value && typeof value === 'object' && 'entries' in value && Array.isArray((value as { entries: unknown[] }).entries)) {
           // Ya está migrado
           updatedDetails[key] = value;
           continue;

@@ -1,11 +1,25 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+
+interface MigrationResult {
+  success?: boolean;
+  message?: string;
+  migrated?: number;
+  error?: string;
+  details?: string;
+}
+
+interface SampleData {
+  people?: unknown[];
+  error?: string;
+}
 
 export default function MigrationPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [sampleData, setSampleData] = useState<any>(null);
+  const [result, setResult] = useState<MigrationResult | null>(null);
+  const [sampleData, setSampleData] = useState<SampleData | null>(null);
 
   const checkCurrentData = async () => {
     setIsLoading(true);
@@ -150,12 +164,12 @@ export default function MigrationPage() {
 
             {/* Enlaces */}
             <div className="text-center pt-4">
-              <a 
+              <Link 
                 href="/" 
                 className="text-blue-600 hover:text-blue-800 underline"
               >
                 ← Volver a la aplicación principal
-              </a>
+              </Link>
             </div>
           </div>
         </div>

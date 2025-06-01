@@ -450,7 +450,7 @@ export async function saveExtractedPersonInfo(
   const detailDate = entryDate || new Date().toISOString().split('T')[0];
   
   // Buscar si la persona ya existe
-  let existingPerson = await getPersonByName(personName, validUUID);
+  const existingPerson = await getPersonByName(personName, validUUID);
   
   if (existingPerson) {
     console.log('✅ Persona existente encontrada, actualizando información...');
