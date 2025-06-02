@@ -654,3 +654,33 @@ export async function saveExtractedPersonInfo(
     });
   }
 }
+
+// Función para obtener información del usuario autenticado
+export async function getUserInfo(): Promise<{ name: string; email: string | null }> {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error) {
+      console.error('Error getting user:', error);
+      return { name: 'Usuario', email: null };
+    }
+
+    if (!user) {
+      return { name: 'Usuario', email: null };
+    }
+
+    // Extract name from raw_user_meta_data (where Supabase stores it)
+    const name = user.raw_user_meta_data?.name || 
+                 user.user_metadata?.name || 
+                 user.email?.split('@')[0] || 
+                 'Usuario';
+
+    return {
+      name,
+      email: user.email || null
+    };
+  } catch (error) {
+    console.error('Error in getUserInfo:', error);
+    return { name: 'Usuario', email: null };
+  }
+}

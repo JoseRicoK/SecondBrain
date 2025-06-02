@@ -5,20 +5,22 @@ import Sidebar from '@/components/Sidebar';
 import IntegratedDiary from '@/components/IntegratedDiary';
 import PersonalChat from '@/components/PersonalChat';
 import PersonalChatButton from '@/components/PersonalChatButton';
+import Auth from '@/components/Auth';
+import Loading from '@/components/Loading';
+import { useAuth } from '@/hooks/useAuth';
 import { useDiaryStore } from '@/lib/store';
 import { FiMenu } from 'react-icons/fi';
 import Image from 'next/image';
+import { User } from '@supabase/supabase-js';
 
 export default function Home() {
+  const { user, loading } = useAuth();
   const { fetchCurrentEntry, currentDate } = useDiaryStore();
   const [isClient, setIsClient] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isChatMinimized, setIsChatMinimized] = useState(false);
-  
-  // Identificador de usuario temporal
-  const tempUserId = 'user-1';
 
   // Funciones para manejar el chat personal
   const handleChatToggle = () => {
@@ -39,13 +41,18 @@ export default function Home() {
   const handleChatMinimizeToggle = () => {
     setIsChatMinimized(!isChatMinimized);
   };
+
+  const handleAuthSuccess = (authenticatedUser: User) => {
+    console.log('Usuario autenticado:', authenticatedUser);
+    // El hook useAuth se encargará de actualizar el estado
+  };
   
-  // Obtener los datos de la entrada actual cuando cambia la fecha
+  // Obtener los datos de la entrada actual cuando cambia la fecha o el usuario
   useEffect(() => {
-    if (isClient) {
-      fetchCurrentEntry(tempUserId);
+    if (isClient && user?.id) {
+      fetchCurrentEntry(user.id);
     }
-  }, [fetchCurrentEntry, isClient, currentDate]);
+  }, [fetchCurrentEntry, isClient, currentDate, user?.id]);
 
   // Evitar errores de hidratación
   useEffect(() => {
@@ -53,11 +60,17 @@ export default function Home() {
   }, []);
 
   if (!isClient) {
-    return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <p className="text-slate-500 text-lg">Cargando aplicación...</p>
-      </div>
-    );
+    return <Loading />;
+  }
+
+  // Mostrar pantalla de carga mientras se verifica la autenticación
+  if (loading) {
+    return <Loading />;
+  }
+
+  // Mostrar pantalla de autenticación si no hay usuario
+  if (!user) {
+    return <Auth onAuthSuccess={handleAuthSuccess} />;
   }
 
   return (
@@ -80,11 +93,12 @@ export default function Home() {
       >
         {/* El botón X se moverá al componente Sidebar para superponerse */}
         <div className="overflow-y-auto h-full">
-          {isClient && <Sidebar 
-            userId={tempUserId} 
+          <Sidebar 
+            userId={user.id} 
             onClose={() => setIsSidebarOpen(false)} 
             onSettingsClick={() => setShowSettings(true)}
-          />}
+            onDateChange={() => setShowSettings(false)}
+          />
         </div>
       </aside>
 
@@ -106,37 +120,35 @@ export default function Home() {
         
         {/* Área principal */}
         <div className="flex-1 overflow-y-auto p-0 md:p-6">
-          {isClient && <IntegratedDiary 
-            userId={tempUserId} 
+          <IntegratedDiary 
+            userId={user.id} 
             showSettings={showSettings}
             onSettingsClose={() => setShowSettings(false)}
-          />}
+          />
         </div>
       </div>
 
       {/* Chat Personal Flotante */}
-      {isClient && (
-        <>
-          {/* Botón del Chat Personal */}
-          {!isChatOpen && (
-            <PersonalChatButton 
-              onClick={handleChatToggle}
-              isActive={false}
-            />
-          )}
+      <>
+        {/* Botón del Chat Personal */}
+        {!isChatOpen && (
+          <PersonalChatButton 
+            onClick={handleChatToggle}
+            isActive={false}
+          />
+        )}
 
-          {/* Componente de Chat Personal */}
-          {isChatOpen && (
-            <PersonalChat
-              userId={tempUserId}
-              isOpen={isChatOpen}
-              isMinimized={isChatMinimized}
-              onClose={handleChatClose}
-              onToggleMinimize={handleChatMinimizeToggle}
-            />
-          )}
-        </>
-      )}
+        {/* Componente de Chat Personal */}
+        {isChatOpen && (
+          <PersonalChat
+            userId={user.id}
+            isOpen={isChatOpen}
+            isMinimized={isChatMinimized}
+            onClose={handleChatClose}
+            onToggleMinimize={handleChatMinimizeToggle}
+          />
+        )}
+      </>
     </main>
   );
 }

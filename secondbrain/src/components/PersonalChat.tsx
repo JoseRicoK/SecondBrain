@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FiSend, FiX, FiLoader, FiZap, FiMinimize2, FiMaximize2 } from 'react-icons/fi';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -24,11 +25,26 @@ export const PersonalChat: React.FC<PersonalChatProps> = ({
   isMinimized, 
   onToggleMinimize 
 }) => {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [entriesAnalyzed, setEntriesAnalyzed] = useState<number>(0);
+  
+  // Get user display name from auth - using useCallback to avoid dependency issues
+  const getUserDisplayName = useCallback(() => {
+    if (user?.user_metadata?.name) {
+      return user.user_metadata.name;
+    }
+    if (user?.email) {
+      return user.email.split('@')[0];
+    }
+    return 'Usuario';
+  }, [user]);
+
+  // Initialize userName with actual user name from the start
+  const [userName, setUserName] = useState<string>(() => getUserDisplayName());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -46,12 +62,22 @@ export const PersonalChat: React.FC<PersonalChatProps> = ({
     }
   }, [isOpen, isMinimized]);
 
+  // Update user name when user changes
+  useEffect(() => {
+    const displayName = getUserDisplayName();
+    setUserName(displayName);
+  }, [getUserDisplayName]);
+
   // Mensaje de bienvenida inicial
   useEffect(() => {
     if (isOpen && messages.length === 0) {
+      const welcomeMessage = userName !== 'Usuario' 
+        ? `¡Hola ${userName}! Soy tu asistente personal de SecondBrain.`
+        : '¡Hola! Soy tu asistente personal de SecondBrain.';
+      
       setMessages([{
         role: 'assistant',
-        content: `¡Hola! Soy tu asistente personal de SecondBrain. Estoy aquí para ayudarte a analizar y reflexionar sobre tu vida basándome en todas las entradas que has escrito en tu diario. 
+        content: `${welcomeMessage} Estoy aquí para ayudarte a analizar y reflexionar sobre tu vida basándome en todas las entradas que has escrito en tu diario. 
 
 Puedo ayudarte a:
 • Identificar patrones y tendencias en tu vida
@@ -63,7 +89,7 @@ Puedo ayudarte a:
         timestamp: new Date()
       }]);
     }
-  }, [isOpen, messages.length]);
+  }, [isOpen, messages.length, userName]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -97,7 +123,8 @@ Puedo ayudarte a:
         body: JSON.stringify({
           userId,
           message: userMessage,
-          conversationHistory
+          conversationHistory,
+          userName: getUserDisplayName()
         }),
       });
 
@@ -108,9 +135,12 @@ Puedo ayudarte a:
 
       const data = await response.json();
 
-      // Actualizar número de entradas analizadas
+      // Actualizar número de entradas analizadas y nombre de usuario
       if (data.entriesAnalyzed !== undefined) {
         setEntriesAnalyzed(data.entriesAnalyzed);
+      }
+      if (data.userName) {
+        setUserName(data.userName);
       }
 
       // Añadir respuesta del asistente

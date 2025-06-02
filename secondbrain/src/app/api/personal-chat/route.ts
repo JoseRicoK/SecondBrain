@@ -9,7 +9,7 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, message, conversationHistory } = await request.json();
+    const { userId, message, conversationHistory, userName } = await request.json();
 
     if (!userId || !message) {
       return NextResponse.json(
@@ -18,22 +18,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get user display name from frontend
+    const userDisplayName = userName || 'Usuario';
+    
+    console.log('Personal chat request - User name:', userDisplayName);
+
     // Obtener todas las entradas del diario del usuario
     const diaryEntries = await getDiaryEntriesByUserId(userId);
     
     // Construir el contexto del usuario con todas sus entradas
-    const userContext = buildUserContext(diaryEntries, userId);
-
-    // Preparar los mensajes para la conversación
+    const userContext = buildUserContext(diaryEntries, userId, { name: userDisplayName, email: null });
     const messages = [
       {
         role: 'system' as const,
-        content: `Eres un asistente personal inteligente especializado en análisis de vida personal y crecimiento personal. Tu objetivo es ayudar al usuario a analizar, reflexionar y obtener insights sobre su vida basándote en todas las entradas de su diario personal.
+        content: `Eres un asistente personal inteligente especializado en análisis de vida personal y crecimiento personal. Estás ayudando a ${userName} a analizar, reflexionar y obtener insights sobre su vida basándote en todas las entradas de su diario personal.
 
 ${userContext}
 
 CAPACIDADES ESPECIALES:
-- Analiza patrones temporales en la vida del usuario
+- Analiza patrones temporales en la vida de ${userName}
 - Identifica tendencias emocionales y de comportamiento
 - Detecta temas recurrentes y preocupaciones
 - Proporciona insights sobre relaciones y actividades
@@ -42,6 +45,7 @@ CAPACIDADES ESPECIALES:
 - Ayuda a identificar logros y áreas de mejora
 
 INSTRUCCIONES:
+- Dirígete a la persona por su nombre (${userName}) de manera natural y personal
 - Responde basándote únicamente en la información del diario proporcionada
 - Utiliza tu capacidad de análisis para identificar patrones, tendencias y conexiones temporales
 - Sé empático, comprensivo y orientado al crecimiento personal
@@ -51,7 +55,8 @@ INSTRUCCIONES:
 - Mantén un tono personal, cálido pero profesional
 - Responde en español
 - Si no tienes información suficiente sobre algo específico, sugiere qué sería útil registrar
-- Aprovecha la información temporal para mostrar evolución y cambios`
+- Aprovecha la información temporal para mostrar evolución y cambios
+- Haz referencias específicas a eventos y fechas del diario cuando sea relevante`
       },
       // Incluir historial de conversación si existe
       ...(conversationHistory || []),
@@ -77,7 +82,8 @@ INSTRUCCIONES:
 
     return NextResponse.json({
       response,
-      entriesAnalyzed: diaryEntries.length
+      entriesAnalyzed: diaryEntries.length,
+      userName: userDisplayName
     });
 
   } catch (error) {
@@ -98,16 +104,23 @@ INSTRUCCIONES:
 }
 
 // Función auxiliar para construir el contexto del usuario
-function buildUserContext(diaryEntries: Array<{
-  id: string;
-  content: string;
-  created_at: string;
-  title?: string;
-  mood?: string;
-  tags?: string[];
-  mentioned_people?: string[];
-}>, userId: string): string {
-  let context = `CONTEXTO DEL USUARIO (ID: ${userId}):\n\n`;
+function buildUserContext(
+  diaryEntries: Array<{
+    id: string;
+    content: string;
+    created_at: string;
+    title?: string;
+    mood?: string;
+    tags?: string[];
+    mentioned_people?: string[];
+  }>, 
+  userId: string,
+  userInfo: { name: string; email: string | null }
+): string {
+  const userName = userInfo.name;
+  let context = `CONTEXTO DEL USUARIO:\n`;
+  context += `- Nombre: ${userName}\n`;
+  context += `- ID: ${userId}\n\n`;
   
   if (diaryEntries.length === 0) {
     context += "No hay entradas de diario disponibles para analizar.";

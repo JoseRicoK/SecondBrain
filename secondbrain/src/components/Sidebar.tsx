@@ -27,23 +27,29 @@ interface SidebarProps {
   userId: string;
   onClose?: () => void; // Prop para manejar el cierre en móviles
   onSettingsClick?: () => void; // Prop para manejar la navegación a configuración
+  onDateChange?: () => void; // Prop para manejar el cambio de fecha (cerrar configuración)
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onDateChange }) => {
   // Obtenemos la fecha actual del sistema cada vez que se carga el componente
   const today = new Date();
   const todayString = formatDateToString(today);
   
-  const { currentDate, setCurrentDate, fetchCurrentEntry } = useDiaryStore();
+  const { currentDate, setCurrentDate, fetchCurrentEntry, dateManuallySelected } = useDiaryStore();
   const [date, setDate] = useState<Date>(today); // Siempre inicializamos con la fecha actual
   const [entriesDates, setEntriesDates] = useState<string[]>([]);
   const [currentView, setCurrentView] = useState<Date>(today);
   
-  // Al cargar el componente, asegurarnos de que se seleccione el día actual
+  // Al cargar el componente, solo establecer la fecha actual si no se ha seleccionado manualmente
   useEffect(() => {
-    // Establecemos la fecha actual en el store
-    setCurrentDate(todayString);
-    // Cargamos la entrada para hoy
+    // Solo establecer la fecha actual si no se ha seleccionado una fecha manualmente
+    if (!dateManuallySelected) {
+      console.log('🔄 Sidebar: Estableciendo fecha de hoy (no seleccionada manualmente):', todayString);
+      setCurrentDate(todayString, false); // false porque es automático
+    } else {
+      console.log('✅ Sidebar: Manteniendo fecha seleccionada manualmente:', currentDate);
+    }
+    // Cargar la entrada para la fecha actual del store
     fetchCurrentEntry(userId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -77,8 +83,14 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick }) =
     if (newDate instanceof Date) {
       setDate(newDate);
       const formattedDate = format(newDate, 'yyyy-MM-dd');
-      setCurrentDate(formattedDate);
+      console.log('📅 Sidebar: Usuario seleccionó fecha manualmente:', formattedDate);
+      setCurrentDate(formattedDate, true); // true porque es selección manual
       fetchCurrentEntry(userId); // Asumiendo que fetchCurrentEntry usa la fecha del store
+      
+      // Cerrar configuración si está abierta
+      if (onDateChange) {
+        onDateChange();
+      }
     }
   };
   

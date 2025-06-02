@@ -35,6 +35,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { text, userId, extractPeople = true, entryDate } = body as StylizeRequest;
 
+    // Asegurar que siempre tenemos una fecha válida
+    const validEntryDate = entryDate || new Date().toISOString().split('T')[0];
+
     if (!text || text.trim() === '') {
       return NextResponse.json(
         { error: 'No se proporcionó texto para estilizar' },
@@ -87,7 +90,6 @@ export async function POST(request: Request) {
       const validUUID = isValidUUID(userId) ? userId : generateUUID(userId);
       
       // 2.1 Obtener personas existentes de la base de datos para proporcionar contexto
-      console.log('Obteniendo personas existentes para proporcionar contexto...');
       const existingPeople = await getPeopleByUserId(validUUID);
       
       // Crear una lista formateada de personas existentes para el prompt
@@ -123,10 +125,6 @@ Contexto de personas que ya conozco:
           
           existingPeopleContext += `- ${person.name}: relación="${relationInfo}", rol="${rolInfo}"\n`;
         });
-        
-        console.log('Personas existentes identificadas para contexto:', existingPeople.length);
-      } else {
-        console.log('No hay personas existentes para proporcionar contexto.');
       }
       
       const extractPrompt = `
@@ -206,8 +204,6 @@ Contexto de personas que ya conozco:
           peopleExtracted = extractResponse.people || [];
         }
         
-        console.log('Personas extraídas:', peopleExtracted);
-        
         // 3. Guardar información de personas en la base de datos
         if (peopleExtracted.length > 0 && userId) {
           // Convertir userId a string
@@ -215,10 +211,6 @@ Contexto de personas que ya conozco:
           
           // Convertir el userIdString a un UUID válido si no lo es ya
           const validUUID = isValidUUID(userIdString) ? userIdString : generateUUID(userIdString);
-          
-          console.log('Guardando información de personas con userId original:', userIdString);
-          console.log('UUID válido generado:', validUUID);
-          console.log('Fecha de entrada:', entryDate);
           
           try {
             await Promise.all(peopleExtracted.map(async (personData) => {
@@ -229,16 +221,16 @@ Contexto de personas que ya conozco:
                 personData.name,
                 personData.information || {},
                 validUUID,
-                entryDate // Pasar la fecha de la entrada
+                validEntryDate // Usar la fecha validada
               );
             }));
           } catch (saveError) {
-            console.error('Error al guardar personas en la base de datos:', saveError);
+            console.error('Error al guardar personas:', saveError);
             // Continuamos con el proceso aunque falle el guardado
           }
         }
       } catch (parseError) {
-        console.error('Error al analizar la respuesta JSON de extracción:', parseError);
+        console.error('Error al analizar respuesta JSON:', parseError);
         // Continuamos con el proceso aunque falle la extracción
       }
     }
@@ -248,7 +240,7 @@ Contexto de personas que ya conozco:
       peopleExtracted
     });
   } catch (error) {
-    console.error('Error en la API de estilización:', error);
+    console.error('Error en API de estilización:', error);
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json(
       { error: `Error al procesar la solicitud: ${errorMessage}` },

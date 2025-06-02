@@ -8,9 +8,10 @@ interface DiaryState {
   isEditing: boolean;
   transcriptions: AudioTranscription[];
   error: string | null;
+  dateManuallySelected: boolean; // Flag para rastrear si el usuario seleccionó una fecha manualmente
   
   // Acciones
-  setCurrentDate: (date: string) => void;
+  setCurrentDate: (date: string, manuallySelected?: boolean) => void;
   fetchCurrentEntry: (userId: string) => Promise<void>;
   saveCurrentEntry: (content: string, userId: string, mentionedPeople?: string[]) => Promise<void>;
   toggleEditMode: () => void;
@@ -34,19 +35,25 @@ const getTodayFormatted = (): string => {
   return formatDate(new Date());
 };
 
-export const useDiaryStore = create<DiaryState>((set, get) => ({
-  // Estado inicial - siempre usamos la fecha actual
-  currentDate: getTodayFormatted(),
-  currentEntry: null,
-  isLoading: false,
-  isEditing: false,
-  transcriptions: [],
-  error: null,
+export const useDiaryStore = create<DiaryState>((set, get) => {
+  const initialDate = getTodayFormatted();
+  console.log('🏪 Store: Inicializando con fecha:', initialDate);
   
-  // Acciones
-  setCurrentDate: (date: string) => {
-    set({ currentDate: date });
-  },
+  return {
+    // Estado inicial - siempre usamos la fecha actual
+    currentDate: initialDate,
+    currentEntry: null,
+    isLoading: false,
+    isEditing: false,
+    transcriptions: [],
+    error: null,
+    dateManuallySelected: false, // Inicialmente no se ha seleccionado manualmente
+    
+    // Acciones
+    setCurrentDate: (date: string, manuallySelected = false) => {
+      console.log('🏪 Store: setCurrentDate llamado con:', date, 'manual:', manuallySelected);
+      set({ currentDate: date, dateManuallySelected: manuallySelected });
+    },
   
   fetchCurrentEntry: async (userId: string) => {
     const { currentDate } = get();
@@ -144,4 +151,5 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   },
   
   resetError: () => set({ error: null })
-}));
+  };
+});

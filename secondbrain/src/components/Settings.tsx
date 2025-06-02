@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FiCalendar, FiCheck, FiLink, FiSlash } from 'react-icons/fi';
+import UserHeader from './UserHeader';
 
 interface SettingsProps {
   userId: string;
@@ -37,6 +38,11 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
 
   return (
     <div className="p-6">
+      {/* Header del usuario */}
+      <div className="mb-6">
+        <UserHeader />
+      </div>
+      
       <h1 className="text-2xl font-semibold text-slate-800 mb-6">Configuración</h1>
       
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
