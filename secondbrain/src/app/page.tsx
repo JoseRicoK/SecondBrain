@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import IntegratedDiary from '@/components/IntegratedDiary';
+import PersonalChat from '@/components/PersonalChat';
+import PersonalChatButton from '@/components/PersonalChatButton';
 import { useDiaryStore } from '@/lib/store';
 import { FiMenu } from 'react-icons/fi';
 import Image from 'next/image';
@@ -12,9 +14,31 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
   
   // Identificador de usuario temporal
   const tempUserId = 'user-1';
+
+  // Funciones para manejar el chat personal
+  const handleChatToggle = () => {
+    if (isChatOpen) {
+      setIsChatOpen(false);
+      setIsChatMinimized(false);
+    } else {
+      setIsChatOpen(true);
+      setIsChatMinimized(false);
+    }
+  };
+
+  const handleChatClose = () => {
+    setIsChatOpen(false);
+    setIsChatMinimized(false);
+  };
+
+  const handleChatMinimizeToggle = () => {
+    setIsChatMinimized(!isChatMinimized);
+  };
   
   // Obtener los datos de la entrada actual cuando cambia la fecha
   useEffect(() => {
@@ -89,6 +113,30 @@ export default function Home() {
           />}
         </div>
       </div>
+
+      {/* Chat Personal Flotante */}
+      {isClient && (
+        <>
+          {/* Botón del Chat Personal */}
+          {!isChatOpen && (
+            <PersonalChatButton 
+              onClick={handleChatToggle}
+              isActive={false}
+            />
+          )}
+
+          {/* Componente de Chat Personal */}
+          {isChatOpen && (
+            <PersonalChat
+              userId={tempUserId}
+              isOpen={isChatOpen}
+              isMinimized={isChatMinimized}
+              onClose={handleChatClose}
+              onToggleMinimize={handleChatMinimizeToggle}
+            />
+          )}
+        </>
+      )}
     </main>
   );
 }

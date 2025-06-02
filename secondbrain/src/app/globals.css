@@ -11,13 +11,6 @@
   --secondary-color: #10b981; /* emerald-500 */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -45,6 +38,99 @@ body {
   color: #1d4ed8 !important; /* blue-700 */
   font-weight: bold;
   border-radius: 0.375rem; /* rounded-md */
+}
+
+/* Estilos para Markdown en el Chat Personal */
+.chat-markdown {
+  color: #334155; /* slate-700 */
+}
+
+.chat-markdown p {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.chat-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown ul,
+.chat-markdown ol {
+  margin-bottom: 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.chat-markdown ul:last-child,
+.chat-markdown ol:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown li {
+  margin-bottom: 0.25rem;
+  line-height: 1.5;
+}
+
+.chat-markdown strong {
+  font-weight: 600;
+  color: #1e293b; /* slate-800 */
+}
+
+.chat-markdown em {
+  font-style: italic;
+  color: #475569; /* slate-600 */
+}
+
+.chat-markdown code {
+  background-color: #e2e8f0; /* slate-200 */
+  color: #1e293b; /* slate-800 */
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.chat-markdown pre {
+  background-color: #f1f5f9; /* slate-100 */
+  color: #334155; /* slate-700 */
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+  border: 1px solid #e2e8f0; /* slate-200 */
+}
+
+.chat-markdown pre:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown blockquote {
+  border-left: 3px solid #94a3b8; /* slate-400 */
+  padding-left: 1rem;
+  margin: 0.5rem 0;
+  font-style: italic;
+  color: #64748b; /* slate-500 */
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4,
+.chat-markdown h5,
+.chat-markdown h6 {
+  font-weight: 600;
+  color: #1e293b; /* slate-800 */
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.chat-markdown h1:first-child,
+.chat-markdown h2:first-child,
+.chat-markdown h3:first-child,
+.chat-markdown h4:first-child,
+.chat-markdown h5:first-child,
+.chat-markdown h6:first-child {
+  margin-top: 0;
 }
 
 .react-calendar {

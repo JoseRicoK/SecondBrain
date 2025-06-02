@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiUser, FiEdit2, FiChevronRight, FiChevronDown, FiX, FiEye, FiEyeOff, FiCalendar } from 'react-icons/fi';
+import { FiUser, FiEdit2, FiChevronRight, FiChevronDown, FiX, FiEye, FiEyeOff, FiCalendar, FiSearch, FiMessageCircle } from 'react-icons/fi';
 import { Person, PersonDetailCategory, PersonDetailEntry, getPeopleByUserId, savePerson } from '@/lib/supabase';
+import PersonChat from './PersonChat';
 
 interface PeopleManagerProps {
   userId: string;
@@ -18,6 +19,8 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
   const [editedDetails, setEditedDetails] = useState<Record<string, unknown>>({});
   const [editedName, setEditedName] = useState<string>("");
   const [collapsed, setCollapsed] = useState(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [chatPerson, setChatPerson] = useState<Person | null>(null);
 
   // Cargar personas al montar el componente o cuando se dispare una actualización
   useEffect(() => {
@@ -108,6 +111,15 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
     }));
   };
 
+  const handleChatClick = (person: Person, e: React.MouseEvent) => {
+    e.stopPropagation(); // Evitar que se expanda/contraiga la sección de detalles
+    setChatPerson(person);
+  };
+
+  const handleChatClose = () => {
+    setChatPerson(null);
+  };
+
   const handleAddDetail = () => {
     const newKey = prompt('Introduce el nombre de la nueva categoría:');
     if (newKey && newKey.trim() !== '') {
@@ -160,6 +172,57 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
         // Si hay error en las fechas, mantener orden original
         return 0;
       }
+    });
+  };
+
+  // Función para filtrar personas por nombre, relación y rol
+  const filterPeople = (people: Person[], searchTerm: string): Person[] => {
+    if (!searchTerm.trim()) {
+      return people;
+    }
+
+    const lowercaseSearchTerm = searchTerm.toLowerCase().trim();
+
+    return people.filter(person => {
+      // Filtrar por nombre
+      if (person.name.toLowerCase().includes(lowercaseSearchTerm)) {
+        return true;
+      }
+
+      // Filtrar por contenido en los detalles (relación, rol, etc.)
+      if (person.details && typeof person.details === 'object') {
+        for (const [key, value] of Object.entries(person.details)) {
+          // Buscar en las categorías (rol, relacion, etc.)
+          if (key.toLowerCase().includes(lowercaseSearchTerm)) {
+            return true;
+          }
+
+          // Buscar en el contenido de cada categoría
+          if (isNewFormat(value)) {
+            // Nuevo formato con entradas fechadas
+            const entries = value.entries || [];
+            for (const entry of entries) {
+              if (entry.value && entry.value.toLowerCase().includes(lowercaseSearchTerm)) {
+                return true;
+              }
+            }
+          } else if (Array.isArray(value)) {
+            // Formato antiguo con arrays
+            for (const item of value) {
+              if (typeof item === 'string' && item.toLowerCase().includes(lowercaseSearchTerm)) {
+                return true;
+              }
+            }
+          } else if (typeof value === 'string') {
+            // Formato antiguo con strings
+            if (value.toLowerCase().includes(lowercaseSearchTerm)) {
+              return true;
+            }
+          }
+        }
+      }
+
+      return false;
     });
   };
   
@@ -338,6 +401,31 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
               {error}
             </div>
           )}
+
+          {/* Campo de búsqueda */}
+          {people.length > 0 && (
+            <div className="mb-4">
+              <div className="relative">
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, relación, rol..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none transition-shadow"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    title="Limpiar búsqueda"
+                  >
+                    <FiX size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           
           {people.length === 0 ? (
             <div className="text-center text-slate-500 py-8 px-4 bg-slate-50 rounded-lg">
@@ -348,8 +436,25 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {people.map(person => (
+            <>
+              {(() => {
+                const filteredPeople = filterPeople(people, searchTerm);
+                
+                if (filteredPeople.length === 0) {
+                  return (
+                    <div className="text-center text-slate-500 py-8 px-4 bg-slate-50 rounded-lg">
+                      <FiSearch className="mx-auto mb-3" size={32} />
+                      <p className="font-medium">No se encontraron personas</p>
+                      <p className="text-sm mt-2 text-slate-400">
+                        Intenta con otros términos de búsqueda.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {filteredPeople.map(person => (
                 <div key={person.id} className="border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
                   <div 
                     className={`flex items-center justify-between p-2 sm:p-3 cursor-pointer ${selectedPersonId === person.id ? 'bg-purple-50 border-b border-purple-100' : 'bg-white'}`}
@@ -372,42 +477,64 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                   
                   {selectedPersonId === person.id && (
                     <div className="bg-white p-2 sm:p-4">
-                      <div className="flex justify-end mb-3">
-                        {editMode ? (
-                          <div className="flex space-x-2">
+                      <div className="flex justify-between items-center mb-3">
+                        <button 
+                          onClick={(e) => handleChatClick(person, e)}
+                          className="flex items-center px-3 py-1.5 text-sm text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
+                        >
+                          <FiMessageCircle size={14} className="mr-1.5" />
+                          Chat con {person.name}
+                        </button>
+                        
+                        <div className="flex space-x-2">
+                          {editMode ? (
+                            <>
+                              <button 
+                                onClick={handleCancelEdit}
+                                className="px-3 py-1.5 text-sm text-slate-600 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                              <button 
+                                onClick={handleSaveEdit}
+                                className="px-3 py-1.5 text-sm text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors"
+                                disabled={isLoading}
+                              >
+                                {isLoading ? 'Guardando...' : 'Guardar'}
+                              </button>
+                            </>
+                          ) : (
                             <button 
-                              onClick={handleCancelEdit}
-                              className="px-3 py-1.5 text-sm text-slate-600 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors"
+                              onClick={handleEditClick}
+                              className="flex items-center px-3 py-1.5 text-sm text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
                             >
-                              Cancelar
+                              <FiEdit2 size={14} className="mr-1.5" />
+                              Editar
                             </button>
-                            <button 
-                              onClick={handleSaveEdit}
-                              className="px-3 py-1.5 text-sm text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors"
-                              disabled={isLoading}
-                            >
-                              {isLoading ? 'Guardando...' : 'Guardar'}
-                            </button>
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={handleEditClick}
-                            className="flex items-center px-3 py-1.5 text-sm text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
-                          >
-                            <FiEdit2 size={14} className="mr-1.5" />
-                            Editar
-                          </button>
-                        )}
+                          )}
+                        </div>
                       </div>
                       
                       {renderPersonDetails(person)}
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </>
           )}
         </>
+      )}
+      
+      {/* Chat Component */}
+      {chatPerson && (
+        <PersonChat
+          person={chatPerson}
+          isOpen={!!chatPerson}
+          onClose={handleChatClose}
+        />
       )}
     </div>
   );

@@ -226,6 +226,25 @@ export async function getEntriesByMonth(year: number, month: number, userId: str
   return data || [];
 }
 
+// Obtener todas las entradas de diario de un usuario (para chat personal)
+export async function getDiaryEntriesByUserId(userId: string): Promise<DiaryEntry[]> {
+  console.log('⭐ Obteniendo todas las entradas del usuario:', userId);
+  
+  const { data, error } = await supabase
+    .from('diary_entries')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false });
+  
+  if (error) {
+    console.error('❌ Error al obtener entradas del usuario:', error);
+    return [];
+  }
+  
+  console.log(`✅ Se encontraron ${data?.length || 0} entradas para el usuario`);
+  return data || [];
+}
+
 // FUNCIONES PARA MANEJAR PERSONAS
 
 // Obtener todas las personas de un usuario
