@@ -463,10 +463,12 @@ export async function saveExtractedPersonInfo(
   entryDate?: string
 ): Promise<Person | null> {
   console.log('⭐ Guardando información extraída de persona:', personName);
+  console.log('🔍 Información recibida:', JSON.stringify(information, null, 2));
   
   // Convertir userId a UUID válido
   const validUUID = isValidUUID(userId) ? userId : generateUUID(userId);
   const detailDate = entryDate || new Date().toISOString().split('T')[0];
+  console.log('📅 Fecha de detalle:', detailDate);
   
   // Buscar si la persona ya existe
   const existingPerson = await getPersonByName(personName, validUUID);
@@ -481,70 +483,95 @@ export async function saveExtractedPersonInfo(
     for (const [category, newValue] of Object.entries(information)) {
       if (!newValue) continue;
       
-      // Inicializar categoría si no existe o convertir formato antiguo
+      // Inicializar categoría si no existe
       if (!currentDetails[category]) {
         currentDetails[category] = { entries: [] };
-      } else if (!currentDetails[category].entries) {
-        // Convertir formato antiguo a nuevo formato
-        const oldValue = currentDetails[category];
-        if (Array.isArray(oldValue)) {
-          currentDetails[category] = {
-            entries: oldValue.map(item => ({
-              value: String(item),
-              date: detailDate
-            }))
-          };
-        } else if (typeof oldValue === 'string') {
-          currentDetails[category] = {
-            entries: [{
-              value: oldValue,
-              date: detailDate
-            }]
-          };
-        } else {
-          currentDetails[category] = { entries: [] };
+      }
+      
+      // Asegurar que la categoría tiene la estructura correcta
+      if (!currentDetails[category].entries || !Array.isArray(currentDetails[category].entries)) {
+        currentDetails[category] = { entries: [] };
+      }
+      
+      // Determinar si es una categoría que debería tener un solo valor (como rol, relacion)
+      const singleValueCategories = ['rol', 'relacion'];
+      const isSingleValueCategory = singleValueCategories.includes(category.toLowerCase());
+      
+      // Función helper para procesar valores
+      const processValue = (value: string) => {
+        const trimmedValue = value.trim();
+        if (!trimmedValue) return;
+        
+        // No añadir "desconocido" si ya hay información válida en la categoría
+        if (trimmedValue.toLowerCase() === 'desconocido' && currentDetails[category].entries.length > 0) {
+          console.log(`⏭️ Ignorando "desconocido" para ${category} porque ya hay información válida`);
+          return;
         }
-      }
+        
+        if (isSingleValueCategory) {
+          // Para categorías de valor único, verificar si es más específico que lo existente
+          const existingEntries = currentDetails[category].entries;
+          
+          // Si el nuevo valor es "desconocido", no reemplazar valores existentes
+          if (trimmedValue.toLowerCase() === 'desconocido' && existingEntries.length > 0) {
+            console.log(`⏭️ No reemplazando ${category} existente con "desconocido"`);
+            return;
+          }
+          
+          // Si ya existe el mismo valor, no hacer nada
+          const exists = existingEntries.some(entry => 
+            entry.value.toLowerCase() === trimmedValue.toLowerCase()
+          );
+          
+          if (exists) {
+            console.log(`⏭️ ${category} ya existe: "${trimmedValue}"`);
+            return;
+          }
+          
+          // Reemplazar el valor anterior (mantener solo el más reciente)
+          currentDetails[category].entries = [{
+            value: trimmedValue,
+            date: detailDate
+          }];
+          console.log(`🔄 Actualizado ${category}: "${trimmedValue}"`);
+        } else {
+          // Para categorías de múltiples valores (como detalles), añadir sin duplicados
+          const exists = currentDetails[category].entries.some(entry => 
+            entry.value.toLowerCase() === trimmedValue.toLowerCase()
+          );
+          
+          if (!exists) {
+            currentDetails[category].entries.push({
+              value: trimmedValue,
+              date: detailDate
+            });
+            console.log(`➕ Añadido nuevo ${category}: "${trimmedValue}"`);
+          } else {
+            console.log(`⏭️ ${category} ya existe: "${trimmedValue}"`);
+          }
+        }
+      };
       
-      // Asegurar que entries existe y es un array
-      if (!Array.isArray(currentDetails[category].entries)) {
-        currentDetails[category].entries = [];
-      }
-      
-      // Si es un array, añadir cada elemento como entrada separada
+      // Si es un array, procesar cada elemento
       if (Array.isArray(newValue)) {
         for (const item of newValue) {
-          if (item && String(item).trim()) {
-            // Verificar si el detalle ya existe para evitar duplicados
-            const exists = currentDetails[category].entries.some(entry => 
-              entry.value.toLowerCase() === String(item).toLowerCase()
-            );
-            
-            if (!exists) {
-              currentDetails[category].entries.push({
-                value: String(item),
-                date: detailDate
-              });
-            }
+          if (item !== null && item !== undefined) {
+            processValue(String(item));
           }
         }
       }
       // Si es un string simple
-      else if (typeof newValue === 'string' && newValue.trim()) {
-        const exists = currentDetails[category].entries.some(entry => 
-          entry.value.toLowerCase() === newValue.toLowerCase()
-        );
-        
-        if (!exists) {
-          currentDetails[category].entries.push({
-            value: newValue,
-            date: detailDate
-          });
-        }
+      else if (typeof newValue === 'string') {
+        processValue(newValue);
+      }
+      // Si es otro tipo, convertir a string
+      else if (newValue !== null && newValue !== undefined) {
+        processValue(String(newValue));
       }
     }
     
     // Actualizar la persona
+    console.log('💾 Guardando detalles actualizados:', JSON.stringify(currentDetails, null, 2));
     return savePerson({
       id: existingPerson.id,
       details: currentDetails,
@@ -553,7 +580,71 @@ export async function saveExtractedPersonInfo(
     console.log('✅ Creando nueva persona...');
     
     // Crear nueva persona con formato de detalles con fechas
-    const newDetails = migrateDetailsToNewFormat(information, detailDate);
+    const newDetails: Record<string, PersonDetailCategory> = {};
+    
+    // Procesar la información para crear el formato correcto
+    for (const [category, newValue] of Object.entries(information)) {
+      if (!newValue) continue;
+      
+      // Inicializar la categoría
+      newDetails[category] = { entries: [] };
+      
+      // Determinar si es una categoría que debería tener un solo valor
+      const singleValueCategories = ['rol', 'relacion'];
+      const isSingleValueCategory = singleValueCategories.includes(category.toLowerCase());
+      
+      // Función helper para procesar valores
+      const processValue = (value: string) => {
+        const trimmedValue = value.trim();
+        if (!trimmedValue) return;
+        
+        // No guardar "desconocido" si ya hay un valor válido en la categoría
+        if (trimmedValue.toLowerCase() === 'desconocido' && newDetails[category].entries.length > 0) {
+          return;
+        }
+        
+        if (isSingleValueCategory) {
+          // Para categorías de valor único, solo mantener el último valor válido (no "desconocido")
+          if (trimmedValue.toLowerCase() !== 'desconocido' || newDetails[category].entries.length === 0) {
+            newDetails[category].entries = [{
+              value: trimmedValue,
+              date: detailDate
+            }];
+          }
+        } else {
+          // Para categorías de múltiples valores, añadir sin duplicados
+          const exists = newDetails[category].entries.some(entry => 
+            entry.value.toLowerCase() === trimmedValue.toLowerCase()
+          );
+          
+          if (!exists) {
+            newDetails[category].entries.push({
+              value: trimmedValue,
+              date: detailDate
+            });
+          }
+        }
+      };
+      
+      // Si es un array, procesar cada elemento
+      if (Array.isArray(newValue)) {
+        for (const item of newValue) {
+          if (item && String(item).trim()) {
+            processValue(String(item));
+          }
+        }
+      }
+      // Si es un string simple
+      else if (typeof newValue === 'string' && newValue.trim()) {
+        processValue(newValue);
+      }
+      // Si es otro tipo, convertir a string
+      else if (newValue !== null && newValue !== undefined) {
+        processValue(String(newValue));
+      }
+    }
+    
+    console.log('💾 Creando nueva persona con detalles:', JSON.stringify(newDetails, null, 2));
     
     return savePerson({
       user_id: validUUID,

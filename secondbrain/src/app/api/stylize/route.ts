@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { isValidUUID, getPeopleByUserId, Person, saveExtractedPersonInfo } from '@/lib/supabase';
+import { isValidUUID, getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo } from '@/lib/supabase';
 import { v5 as uuidv5 } from 'uuid';
 
 // Namespace para generar UUIDs determinísticos (este es un UUID arbitrario)
@@ -51,17 +51,16 @@ export async function POST(request: Request) {
 
     // 1. Estilizar el texto
     const stylizePrompt = `
-      Eres un asistente especializado en mejorar y estilizar entradas de diario. 
-      Tu tarea es tomar el texto transcrito de una grabación de voz y convertirlo en una entrada de diario bien escrita y estructurada.
+      Eres un asistente especializado en mejorar y estilizar textos. 
+      Tu tarea es tomar el texto transcrito de una grabación de voz y convertirlo en un texto bien escrito y estructurado.
       
       Instrucciones específicas:
       1. Mantén el contenido y las ideas originales, pero mejora la redacción y estructura.
       2. Corrige errores gramaticales y de puntuación.
       3. Organiza el texto en párrafos coherentes si es necesario.
       4. Elimina muletillas, repeticiones y palabras de relleno típicas del habla.
-      5. Mantén un tono personal y auténtico, como si fuera un diario real.
-      6. No añadas información que no esté en el texto original.
-      7. Respeta el estilo y personalidad del autor.
+      5. No añadas información que no esté en el texto original.
+      6. Respeta el estilo y personalidad del autor.
       
       Texto a estilizar:
       ${text}
@@ -100,10 +99,29 @@ Contexto de personas que ya conozco:
         
         existingPeople.forEach((person: Person) => {
           const details = person.details || {};
-          const rol = details.rol || 'desconocido';
-          const relacion = details.relacion || 'desconocido';
+          let relationInfo = 'desconocido';
+          let rolInfo = 'desconocido';
           
-          existingPeopleContext += `- ${person.name}: ${relacion}, ${rol}\n`;
+          // Extraer información del nuevo formato de detalles
+          if (details.relacion && typeof details.relacion === 'object' && 'entries' in details.relacion) {
+            const entries = (details.relacion as PersonDetailCategory).entries;
+            if (entries && entries.length > 0) {
+              relationInfo = entries[entries.length - 1].value; // Usar el más reciente
+            }
+          } else if (typeof details.relacion === 'string') {
+            relationInfo = details.relacion;
+          }
+          
+          if (details.rol && typeof details.rol === 'object' && 'entries' in details.rol) {
+            const entries = (details.rol as PersonDetailCategory).entries;
+            if (entries && entries.length > 0) {
+              rolInfo = entries[entries.length - 1].value; // Usar el más reciente
+            }
+          } else if (typeof details.rol === 'string') {
+            rolInfo = details.rol;
+          }
+          
+          existingPeopleContext += `- ${person.name}: relación="${relationInfo}", rol="${rolInfo}"\n`;
         });
         
         console.log('Personas existentes identificadas para contexto:', existingPeople.length);
@@ -126,10 +144,12 @@ Contexto de personas que ya conozco:
            - INCORRECTO: rol="madre del narrador" - Esto NO es un rol sino una relación
            - CORRECTO: rol="florista", relacion="madre" - El rol es la ocupación, la relación es el vínculo
 
-        3. PRESERVAR INFORMACIÓN EXISTENTE:
-           - Si en el contexto proporcionado ya existe un rol o relación para una persona, MANTÉN esa información a menos que el texto actual mencione CLARAMENTE un cambio
-           - Considera como equivalentes términos similares ("novia"="pareja", "esposa"="mujer", "amigo"="colega", etc.)
-           - No cambies "novia" por "pareja" o viceversa si significan lo mismo
+        3. VALORES ÚNICOS Y PRESERVACIÓN:
+           - Los campos 'rol' y 'relacion' deben tener UN SOLO VALOR por persona
+           - Si en el contexto ya existe información válida (no "desconocido"), MANTÉN esa información exacta a menos que el texto mencione CLARAMENTE un cambio
+           - NO uses "desconocido" si ya hay información válida en el contexto
+           - NO cambies relaciones específicas por genéricas ("novia" NO debe cambiar a "pareja" si ya está establecido como "novia")
+           - Solo usa "desconocido" cuando realmente no puedas determinar la información
 
         4. IDENTIFICACIÓN DE PERSONAS:
            - Incluye tanto personas mencionadas por nombre como referencias relacionales ("mi madre", "mi hermana")

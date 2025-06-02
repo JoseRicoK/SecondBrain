@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiUser, FiEdit2, FiChevronRight, FiChevronDown, FiX, FiEye, FiEyeOff, FiCalendar, FiSearch, FiMessageCircle } from 'react-icons/fi';
-import { Person, PersonDetailCategory, PersonDetailEntry, getPeopleByUserId, savePerson } from '@/lib/supabase';
+import { Person, PersonDetailCategory, PersonDetailEntry, getPeopleByUserId, savePerson, getPersonDetailsWithDates } from '@/lib/supabase';
 import PersonChat from './PersonChat';
 
 interface PeopleManagerProps {
@@ -64,7 +64,9 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
     
     const selectedPerson = people.find(p => p.id === selectedPersonId);
     if (selectedPerson) {
-      setEditedDetails({...selectedPerson.details});
+      // Usar getPersonDetailsWithDates para asegurar formato correcto
+      const detailsWithDates = getPersonDetailsWithDates(selectedPerson);
+      setEditedDetails(detailsWithDates);
       setEditedName(selectedPerson.name);
       setEditMode(true);
     }
@@ -75,10 +77,29 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
     
     try {
       setIsLoading(true);
+      
+      // Limpiar espacios en blanco de los valores antes de guardar
+      const cleanedDetails: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(editedDetails)) {
+        if (value && typeof value === 'object' && 'entries' in value) {
+          const categoryValue = value as PersonDetailCategory;
+          cleanedDetails[key] = {
+            entries: categoryValue.entries
+              .map(entry => ({
+                ...entry,
+                value: entry.value.trim()
+              }))
+              .filter(entry => entry.value) // Eliminar entradas vacías
+          };
+        } else {
+          cleanedDetails[key] = value;
+        }
+      }
+      
       const result = await savePerson({
         id: selectedPersonId,
-        name: editedName,
-        details: editedDetails
+        name: editedName.trim(),
+        details: cleanedDetails
       });
       
       if (result) {
@@ -86,7 +107,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
         setPeople(prevPeople => 
           prevPeople.map(person => 
             person.id === selectedPersonId
-              ? { ...person, name: editedName, details: editedDetails }
+              ? { ...person, name: editedName.trim(), details: cleanedDetails }
               : person
           )
         );
@@ -105,10 +126,48 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
   };
 
   const handleDetailChange = (key: string, value: unknown) => {
-    setEditedDetails(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    setEditedDetails(prev => {
+      const currentDate = new Date().toISOString().split('T')[0];
+      
+      // Convertir el valor al formato con fechas
+      let newValue: PersonDetailCategory;
+      
+      if (Array.isArray(value)) {
+        // Si es un array (viene del textarea en modo edición), crear entradas con fecha
+        newValue = {
+          entries: value
+            .filter(item => item && String(item).trim()) // Filtrar elementos vacíos
+            .map(item => ({
+              value: String(item).trim(),
+              date: currentDate
+            }))
+        };
+      } else if (typeof value === 'string') {
+        // Si es un string, crear el formato con fechas (permitir strings vacíos para edición en tiempo real)
+        newValue = {
+          entries: [{
+            value: value, // No hacer trim aquí para permitir espacios mientras se escribe
+            date: currentDate
+          }]
+        };
+      } else if (value && typeof value === 'object' && 'entries' in value) {
+        // Si ya tiene el formato correcto, mantenerlo
+        newValue = value as PersonDetailCategory;
+      } else {
+        // Para otros casos, convertir a string
+        newValue = {
+          entries: [{
+            value: String(value || ''),
+            date: currentDate
+          }]
+        };
+      }
+      
+      return {
+        ...prev,
+        [key]: newValue
+      };
+    });
   };
 
   const handleChatClick = (person: Person, e: React.MouseEvent) => {
@@ -123,9 +182,15 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
   const handleAddDetail = () => {
     const newKey = prompt('Introduce el nombre de la nueva categoría:');
     if (newKey && newKey.trim() !== '') {
+      const currentDate = new Date().toISOString().split('T')[0];
       setEditedDetails(prev => ({
         ...prev,
-        [newKey.trim()]: ''
+        [newKey.trim()]: {
+          entries: [{
+            value: '',
+            date: currentDate
+          }]
+        }
       }));
     }
   };
@@ -265,38 +330,75 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                       <FiX size={16} />
                     </button>
                   </div>
-                  {/* En modo edición, mantenemos la funcionalidad original por simplicidad */}
-                  {Array.isArray(value) ? (
-                    <textarea
-                      id={`detail-${key}`}
-                      value={value.join('\n')}
-                      onChange={e => handleDetailChange(key, e.target.value.split('\n'))}
-                      className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                      rows={Math.min(4, value.length + 1)}
-                      placeholder={`Información sobre ${key} (un detalle por línea)`}
-                      aria-label={`Información sobre ${key}`}
-                    />
-                  ) : isNewFormat(value) ? (
-                    <textarea
-                      id={`detail-${key}`}
-                      value={sortEntriesByDate(value.entries).map(entry => entry.value).join('\n')}
-                      onChange={e => handleDetailChange(key, e.target.value.split('\n'))}
-                      className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                      rows={Math.min(4, value.entries.length + 1)}
-                      placeholder={`Información sobre ${key} (un detalle por línea)`}
-                      aria-label={`Información sobre ${key}`}
-                    />
-                  ) : (
-                    <textarea
-                      id={`detail-${key}`}
-                      value={value as string}
-                      onChange={e => handleDetailChange(key, e.target.value)}
-                      className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                      rows={2}
-                      placeholder={`Información sobre ${key}`}
-                      aria-label={`Información sobre ${key}`}
-                    />
-                  )}
+                  
+                  {/* Determinar si es un campo de valor único o múltiple */}
+                  {(() => {
+                    const singleValueCategories = ['rol', 'relacion'];
+                    const isSingleValueCategory = singleValueCategories.includes(key.toLowerCase());
+                    
+                    if (isSingleValueCategory) {
+                      // Para campos de valor único (rol, relación), usar input de texto
+                      let currentValue = '';
+                      if (isNewFormat(value) && value.entries.length > 0) {
+                        currentValue = value.entries[value.entries.length - 1].value; // Usar el más reciente
+                      } else if (typeof value === 'string') {
+                        currentValue = value;
+                      } else if (Array.isArray(value) && value.length > 0) {
+                        currentValue = String(value[0]); // Tomar solo el primero
+                      }
+                      
+                      return (
+                        <input
+                          type="text"
+                          id={`detail-${key}`}
+                          value={currentValue}
+                          onChange={e => handleDetailChange(key, e.target.value)}
+                          className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                          placeholder={`Información sobre ${key}`}
+                          aria-label={`Información sobre ${key}`}
+                        />
+                      );
+                    } else {
+                      // Para campos de múltiples valores, usar textarea
+                      if (Array.isArray(value)) {
+                        return (
+                          <textarea
+                            id={`detail-${key}`}
+                            value={value.join('\n')}
+                            onChange={e => handleDetailChange(key, e.target.value.split('\n'))}
+                            className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                            rows={Math.min(4, value.length + 1)}
+                            placeholder={`Información sobre ${key} (un detalle por línea)`}
+                            aria-label={`Información sobre ${key}`}
+                          />
+                        );
+                      } else if (isNewFormat(value)) {
+                        return (
+                          <textarea
+                            id={`detail-${key}`}
+                            value={sortEntriesByDate(value.entries).map(entry => entry.value).join('\n')}
+                            onChange={e => handleDetailChange(key, e.target.value.split('\n'))}
+                            className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                            rows={Math.min(4, value.entries.length + 1)}
+                            placeholder={`Información sobre ${key} (un detalle por línea)`}
+                            aria-label={`Información sobre ${key}`}
+                          />
+                        );
+                      } else {
+                        return (
+                          <textarea
+                            id={`detail-${key}`}
+                            value={value as string}
+                            onChange={e => handleDetailChange(key, e.target.value)}
+                            className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                            rows={2}
+                            placeholder={`Información sobre ${key}`}
+                            aria-label={`Información sobre ${key}`}
+                          />
+                        );
+                      }
+                    }
+                  })()}
                 </div>
               ) : (
                 <div>
