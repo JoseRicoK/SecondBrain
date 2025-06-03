@@ -249,6 +249,48 @@ body {
   color: rgba(255, 255, 255, 0.6) !important;
 }
 
+/* Animaciones para el modal de personas */
+@keyframes slide-in-from-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.slide-in-from-bottom-4 {
+  animation: slide-in-from-bottom 0.3s ease-out;
+}
+
+.duration-300 {
+  animation-duration: 0.3s;
+}
+
+/* Clases para posicionamiento responsive del botón flotante de personas */
+.bottom-36 {
+  bottom: 9rem; /* 144px - cuando el chat está abierto */
+}
+
+.bottom-6 {
+  bottom: 1.5rem; /* 24px - posición normal */
+}
+
+/* Tamaños para botones flotantes */
+.w-16 {
+  width: 4rem; /* 64px */
+}
+
+.h-16 {
+  height: 4rem; /* 64px */
+}
+
 /* Estilos para Markdown en el Chat Personal */
 .chat-markdown {
   color: #334155; /* slate-700 */

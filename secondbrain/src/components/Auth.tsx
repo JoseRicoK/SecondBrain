@@ -45,6 +45,8 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         }, 3000);
       } else if (isLogin) {
         // Iniciar sesión
+        console.log('🔐 Intentando iniciar sesión para:', email);
+        
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -52,8 +54,22 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
         if (error) throw error;
         
-        if (data.user) {
-          console.log('Usuario logueado exitosamente:', data.user);
+        if (data.user && data.session) {
+          console.log('✅ Login exitoso:', {
+            email: data.user.email,
+            session_expires: data.session.expires_at
+          });
+          
+          // Verificar que la sesión se guardó correctamente
+          setTimeout(async () => {
+            const { data: checkSession } = await supabase.auth.getSession();
+            if (checkSession.session) {
+              console.log('✅ Sesión verificada y guardada correctamente');
+            } else {
+              console.warn('⚠️ Problema con la persistencia de la sesión');
+            }
+          }, 100);
+          
           onAuthSuccess(data.user);
         }
       } else {

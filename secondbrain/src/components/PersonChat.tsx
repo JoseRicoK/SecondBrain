@@ -120,6 +120,12 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
     }
   };
 
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('es-ES', { 
       hour: '2-digit', 
@@ -130,46 +136,49 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[9999] p-4"
+      onClick={handleOverlayClick}
+    >
+      <div className="bg-white/95 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 w-full max-w-2xl h-[85vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200">
+        <div className="flex items-center justify-between p-4 border-b border-white/30 bg-white/50 rounded-t-xl">
           <div className="flex items-center space-x-3">
-            <div className="bg-purple-100 text-purple-600 p-2 rounded-full">
+            <div className="bg-purple-500/20 text-purple-600 p-2 rounded-full backdrop-blur-sm">
               <FiUser size={16} />
             </div>
             <div>
               <h3 className="font-medium text-slate-900">Chat con {person.name}</h3>
-              <p className="text-sm text-slate-500">Asistente inteligente</p>
+              <p className="text-sm text-slate-600">Asistente inteligente</p>
             </div>
           </div>
           <button
             onClick={onClose}
             title="Cerrar chat"
             aria-label="Cerrar chat"
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors"
+            className="text-slate-500 hover:text-slate-700 p-1 rounded-full hover:bg-white/50 transition-colors"
           >
             <FiX size={20} />
           </button>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
           {messages.map((message, index) => (
             <div
               key={index}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] rounded-lg p-3 ${
+                className={`max-w-[80%] rounded-xl p-3 backdrop-blur-sm ${
                   message.role === 'user'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-slate-100 text-slate-900'
+                    ? 'bg-purple-500/90 text-white shadow-lg'
+                    : 'bg-white/80 text-slate-900 border border-white/30 shadow-sm'
                 }`}
               >
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                 <p className={`text-xs mt-1 ${
-                  message.role === 'user' ? 'text-purple-200' : 'text-slate-500'
+                  message.role === 'user' ? 'text-purple-100' : 'text-slate-500'
                 }`}>
                   {formatTime(message.timestamp)}
                 </p>
@@ -179,7 +188,7 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
           
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-slate-100 text-slate-900 rounded-lg p-3 flex items-center space-x-2">
+              <div className="bg-white/80 text-slate-900 rounded-xl p-3 flex items-center space-x-2 backdrop-blur-sm border border-white/30 shadow-sm">
                 <FiLoader className="animate-spin" size={14} />
                 <span className="text-sm">Escribiendo...</span>
               </div>
@@ -191,13 +200,13 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
 
         {/* Error message */}
         {error && (
-          <div className="px-4 py-2 bg-red-50 border-t border-red-200">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="px-4 py-2 bg-red-100/80 backdrop-blur-sm border-t border-red-200/50">
+            <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
 
         {/* Input */}
-        <div className="p-4 border-t border-slate-200">
+        <div className="p-4 border-t border-white/30 bg-white/50 rounded-b-xl backdrop-blur-sm">
           <div className="flex space-x-2">
             <input
               ref={inputRef}
@@ -206,7 +215,7 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder={`Pregunta algo sobre ${person.name}...`}
-              className="flex-1 px-3 py-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm"
+              className="flex-1 px-3 py-2 border border-white/30 rounded-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 outline-none text-sm bg-white/80 backdrop-blur-sm shadow-sm"
               disabled={isLoading}
             />
             <button
@@ -214,7 +223,7 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
               disabled={!inputMessage.trim() || isLoading}
               title="Enviar mensaje"
               aria-label="Enviar mensaje"
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+              className="px-4 py-2 bg-purple-500/90 text-white rounded-lg hover:bg-purple-600/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all backdrop-blur-sm shadow-lg flex items-center space-x-1"
             >
               {isLoading ? (
                 <FiLoader className="animate-spin" size={16} />
@@ -223,7 +232,7 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
               )}
             </button>
           </div>
-          <p className="text-xs text-slate-500 mt-2">
+          <p className="text-xs text-slate-600 mt-2">
             Presiona Enter para enviar • Shift+Enter para nueva línea
           </p>
         </div>

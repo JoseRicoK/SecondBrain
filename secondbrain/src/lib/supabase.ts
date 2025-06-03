@@ -23,11 +23,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Crear el cliente de Supabase
+// Crear el cliente de Supabase con persistencia mejorada
 // Usamos una aserción de tipo para el cliente de Supabase,
 // ya que el tipo correcto es muy extenso y específico
 export const supabase = supabaseUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        storageKey: 'secondbrain-auth-token',
+      }
+    })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   : null as any; // Necesario para desarrollo
 

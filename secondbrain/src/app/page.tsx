@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Sidebar from '@/components/Sidebar';
 import PersonalChat from '@/components/PersonalChat';
 import PersonalChatButton from '@/components/PersonalChatButton';
@@ -26,7 +26,6 @@ export default function Home() {
     isLoading, 
     isEditing: storeIsEditing,
     saveCurrentEntry, 
-    fetchTranscriptions,
     toggleEditMode: storeToggleEditMode
   } = useDiaryStore();
   
@@ -43,10 +42,13 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isStylizing, setIsStylizing] = useState(false);
-  const [showPeoplePanel, setShowPeoplePanel] = useState(true); // Activado por defecto en pantallas grandes
+  const [showPeoplePanel, setShowPeoplePanel] = useState(false); // Cambiado a false por defecto para mejor responsive
   const [peopleRefreshTrigger, setPeopleRefreshTrigger] = useState(0);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [mentionedPeople, setMentionedPeople] = useState<string[]>([]);
+  
+  // Estado para controlar el comportamiento responsive del panel de personas
+  const [isDesktop, setIsDesktop] = useState(false);
   
   // Referencias del diario
   const mediaRecorder = useRef<MediaRecorder | null>(null);
@@ -54,10 +56,16 @@ export default function Home() {
   const lastUserId = useRef<string | null>(null);
 
   // Referencia para el último estado logueado para evitar logs duplicados
-  const lastLoggedState = useRef<any>(null);
+  const lastLoggedState = useRef<{
+    currentEntry?: string;
+    isLoading: boolean;
+    storeIsEditing: boolean;
+    showSettings: boolean;
+    contentLength: number;
+  } | null>(null);
 
   // Log optimizado para evitar repeticiones
-  const logStateChange = () => {
+  const logStateChange = useCallback(() => {
     const currentState = {
       currentEntry: currentEntry?.id,
       isLoading,
@@ -70,12 +78,12 @@ export default function Home() {
       console.log('📝 DIARY: Estado actual:', currentState);
       lastLoggedState.current = currentState;
     }
-  };
+  }, [currentEntry?.id, isLoading, storeIsEditing, showSettings, content.length]);
 
   // Solo loguear cambios significativos
   useEffect(() => {
     logStateChange();
-  }, [currentEntry?.id, isLoading, storeIsEditing, showSettings, content.length]);
+  }, [logStateChange]);
 
   // Funciones del diario
   const handleToggleEditMode = () => {
@@ -147,7 +155,7 @@ export default function Home() {
 
       // Actualizar las personas mencionadas
       if (data.peopleExtracted && Array.isArray(data.peopleExtracted)) {
-        const peopleNames = data.peopleExtracted.map((person: any) => person.name).filter(Boolean);
+        const peopleNames = data.peopleExtracted.map((person: { name: string }) => person.name).filter(Boolean);
         setMentionedPeople(peopleNames);
         console.log('📝 DIARY: Personas extraídas:', peopleNames);
         
@@ -201,7 +209,9 @@ export default function Home() {
       mediaRecorder.current.stream.getTracks().forEach(track => track.stop());
       setIsRecording(false);
     }
-  };  const processTranscription = async () => {
+  };
+
+  const processTranscription = useCallback(async () => {
     if (!audioBlob || !user?.id) return;
 
     console.log('📝 DIARY: Procesando transcripción...');
@@ -238,7 +248,7 @@ export default function Home() {
       setIsProcessing(false);
       setAudioBlob(null);
     }
-  };
+  }, [audioBlob, user?.id, content]);
 
   // Sincronizar content con currentEntry
   useEffect(() => {
@@ -273,7 +283,7 @@ export default function Home() {
     if (audioBlob && !isProcessing) {
       processTranscription();
     }
-  }, [audioBlob]);
+  }, [audioBlob, isProcessing, processTranscription]);
 
   // Funciones para manejar el chat personal
   const handleChatToggle = () => {
@@ -307,10 +317,28 @@ export default function Home() {
     }
   }, [fetchCurrentEntry, isClient, currentDate, user?.id]);
 
-  // Evitar errores de hidratación
+  // Evitar errores de hidratación y detectar tamaño de pantalla
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    
+    // Función para detectar si es escritorio
+    const checkScreenSize = () => {
+      const isDesktopSize = window.innerWidth >= 1280; // xl breakpoint
+      setIsDesktop(isDesktopSize);
+      
+      // NO abrir automáticamente el panel de personas - déjalo cerrado por defecto
+    };
+    
+    // Verificar tamaño inicial
+    checkScreenSize();
+    
+    // Agregar listener para cambios de tamaño
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+    };
+  }, [showPeoplePanel]);
 
   if (!isClient) {
     return <Loading />;
@@ -403,8 +431,9 @@ export default function Home() {
             </div>
           ) : (
             /* Vista principal del diario */
-            <div className="max-w-7xl mx-auto">
-              <div className="flex gap-6 flex-col lg:flex-row relative">
+            <div className="max-w-7xl mx-auto h-full">
+              <div className="flex gap-6 h-full relative">
+                {/* Contenido principal del diario - siempre toma el espacio completo */}
                 <div className="flex-1 bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
                   {/* Barra de herramientas mejorada */}
                   <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
@@ -418,20 +447,6 @@ export default function Home() {
                     </div>
                     
                     <div className="flex items-center space-x-2">
-                      {/* Botón de personas para móviles - siempre toggle */}
-                      <button
-                        onClick={() => setShowPeoplePanel(!showPeoplePanel)}
-                        className={`lg:hidden flex items-center space-x-2 px-4 py-2 rounded-xl transition-all duration-200 ${
-                          showPeoplePanel 
-                            ? 'bg-purple-500 text-white hover:bg-purple-600 shadow-lg' 
-                            : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
-                        }`}
-                        title="Gestionar personas"
-                      >
-                        <FiUsers size={18} />
-                        <span className="font-medium">Personas</span>
-                      </button>
-                      
                       {storeIsEditing ? (
                         <>
                           <button 
@@ -556,7 +571,7 @@ export default function Home() {
                                 <FiEdit2 className="text-indigo-500 text-2xl" />
                               </div>
                               <h3 className="text-slate-400 text-xl font-medium mb-2">Tu diario está esperando</h3>
-                              <p className="text-slate-400">Haz clic en "Editar" para comenzar a escribir tu día.</p>
+                              <p className="text-slate-400">Haz clic en &quot;Editar&quot; para comenzar a escribir tu día.</p>
                             </div>
                           )}
                         </div>
@@ -588,9 +603,9 @@ export default function Home() {
                   </div>
                 </div>
                 
-                {/* Panel de personas mejorado */}
-                {showPeoplePanel && (
-                  <div className="w-full lg:w-96 bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                {/* Panel de personas para escritorio (lado a lado) */}
+                {showPeoplePanel && isDesktop && (
+                  <div className="w-96 bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
                     <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-purple-50 to-pink-50 sticky top-0 z-10">
                       <div className="flex items-center space-x-3">
                         <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
@@ -620,12 +635,61 @@ export default function Home() {
                   </div>
                 )}
               </div>
+              
+              {/* Panel de personas para móvil y tablet (overlay de pantalla completa) */}
+              {showPeoplePanel && !isDesktop && (
+                <>
+                  {/* Overlay backdrop - clickeable para cerrar */}
+                  <div 
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 cursor-pointer" 
+                    onClick={() => {
+                      setShowPeoplePanel(false);
+                      setSelectedPersonId(null);
+                    }}
+                  />
+                  
+                  {/* Panel modal */}
+                  <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 sm:pt-16 pointer-events-none">
+                    <div 
+                      className="w-full max-w-md sm:max-w-lg md:max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white/20 overflow-hidden animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto"
+                      onClick={(e) => e.stopPropagation()} // Evitar que el clic en el modal lo cierre
+                    >
+                      <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-purple-50 to-pink-50 sticky top-0 z-10">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                          <FiUsers className="text-purple-600" size={20} />
+                          <span className="text-slate-800 text-lg font-semibold">Personas</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setShowPeoplePanel(false);
+                            setSelectedPersonId(null);
+                          }}
+                          className="p-2 rounded-xl hover:bg-purple-100 text-purple-600 transition-all duration-200 border border-purple-200/60"
+                          aria-label="Cerrar panel de personas"
+                          title="Cerrar"
+                        >
+                          <FiX size={20} />
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-6 max-h-[calc(90vh-80px)]">
+                        <PeopleManager 
+                          userId={user.id} 
+                          refreshTrigger={peopleRefreshTrigger} 
+                          className="shadow-none"
+                          initialSelectedName={selectedPersonId}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Chat Personal Flotante */}
+      {/* Botones flotantes */}
       <>
         {/* Botón del Chat Personal */}
         {!isChatOpen && (
@@ -635,8 +699,8 @@ export default function Home() {
           />
         )}
 
-        {/* Botón flotante de personas - solo visible cuando el panel está cerrado */}
-        {!showPeoplePanel && (
+        {/* Botón flotante de personas para escritorio - solo visible cuando el panel está cerrado */}
+        {!showPeoplePanel && isDesktop && (
           <button
             onClick={() => setShowPeoplePanel(true)}
             className="floating-people-button fixed top-1/2 right-0 transform -translate-y-1/2 w-14 h-32 flex flex-col items-center justify-center transition-all duration-300 shadow-lg z-40 group bg-purple-500 text-white hover:bg-purple-600 translate-x-2 hover:translate-x-0 rounded-l-xl"
@@ -646,6 +710,19 @@ export default function Home() {
             <span className="floating-people-text text-xs font-bold tracking-widest whitespace-nowrap">
               PERSONAS
             </span>
+          </button>
+        )}
+
+        {/* Botón flotante de personas para móvil y tablet - abajo a la derecha */}
+        {!showPeoplePanel && !isDesktop && (
+          <button
+            onClick={() => setShowPeoplePanel(true)}
+            className={`fixed right-6 w-16 h-16 bg-purple-500 hover:bg-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-40 group ${
+              isChatOpen ? 'bottom-36' : 'bottom-6'
+            }`}
+            title="Abrir panel de personas"
+          >
+            <FiUsers size={28} className="group-hover:scale-110 transition-transform duration-200" />
           </button>
         )}
 

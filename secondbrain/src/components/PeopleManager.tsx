@@ -559,7 +559,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                     {filteredPeople.map(person => (
                 <div key={person.id} className="border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
                   <div 
-                    className={`flex items-center justify-between p-1.5 cursor-pointer ${selectedPersonId === person.id ? 'bg-purple-50 border-b border-purple-100' : 'bg-white'}`}
+                    className={`flex items-center justify-between px-1 py-0.5 cursor-pointer ${selectedPersonId === person.id ? 'bg-purple-50 border-b border-purple-100' : 'bg-white'}`}
                     onClick={() => handlePersonClick(person.id)}
                   >
                     <div className="flex items-center">
@@ -578,7 +578,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                   </div>
                   
                   {selectedPersonId === person.id && (
-                    <div className="bg-white p-1">
+                    <div className="bg-white px-3 py-1">
                       <div className="flex justify-between items-center mb-3">
                         <button 
                           onClick={(e) => handleChatClick(person, e)}
