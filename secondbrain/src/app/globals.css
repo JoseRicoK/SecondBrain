@@ -40,6 +40,215 @@ body {
   border-radius: 0.375rem; /* rounded-md */
 }
 
+/* Sobrescribir cualquier estilo por defecto de React Calendar */
+.modern-calendar button {
+  color: #ffffff !important;
+}
+
+.modern-calendar .react-calendar__tile button {
+  color: #ffffff !important;
+}
+
+/* Patrón de fondo para el sidebar */
+.sidebar-pattern {
+  background-image: radial-gradient(circle at 25% 25%, white 2px, transparent 2px), 
+                    radial-gradient(circle at 75% 75%, white 2px, transparent 2px);
+  background-size: 50px 50px;
+}
+
+/* Estilos para el calendario moderno */
+.modern-calendar {
+  width: 100%;
+  background: transparent !important;
+  border: none !important;
+  font-family: inherit;
+}
+
+.modern-calendar .react-calendar__navigation {
+  height: 44px;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modern-calendar .react-calendar__navigation button {
+  color: white !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 8px !important;
+  margin: 0 4px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modern-calendar .react-calendar__navigation button:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.modern-calendar .react-calendar__navigation__label {
+  flex-grow: 1;
+  text-align: center;
+}
+
+.modern-calendar .react-calendar__month-view__weekdays {
+  text-align: center;
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: #ffffff !important;
+  margin-bottom: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+
+.modern-calendar .react-calendar__month-view__weekdays__weekday {
+  padding: 0.5rem 0;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff !important;
+}
+
+.modern-calendar .react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none;
+  color: #ffffff !important;
+}
+
+/* Asegurar que todos los elementos de los días de la semana sean blancos */
+.modern-calendar .react-calendar__month-view__weekdays * {
+  color: #ffffff !important;
+}
+
+.modern-calendar .react-calendar__month-view__days {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 2px !important;
+}
+
+.modern-calendar .react-calendar__tile {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  font-weight: 500;
+  border-radius: 8px !important;
+  transition: all 0.2s ease;
+  height: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 !important;
+  aspect-ratio: 1;
+  font-size: 0.875rem;
+}
+
+/* Asegurar que todos los elementos de texto del calendario sean blancos */
+.modern-calendar .react-calendar__tile * {
+  color: #ffffff !important;
+}
+
+.modern-calendar .react-calendar__tile abbr {
+  color: #ffffff !important;
+  text-decoration: none !important;
+}
+
+/* Mejoras para móvil */
+@media (max-width: 768px) {
+  .modern-calendar .react-calendar__tile {
+    height: 32px;
+    min-height: 32px;
+    font-size: 0.75rem;
+    border-radius: 6px !important;
+  }
+  
+  .modern-calendar .react-calendar__month-view__days {
+    gap: 1px !important;
+  }
+  
+  .modern-calendar .react-calendar__month-view__weekdays {
+    font-size: 0.7rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  .modern-calendar .react-calendar__month-view__weekdays__weekday {
+    padding: 0.25rem 0;
+  }
+}
+
+.modern-calendar .react-calendar__tile:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  transform: scale(1.05);
+}
+
+.modern-calendar .react-calendar__tile:hover * {
+  color: #ffffff !important;
+}
+
+.modern-calendar .react-calendar__tile--active {
+  background: linear-gradient(135deg, #8b5cf6, #3b82f6) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  font-weight: 600;
+}
+
+.modern-calendar .react-calendar__tile--active * {
+  color: #ffffff !important;
+}
+
+.modern-calendar .react-calendar__tile--now {
+  background: rgba(34, 197, 94, 0.3) !important;
+  border-color: rgba(34, 197, 94, 0.6) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.modern-calendar .react-calendar__tile--now * {
+  color: #ffffff !important;
+}
+
+.modern-calendar .react-calendar__tile.has-entry {
+  background: rgba(59, 130, 246, 0.4) !important;
+  border-color: rgba(59, 130, 246, 0.7) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  position: relative;
+}
+
+.modern-calendar .react-calendar__tile.has-entry * {
+  color: #ffffff !important;
+}
+
+.modern-calendar .react-calendar__tile.has-entry::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: #93c5fd;
+  border-radius: 50%;
+}
+
+/* Garantizar que los días fuera del mes actual se vean sutiles pero legibles */
+.modern-calendar .react-calendar__month-view__days__day--neighboringMonth {
+  opacity: 0.4;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.modern-calendar .react-calendar__month-view__days__day--neighboringMonth * {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
 /* Estilos para Markdown en el Chat Personal */
 .chat-markdown {
   color: #334155; /* slate-700 */
@@ -216,4 +425,181 @@ body {
 
 .react-calendar--selectRange .react-calendar__tile--hover {
   background-color: #e5e7eb; /* gray-200 */
+}
+
+/* Animaciones adicionales para IntegratedDiary */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.4s ease-out;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.4s ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out;
+}
+
+/* Efectos glassmorphism para el diario */
+.diary-glass {
+  background: rgba(255, 255, 255, 0.8);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.diary-glass-dark {
+  background: rgba(0, 0, 0, 0.3);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Efectos hover mejorados */
+.button-hover-scale {
+  transition: all 0.2s ease;
+}
+
+.button-hover-scale:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Scrollbar personalizado para el diario */
+.diary-scrollbar {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+}
+
+.diary-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.diary-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.diary-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 3px;
+}
+
+.diary-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
+}
+
+/* Patrones de fondo para mejorar la apariencia */
+.diary-pattern {
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+/* Efectos de texto gradient */
+.text-gradient-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-secondary {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Estilos para texto vertical */
+.writing-mode-vertical-rl {
+  writing-mode: vertical-rl;
+}
+
+.text-orientation-mixed {
+  text-orientation: mixed;
+}
+
+/* Animaciones adicionales para botones laterales */
+.sidebar-tool-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-tool-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.sidebar-tool-button:hover::before {
+  left: 100%;
+}
+
+/* Estilos para el botón flotante de personas */
+.floating-people-button {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.floating-people-text {
+  transform: rotate(180deg);
 }

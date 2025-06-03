@@ -1,26 +1,279 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
-import IntegratedDiary from '@/components/IntegratedDiary';
 import PersonalChat from '@/components/PersonalChat';
 import PersonalChatButton from '@/components/PersonalChatButton';
 import Auth from '@/components/Auth';
 import Loading from '@/components/Loading';
+import Settings from '@/components/Settings';
+import PeopleManager from '@/components/PeopleManager';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiaryStore } from '@/lib/store';
-import { FiMenu } from 'react-icons/fi';
+import { FiMenu, FiEdit2, FiSave, FiX, FiMic, FiStopCircle, FiZap, FiUsers, FiUser } from 'react-icons/fi';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import Image from 'next/image';
 import { User } from '@supabase/supabase-js';
 
 export default function Home() {
   const { user, loading } = useAuth();
-  const { fetchCurrentEntry, currentDate } = useDiaryStore();
+  
+  const { 
+    fetchCurrentEntry, 
+    currentDate,
+    currentEntry, 
+    isLoading, 
+    isEditing: storeIsEditing,
+    saveCurrentEntry, 
+    fetchTranscriptions,
+    toggleEditMode: storeToggleEditMode
+  } = useDiaryStore();
+  
   const [isClient, setIsClient] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isChatMinimized, setIsChatMinimized] = useState(false);
+  
+  // Estados del diario
+  const [content, setContent] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isStylizing, setIsStylizing] = useState(false);
+  const [showPeoplePanel, setShowPeoplePanel] = useState(true); // Activado por defecto en pantallas grandes
+  const [peopleRefreshTrigger, setPeopleRefreshTrigger] = useState(0);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [mentionedPeople, setMentionedPeople] = useState<string[]>([]);
+  
+  // Referencias del diario
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
+  const lastUserId = useRef<string | null>(null);
+
+  // Referencia para el último estado logueado para evitar logs duplicados
+  const lastLoggedState = useRef<any>(null);
+
+  // Log optimizado para evitar repeticiones
+  const logStateChange = () => {
+    const currentState = {
+      currentEntry: currentEntry?.id,
+      isLoading,
+      storeIsEditing,
+      showSettings,
+      contentLength: content.length
+    };
+    
+    if (JSON.stringify(currentState) !== JSON.stringify(lastLoggedState.current)) {
+      console.log('📝 DIARY: Estado actual:', currentState);
+      lastLoggedState.current = currentState;
+    }
+  };
+
+  // Solo loguear cambios significativos
+  useEffect(() => {
+    logStateChange();
+  }, [currentEntry?.id, isLoading, storeIsEditing, showSettings, content.length]);
+
+  // Funciones del diario
+  const handleToggleEditMode = () => {
+    console.log('📝 DIARY: Toggle edit mode');
+    
+    // Si se está cancelando la edición, restaurar el contenido original
+    if (storeIsEditing) {
+      // Si hay una entrada, restaurar su contenido, si no hay entrada, limpiar el campo
+      if (currentEntry) {
+        setContent(currentEntry.content || '');
+        setMentionedPeople(currentEntry.mentioned_people || []);
+      } else {
+        setContent('');
+        setMentionedPeople([]);
+      }
+      setError(null);
+    }
+    
+    storeToggleEditMode();
+  };
+
+  const handleSave = async () => {
+    if (!user?.id) return;
+    
+    console.log('📝 DIARY: Guardando entrada...');
+    try {
+      await saveCurrentEntry(content, user.id);
+      console.log('📝 DIARY: Entrada guardada exitosamente');
+    } catch (error) {
+      console.error('📝 DIARY: Error al guardar:', error);
+      setError('Error al guardar la entrada');
+    }
+  };
+
+  const handleStylize = async () => {
+    if (!user?.id) return;
+    
+    console.log('📝 DIARY: Estilizando texto...');
+    setIsStylizing(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/stylize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          text: content,
+          userId: user.id,
+          entryDate: currentEntry?.date || new Date().toISOString().split('T')[0]
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error en la respuesta del servidor');
+      }
+
+      const data = await response.json();
+      console.log('📝 DIARY: Respuesta de estilización:', data);
+      
+      if (data.stylizedText) {
+        setContent(data.stylizedText);
+        console.log('📝 DIARY: Texto estilizado exitosamente');
+      } else {
+        console.warn('📝 DIARY: No se recibió texto estilizado');
+        setError('No se pudo estilizar el texto');
+      }
+
+      // Actualizar las personas mencionadas
+      if (data.peopleExtracted && Array.isArray(data.peopleExtracted)) {
+        const peopleNames = data.peopleExtracted.map((person: any) => person.name).filter(Boolean);
+        setMentionedPeople(peopleNames);
+        console.log('📝 DIARY: Personas extraídas:', peopleNames);
+        
+        // Disparar actualización del panel de personas si está abierto
+        if (showPeoplePanel) {
+          setPeopleRefreshTrigger(prev => prev + 1);
+        }
+      }
+    } catch (error) {
+      console.error('📝 DIARY: Error al estilizar:', error);
+      setError('Error al estilizar el texto');
+    } finally {
+      setIsStylizing(false);
+    }
+  };
+
+  const startRecording = async () => {
+    console.log('📝 DIARY: Iniciando grabación...');
+    setError(null);
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorder.current = recorder;
+      audioChunks.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
+        setAudioBlob(audioBlob);
+        console.log('📝 DIARY: Grabación completada');
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('📝 DIARY: Error al acceder al micrófono:', error);
+      setError('Error al acceder al micrófono');
+    }
+  };
+
+  const stopRecording = () => {
+    console.log('📝 DIARY: Deteniendo grabación...');
+    if (mediaRecorder.current && isRecording) {
+      mediaRecorder.current.stop();
+      mediaRecorder.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+    }
+  };  const processTranscription = async () => {
+    if (!audioBlob || !user?.id) return;
+
+    console.log('📝 DIARY: Procesando transcripción...');
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'recording.wav');
+      formData.append('userId', user.id);
+
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Error en la transcripción');
+      }
+
+      const data = await response.json();
+      
+      if (data.text) {
+        const newContent = content + (content ? '\n\n' : '') + data.text;
+        setContent(newContent);
+        console.log('📝 DIARY: Transcripción procesada exitosamente:', data.text);
+      } else {
+        console.warn('📝 DIARY: No se recibió texto de la transcripción');
+      }
+    } catch (error) {
+      console.error('📝 DIARY: Error en transcripción:', error);
+      setError('Error al procesar la transcripción');
+    } finally {
+      setIsProcessing(false);
+      setAudioBlob(null);
+    }
+  };
+
+  // Sincronizar content con currentEntry
+  useEffect(() => {
+    if (currentEntry?.content !== undefined) {
+      setContent(currentEntry.content || '');
+      console.log('📝 DIARY: Contenido sincronizado desde currentEntry');
+      
+      // También sincronizar las personas mencionadas
+      if (currentEntry?.mentioned_people) {
+        setMentionedPeople(currentEntry.mentioned_people);
+      } else {
+        setMentionedPeople([]);
+      }
+    } else if (currentEntry === null) {
+      // Si no hay entrada para esta fecha, limpiar el contenido
+      setContent('');
+      setMentionedPeople([]);
+      setError(null);
+      console.log('📝 DIARY: Contenido limpiado - no hay entrada para esta fecha');
+    }
+  }, [currentEntry]);
+
+  // Función para manejar click en personas mencionadas
+  const handlePersonClick = (personName: string) => {
+    setSelectedPersonId(personName);
+    setShowPeoplePanel(true);
+    console.log('📝 DIARY: Seleccionada persona:', personName);
+  };
+
+  // Procesar transcripción cuando hay audioBlob
+  useEffect(() => {
+    if (audioBlob && !isProcessing) {
+      processTranscription();
+    }
+  }, [audioBlob]);
 
   // Funciones para manejar el chat personal
   const handleChatToggle = () => {
@@ -43,8 +296,8 @@ export default function Home() {
   };
 
   const handleAuthSuccess = (authenticatedUser: User) => {
-    console.log('Usuario autenticado:', authenticatedUser);
     // El hook useAuth se encargará de actualizar el estado
+    console.log('Usuario autenticado:', authenticatedUser.id);
   };
   
   // Obtener los datos de la entrada actual cuando cambia la fecha o el usuario
@@ -73,12 +326,18 @@ export default function Home() {
     return <Auth onAuthSuccess={handleAuthSuccess} />;
   }
 
+  // Log de renderizado solo cuando el usuario cambia
+  if (user?.id && user.id !== lastUserId.current) {
+    console.log('🎯 PAGE: Renderizando aplicación para user:', user.id);
+    lastUserId.current = user.id;
+  }
+
   return (
-    <main className="flex min-h-screen bg-slate-50 overflow-hidden">
+    <main className="flex min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden">
       {/* Sidebar con overlay cuando está abierto en móvil */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-20 md:hidden" 
+          className="fixed inset-0 bg-black/40 backdrop-blur-md z-20 md:hidden" 
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -86,9 +345,10 @@ export default function Home() {
       {/* Sidebar - diseño flotante en móvil */}
       <aside 
         className={`
-          fixed md:relative z-30 h-screen bg-white transition-all duration-300 ease-in-out
+          fixed md:relative z-30 h-screen transition-all duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} 
-          md:translate-x-0 md:shadow-lg md:w-[400px] w-[90%] max-w-sm
+          md:translate-x-0 md:shadow-xl md:w-[420px] w-[85%] max-w-md
+          bg-white/95 backdrop-blur-xl border-r border-white/20
         `}
       >
         {/* El botón X se moverá al componente Sidebar para superponerse */}
@@ -105,10 +365,10 @@ export default function Home() {
       {/* Contenido principal */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header minimalista solo en móvil */}
-        <header className="md:hidden bg-white p-4 flex items-center border-b border-slate-200 shadow-sm">
+        <header className="md:hidden bg-white/90 backdrop-blur-xl p-4 flex items-center border-b border-slate-200/60 shadow-sm">
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="text-slate-700 hover:text-slate-900"
+            className="text-slate-700 hover:text-indigo-600 transition-colors duration-200"
             aria-label="Open sidebar"
           >
             <FiMenu size={24} />
@@ -119,12 +379,249 @@ export default function Home() {
         </header>
         
         {/* Área principal */}
-        <div className="flex-1 overflow-y-auto p-0 md:p-6">
-          <IntegratedDiary 
-            userId={user.id} 
-            showSettings={showSettings}
-            onSettingsClose={() => setShowSettings(false)}
-          />
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          {/* Renderizar vista de configuración */}
+          {showSettings ? (
+            <div className="max-w-7xl mx-auto">
+              <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                    <span className="text-slate-800 text-xl font-semibold">Configuración</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <button 
+                      onClick={() => setShowSettings(false)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-white/80 text-slate-700 rounded-xl hover:bg-white transition-all duration-200 shadow-sm border border-white/40"
+                    >
+                      <span>Volver al diario</span>
+                    </button>
+                  </div>
+                </div>
+                <Settings userId={user.id} />
+              </div>
+            </div>
+          ) : (
+            /* Vista principal del diario */
+            <div className="max-w-7xl mx-auto">
+              <div className="flex gap-6 flex-col lg:flex-row relative">
+                <div className="flex-1 bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                  {/* Barra de herramientas mejorada */}
+                  <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+                      <span className="text-slate-600 text-sm font-medium">
+                        {currentEntry?.date
+                          ? format(new Date(currentEntry.date), "EEEE, d 'de' MMMM", { locale: es })
+                          : "Nueva entrada"}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      {/* Botón de personas para móviles - siempre toggle */}
+                      <button
+                        onClick={() => setShowPeoplePanel(!showPeoplePanel)}
+                        className={`lg:hidden flex items-center space-x-2 px-4 py-2 rounded-xl transition-all duration-200 ${
+                          showPeoplePanel 
+                            ? 'bg-purple-500 text-white hover:bg-purple-600 shadow-lg' 
+                            : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+                        }`}
+                        title="Gestionar personas"
+                      >
+                        <FiUsers size={18} />
+                        <span className="font-medium">Personas</span>
+                      </button>
+                      
+                      {storeIsEditing ? (
+                        <>
+                          <button 
+                            onClick={handleStylize}
+                            disabled={isStylizing || !content}
+                            className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all duration-200 ${isStylizing ? 'bg-indigo-400' : 'bg-indigo-500'} text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
+                            title="Estilizar con IA"
+                          >
+                            <FiZap size={18} />
+                            <span className="font-medium">Estilizar</span>
+                          </button>
+                          
+                          <button 
+                            onClick={handleSave}
+                            className="flex items-center space-x-2 px-4 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all duration-200 shadow-lg"
+                          >
+                            <FiSave size={18} />
+                            <span className="font-medium">Guardar</span>
+                          </button>
+                          
+                          <button 
+                            onClick={handleToggleEditMode}
+                            className="flex items-center space-x-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200"
+                          >
+                            <FiX size={18} />
+                            <span className="font-medium">Cancelar</span>
+                          </button>
+                        </>
+                      ) : (
+                        <button 
+                          onClick={handleToggleEditMode}
+                          className="flex items-center space-x-2 px-4 py-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-slate-100 transition-all duration-200 border border-slate-200"
+                          disabled={isRecording || isProcessing}
+                        >
+                          <FiEdit2 size={18} />
+                          <span className="font-medium">Editar</span>
+                        </button>
+                      )}
+                      
+                      {!storeIsEditing && (
+                        <>
+                          {!isRecording ? (
+                            <button
+                              onClick={startRecording}
+                              disabled={isProcessing}
+                              className="flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                              title="Iniciar grabación"
+                            >
+                              <FiMic size={18} />
+                              <span className="font-medium">Grabar</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={stopRecording}
+                              className="flex items-center space-x-2 px-4 py-2 bg-slate-700 text-white rounded-xl hover:bg-slate-800 transition-all duration-200 shadow-lg animate-pulse"
+                              title="Detener grabación"
+                            >
+                              <FiStopCircle size={18} />
+                              <span className="font-medium">Detener</span>
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                
+                  {/* Contenido principal mejorado */}
+                  <div className="relative">
+                    {/* Mensajes de error mejorados */}
+                    {error && (
+                      <div className="m-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center space-x-3">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        <span>{error}</span>
+                      </div>
+                    )}
+                    
+                    {/* Indicador de procesamiento mejorado */}
+                    {isProcessing && audioBlob && (
+                      <div className="m-6 p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-sm flex items-center space-x-3">
+                        <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="font-medium">Procesando transcripción...</span>
+                      </div>
+                    )}
+                    
+                    {/* Indicador de estilización mejorado */}
+                    {isStylizing && (
+                      <div className="m-6 p-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-sm flex items-center space-x-3">
+                        <svg className="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="font-medium">Estilizando texto con IA...</span>
+                      </div>
+                    )}
+                    
+                    {/* Editor/Visualizador de contenido mejorado */}
+                    <div className="p-8 min-h-[600px]">
+                      {storeIsEditing ? (
+                        <div className="relative">
+                          <textarea
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            placeholder="Escribe tu entrada del diario aquí... ✨"
+                            className="w-full h-[500px] p-6 border-2 border-slate-200 rounded-2xl resize-none focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-400 text-slate-700 leading-relaxed text-lg bg-white/50 backdrop-blur-sm transition-all duration-200"
+                          />
+                          <div className="absolute bottom-4 right-4 text-xs text-slate-400">
+                            {content.length} caracteres
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="prose prose-slate prose-lg max-w-none">
+                          {content ? (
+                            <div className="whitespace-pre-wrap text-slate-700 leading-relaxed text-lg bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60">
+                              {content}
+                            </div>
+                          ) : (
+                            <div className="text-center py-24">
+                              <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <FiEdit2 className="text-indigo-500 text-2xl" />
+                              </div>
+                              <h3 className="text-slate-400 text-xl font-medium mb-2">Tu diario está esperando</h3>
+                              <p className="text-slate-400">Haz clic en "Editar" para comenzar a escribir tu día.</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Sección de personas mencionadas */}
+                      {mentionedPeople.length > 0 && (
+                        <div className="mt-6 pt-6 border-t border-slate-200/60">
+                          <div className="flex items-center space-x-3 mb-4">
+                            <FiUser className="text-purple-500" size={18} />
+                            <h4 className="text-slate-700 font-medium">Personas mencionadas</h4>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {mentionedPeople.map((person, index) => (
+                              <button
+                                key={index}
+                                onClick={() => handlePersonClick(person)}
+                                className="flex items-center space-x-2 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl border border-purple-200 transition-all duration-200 hover:shadow-sm"
+                                title={`Ver detalles de ${person}`}
+                              >
+                                <FiUser size={14} />
+                                <span className="text-sm font-medium">{person}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Panel de personas mejorado */}
+                {showPeoplePanel && (
+                  <div className="w-full lg:w-96 bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                    <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-purple-50 to-pink-50 sticky top-0 z-10">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                        <FiUsers className="text-purple-600" size={20} />
+                        <span className="text-slate-800 text-lg font-semibold">Personas</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowPeoplePanel(false);
+                          setSelectedPersonId(null);
+                        }}
+                        className="p-2 rounded-xl hover:bg-purple-100 text-purple-600 transition-all duration-200 border border-purple-200/60"
+                        aria-label="Cerrar panel de personas"
+                        title="Cerrar"
+                      >
+                        <FiX size={20} />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6">
+                      <PeopleManager 
+                        userId={user.id} 
+                        refreshTrigger={peopleRefreshTrigger} 
+                        className="shadow-none"
+                        initialSelectedName={selectedPersonId}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -136,6 +633,20 @@ export default function Home() {
             onClick={handleChatToggle}
             isActive={false}
           />
+        )}
+
+        {/* Botón flotante de personas - solo visible cuando el panel está cerrado */}
+        {!showPeoplePanel && (
+          <button
+            onClick={() => setShowPeoplePanel(true)}
+            className="floating-people-button fixed top-1/2 right-0 transform -translate-y-1/2 w-14 h-32 flex flex-col items-center justify-center transition-all duration-300 shadow-lg z-40 group bg-purple-500 text-white hover:bg-purple-600 translate-x-2 hover:translate-x-0 rounded-l-xl"
+            title="Abrir panel de personas"
+          >
+            <FiUsers size={20} className="group-hover:scale-110 transition-transform duration-200 mb-2" />
+            <span className="floating-people-text text-xs font-bold tracking-widest whitespace-nowrap">
+              PERSONAS
+            </span>
+          </button>
         )}
 
         {/* Componente de Chat Personal */}

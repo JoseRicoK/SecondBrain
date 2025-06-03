@@ -19,7 +19,6 @@ export function useAuth() {
     // Escuchar cambios en la autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
-        console.log('Auth state changed:', event, session?.user?.id);
         setUser(session?.user ?? null);
         setLoading(false);
       }

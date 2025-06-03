@@ -484,8 +484,8 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
   }
 
   return (
-    <div className={`bg-white rounded-lg ${className.includes('shadow-none') ? '' : 'shadow-md'} p-2 sm:p-4 ${className} transition-all duration-300`}>
-      <div className="flex justify-between items-center mb-4">
+    <div className={`bg-white rounded-lg ${className.includes('shadow-none') ? '' : 'shadow-md'} py-0.5 px-0 sm:py-1 sm:px-0 ${className} transition-all duration-300`}>
+      <div className="flex justify-between items-center mb-4 px-1 sm:px-1">
         <h2 className="text-lg font-semibold text-slate-800">Personas</h2>
         <button 
           onClick={() => setCollapsed(!collapsed)}
@@ -497,7 +497,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
       </div>
       
       {!collapsed && (
-        <>
+        <div className="px-0.5 sm:px-0.5">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
               {error}
@@ -559,32 +559,32 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                     {filteredPeople.map(person => (
                 <div key={person.id} className="border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
                   <div 
-                    className={`flex items-center justify-between p-2 sm:p-3 cursor-pointer ${selectedPersonId === person.id ? 'bg-purple-50 border-b border-purple-100' : 'bg-white'}`}
+                    className={`flex items-center justify-between p-1.5 cursor-pointer ${selectedPersonId === person.id ? 'bg-purple-50 border-b border-purple-100' : 'bg-white'}`}
                     onClick={() => handlePersonClick(person.id)}
                   >
                     <div className="flex items-center">
-                      <div className="bg-purple-100 text-purple-600 p-2 rounded-full mr-3">
-                        <FiUser size={16} />
+                      <div className="bg-purple-100 text-purple-600 p-1.5 rounded-full mr-2">
+                        <FiUser size={14} />
                       </div>
                       <span className="font-medium">{person.name}</span>
                     </div>
                     <div className="text-slate-400">
                       {selectedPersonId === person.id ? (
-                        <FiChevronDown size={18} />
+                        <FiChevronDown size={16} />
                       ) : (
-                        <FiChevronRight size={18} />
+                        <FiChevronRight size={16} />
                       )}
                     </div>
                   </div>
                   
                   {selectedPersonId === person.id && (
-                    <div className="bg-white p-2 sm:p-4">
+                    <div className="bg-white p-1">
                       <div className="flex justify-between items-center mb-3">
                         <button 
                           onClick={(e) => handleChatClick(person, e)}
-                          className="flex items-center px-3 py-1.5 text-sm text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
+                          className="flex items-center px-2.5 py-1.5 text-xs text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
                         >
-                          <FiMessageCircle size={14} className="mr-1.5" />
+                          <FiMessageCircle size={12} className="mr-1" />
                           Chat con {person.name}
                         </button>
                         
@@ -627,7 +627,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
               })()}
             </>
           )}
-        </>
+        </div>
       )}
       
       {/* Chat Component */}

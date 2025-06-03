@@ -1,23 +1,21 @@
 import React, { useState } from 'react';
-import { FiCalendar, FiCheck, FiLink, FiSlash } from 'react-icons/fi';
+import { FiCalendar, FiCheck, FiLink, FiSlash, FiShield, FiBell, FiGlobe, FiMoon, FiSun } from 'react-icons/fi';
 import UserHeader from './UserHeader';
 
 interface SettingsProps {
   userId: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const Settings: React.FC<SettingsProps> = ({ userId }) => {
+  console.log('Settings component loaded for user:', userId);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifications, setNotifications] = useState(true);
+  const [autoSave, setAutoSave] = useState(true);
 
   const handleConnectGoogle = async () => {
     setIsLoading(true);
-    
-    // Aquí iría el código real para conectar con Google Calendar API
-    // Utilizando OAuth 2.0 y redirección al flujo de autenticación de Google
-    
-    // Por ahora, simulamos una conexión exitosa después de un delay
     setTimeout(() => {
       setIsGoogleConnected(true);
       setIsLoading(false);
@@ -26,10 +24,6 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
 
   const handleDisconnectGoogle = () => {
     setIsLoading(true);
-    
-    // Aquí iría el código real para desconectar la cuenta
-    
-    // Simulamos la desconexión
     setTimeout(() => {
       setIsGoogleConnected(false);
       setIsLoading(false);
@@ -37,157 +31,196 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
   };
 
   return (
-    <div className="p-6">
-      {/* Header del usuario */}
-      <div className="mb-6">
-        <UserHeader />
-      </div>
-      
-      <h1 className="text-2xl font-semibold text-slate-800 mb-6">Configuración</h1>
-      
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-lg font-medium text-slate-700 mb-4 flex items-center">
-          <FiCalendar className="mr-2" /> Calendario
-        </h2>
-        
-        <div className="space-y-6">
-          <div className="border-b border-slate-200 pb-6">
-            <h3 className="font-medium text-slate-700 mb-2">Google Calendar</h3>
-            <p className="text-slate-600 text-sm mb-4">
-              Conecta tu cuenta de Google para sincronizar eventos del calendario y recibir recordatorios en tu diario.
-            </p>
-            
-            {isGoogleConnected ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="bg-green-100 text-green-600 p-1 rounded-full mr-3">
-                    <FiCheck size={16} />
-                  </div>
-                  <span className="text-sm text-green-600 font-medium">Conectado</span>
-                </div>
-                
-                <button
-                  onClick={handleDisconnectGoogle}
-                  disabled={isLoading}
-                  className="flex items-center px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-md hover:bg-red-50 transition-colors disabled:opacity-50"
-                >
-                  <FiSlash className="mr-1.5" size={16} />
-                  Desconectar
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleConnectGoogle}
-                disabled={isLoading}
-                className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-70"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Conectando...
-                  </>
-                ) : (
-                  <>
-                    <FiLink className="mr-2" />
-                    Conectar con Google Calendar
-                  </>
-                )}
-              </button>
-            )}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header elegante */}
+        <div className="mb-8">
+          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20">
+            <UserHeader />
           </div>
+        </div>
+        
+        {/* Título principal */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-2">
+            Configuración
+          </h1>
+          <p className="text-slate-600">Personaliza tu experiencia en SecondBrain</p>
+        </div>
+
+        {/* Grid de configuraciones */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           
-          {isGoogleConnected && (
-            <div>
-              <h3 className="font-medium text-slate-700 mb-3">Opciones de sincronización</h3>
-              
-              <div className="space-y-3">
-                <div className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    id="sync-events" 
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    defaultChecked
-                  />
-                  <label htmlFor="sync-events" className="ml-2 text-sm text-slate-700">
-                    Mostrar eventos del día en el diario
-                  </label>
-                </div>
-                
-                <div className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    id="event-suggestions" 
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    defaultChecked
-                  />
-                  <label htmlFor="event-suggestions" className="ml-2 text-sm text-slate-700">
-                    Sugerir mencionar eventos importantes
-                  </label>
-                </div>
-                
-                <div className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    id="daily-summary" 
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    defaultChecked
-                  />
-                  <label htmlFor="daily-summary" className="ml-2 text-sm text-slate-700">
-                    Incluir resumen de eventos del día
-                  </label>
-                </div>
+          {/* Sección Calendario */}
+          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4">
+                <FiCalendar className="text-white text-xl" />
               </div>
-              
-              <div className="mt-6">
-                <h4 className="text-sm font-medium text-slate-700 mb-2">Calendarios a sincronizar</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <input 
-                      type="checkbox" 
-                      id="calendar-main" 
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                      defaultChecked
-                    />
-                    <label htmlFor="calendar-main" className="ml-2 text-sm text-slate-700 flex items-center">
-                      <span className="w-3 h-3 rounded-full bg-blue-500 mr-2"></span>
-                      Calendario principal
-                    </label>
+              <div>
+                <h2 className="text-xl font-semibold text-slate-800">Calendario</h2>
+                <p className="text-slate-600 text-sm">Integración con servicios externos</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-200/50">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="font-medium text-slate-800">Google Calendar</h3>
+                    <p className="text-slate-600 text-sm">Sincroniza eventos y recordatorios</p>
                   </div>
                   
-                  <div className="flex items-center">
-                    <input 
-                      type="checkbox" 
-                      id="calendar-work" 
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                      defaultChecked
-                    />
-                    <label htmlFor="calendar-work" className="ml-2 text-sm text-slate-700 flex items-center">
-                      <span className="w-3 h-3 rounded-full bg-green-500 mr-2"></span>
-                      Trabajo
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <input 
-                      type="checkbox" 
-                      id="calendar-personal" 
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                      defaultChecked
-                    />
-                    <label htmlFor="calendar-personal" className="ml-2 text-sm text-slate-700 flex items-center">
-                      <span className="w-3 h-3 rounded-full bg-purple-500 mr-2"></span>
-                      Personal
-                    </label>
-                  </div>
+                  {isGoogleConnected ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1 text-green-600 text-sm font-medium">
+                        <FiCheck size={16} />
+                        <span>Conectado</span>
+                      </div>
+                      <button
+                        onClick={handleDisconnectGoogle}
+                        disabled={isLoading}
+                        aria-label="Desconectar Google Calendar"
+                        className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50"
+                      >
+                        <FiSlash size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleConnectGoogle}
+                      disabled={isLoading}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-70"
+                    >
+                      {isLoading ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          <span>Conectando...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <FiLink size={16} />
+                          <span>Conectar</span>
+                        </div>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* Sección Apariencia */}
+          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mr-4">
+                {darkMode ? <FiMoon className="text-white text-xl" /> : <FiSun className="text-white text-xl" />}
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-slate-800">Apariencia</h2>
+                <p className="text-slate-600 text-sm">Personaliza la interfaz</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-200/50">
+                <div>
+                  <h3 className="font-medium text-slate-800">Modo oscuro</h3>
+                  <p className="text-slate-600 text-sm">Tema oscuro para la interfaz</p>
+                </div>
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  aria-label={`${darkMode ? 'Desactivar' : 'Activar'} modo oscuro`}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    darkMode ? 'bg-purple-600' : 'bg-slate-300'
+                  }`}
+                >
+                  <div className={`absolute w-5 h-5 bg-white rounded-full top-0.5 transition-transform ${
+                    darkMode ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}></div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Sección Notificaciones */}
+          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl flex items-center justify-center mr-4">
+                <FiBell className="text-white text-xl" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-slate-800">Notificaciones</h2>
+                <p className="text-slate-600 text-sm">Gestiona tus alertas</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-200/50">
+                <div>
+                  <h3 className="font-medium text-slate-800">Recordatorios diarios</h3>
+                  <p className="text-slate-600 text-sm">Recibe alertas para escribir</p>
+                </div>
+                <button
+                  onClick={() => setNotifications(!notifications)}
+                  aria-label={`${notifications ? 'Desactivar' : 'Activar'} recordatorios diarios`}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    notifications ? 'bg-green-600' : 'bg-slate-300'
+                  }`}
+                >
+                  <div className={`absolute w-5 h-5 bg-white rounded-full top-0.5 transition-transform ${
+                    notifications ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}></div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Sección Privacidad */}
+          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-600 rounded-2xl flex items-center justify-center mr-4">
+                <FiShield className="text-white text-xl" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-slate-800">Privacidad</h2>
+                <p className="text-slate-600 text-sm">Controla tus datos</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-200/50">
+                <div>
+                  <h3 className="font-medium text-slate-800">Guardado automático</h3>
+                  <p className="text-slate-600 text-sm">Guarda cambios automáticamente</p>
+                </div>
+                <button
+                  onClick={() => setAutoSave(!autoSave)}
+                  aria-label={`${autoSave ? 'Desactivar' : 'Activar'} guardado automático`}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    autoSave ? 'bg-red-600' : 'bg-slate-300'
+                  }`}
+                >
+                  <div className={`absolute w-5 h-5 bg-white rounded-full top-0.5 transition-transform ${
+                    autoSave ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}></div>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      
-      <div className="text-sm text-slate-500 mt-8">
-        <p>Para una mejor experiencia, asegúrate de permitir el acceso a tu calendario para que SecondBrain pueda sincronizar tus eventos y ayudarte a recordar tus actividades diarias.</p>
+
+        {/* Información adicional */}
+        <div className="bg-white/50 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 text-center">
+          <div className="flex items-center justify-center mb-3">
+            <FiGlobe className="text-slate-600 mr-2" />
+            <span className="text-slate-600 font-medium">SecondBrain v1.0</span>
+          </div>
+          <p className="text-slate-500 text-sm max-w-2xl mx-auto">
+            Tu privacidad es importante. Todos tus datos se almacenan de forma segura y solo tú tienes acceso a ellos. 
+            SecondBrain utiliza tecnologías de vanguardia para proteger tu información personal.
+          </p>
+        </div>
       </div>
     </div>
   );

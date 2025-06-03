@@ -10,6 +10,7 @@ export default function Loading() {
             alt="SecondBrain"
             width={200}
             height={80}
+            priority
             className="h-16 w-auto mx-auto"
           />
         </div>

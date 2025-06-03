@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Calendar, { OnArgs } from 'react-calendar';
 import type { CalendarProps } from 'react-calendar';
 import { format } from 'date-fns';
-import { FiX, FiSettings } from 'react-icons/fi';
-import Image from 'next/image';
+import { FiX, FiSettings, FiCalendar, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { es } from 'date-fns/locale';
 import { useDiaryStore } from '@/lib/store';
 import { getEntriesByMonth } from '@/lib/supabase';
@@ -35,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onD
   const today = new Date();
   const todayString = formatDateToString(today);
   
-  const { currentDate, setCurrentDate, fetchCurrentEntry, dateManuallySelected } = useDiaryStore();
+  const { currentDate, setCurrentDate, dateManuallySelected } = useDiaryStore();
   const [date, setDate] = useState<Date>(today); // Siempre inicializamos con la fecha actual
   const [entriesDates, setEntriesDates] = useState<string[]>([]);
   const [currentView, setCurrentView] = useState<Date>(today);
@@ -44,13 +43,13 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onD
   useEffect(() => {
     // Solo establecer la fecha actual si no se ha seleccionado una fecha manualmente
     if (!dateManuallySelected) {
-      console.log('🔄 Sidebar: Estableciendo fecha de hoy (no seleccionada manualmente):', todayString);
+      // Solo loguear si realmente estamos cambiando la fecha
+      if (currentDate !== todayString) {
+        console.log('🔄 Sidebar: Estableciendo fecha de hoy (no seleccionada manualmente):', todayString);
+      }
       setCurrentDate(todayString, false); // false porque es automático
-    } else {
-      console.log('✅ Sidebar: Manteniendo fecha seleccionada manualmente:', currentDate);
     }
-    // Cargar la entrada para la fecha actual del store
-    fetchCurrentEntry(userId);
+    // NO llamamos fetchCurrentEntry aquí - esa es responsabilidad del IntegratedDiary
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -85,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onD
       const formattedDate = format(newDate, 'yyyy-MM-dd');
       console.log('📅 Sidebar: Usuario seleccionó fecha manualmente:', formattedDate);
       setCurrentDate(formattedDate, true); // true porque es selección manual
-      fetchCurrentEntry(userId); // Asumiendo que fetchCurrentEntry usa la fecha del store
+      // NO llamamos fetchCurrentEntry aquí - el IntegratedDiary se encargará automáticamente
       
       // Cerrar configuración si está abierta
       if (onDateChange) {
@@ -111,63 +110,94 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onD
   };
 
   return (
-    <div className="relative flex flex-col h-full bg-gradient-to-br from-purple-200 via-white to-white pt-4">
-      {/* Botón de cierre para móviles, superpuesto */}
+    <div className="relative flex flex-col h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white overflow-hidden">
+      {/* Patrón de fondo decorativo */}
+      <div className="absolute inset-0 opacity-5 sidebar-pattern"></div>
+      
+      {/* Efecto de brillo sutil */}
+      <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
+      
+      {/* Botón de cierre para móviles */}
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 p-2 text-slate-600 hover:text-slate-800 md:hidden z-10"
+          className="absolute top-4 right-4 z-50 p-2 bg-white/10 backdrop-blur-sm rounded-full hover:bg-white/20 transition-all duration-200 md:hidden group"
+          title="Cerrar menú"
           aria-label="Cerrar menú"
         >
-          <FiX size={24} />
+          <FiX size={18} className="text-white group-hover:scale-110 transition-transform" />
         </button>
       )}
-      {/* Logo para la versión de escritorio */}
-      <div className="pl-6 mb-8 pt-4 hidden md:block">
-        {/* Este logo se mostrará en desktop. El logo de móvil está en page.tsx */}
-        {/* Ajusta width y height según el aspect ratio de tu Logo-simple-SecondBrain.png */}
-        <Image src="/image/Logo-entero-SecondBrain.png" alt="SecondBrain Logo" width={140} height={28} />
+
+      {/* Header con logo y título */}
+      <div className="relative z-10 px-6 pt-6 pb-4">
+        <div className="flex items-center space-x-3 mb-2">
+          <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+            <span className="text-white font-bold text-lg">🧠</span>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-white">SecondBrain</h1>
+            <p className="text-sm text-slate-300">Tu diario inteligente</p>
+          </div>
+        </div>
       </div>
-      
-      {/* Sección del calendario con efecto cristal (glassmorphism) */}
-      <div className="bg-white/40 backdrop-blur-sm rounded-[25px] shadow-lg p-6 mx-4 mb-4 border border-white/30">
-        <h2 className="text-lg font-semibold text-center text-slate-700 mb-4 flex items-center justify-center">
-          <svg className="w-5 h-5 mr-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-          </svg>
-          Calendario
-        </h2>
-        
-        <div className="calendar-container mx-auto">
+
+      {/* Separador elegante */}
+      <div className="relative z-10 mx-6 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent mb-6"></div>
+
+      {/* Calendario moderno */}
+      <div className="relative z-10 flex-1 px-6 overflow-y-auto">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-white mb-2 flex items-center">
+            <FiCalendar className="mr-2 text-blue-400" />
+            Calendario
+          </h2>
+          <p className="text-sm text-slate-300">Navega por tus entradas</p>
+        </div>
+
+        <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10 shadow-xl">
           <Calendar
             onChange={handleDateChange}
             value={date}
             onActiveStartDateChange={handleViewChange}
             tileClassName={tileClassName}
-            locale="es"
-            className="custom-calendar rounded-xl border-0 shadow-none w-full"
-            maxDate={new Date(2100, 11, 31)}
-            minDate={new Date(2000, 0, 1)}
+            locale="es-ES"
+            className="modern-calendar"
+            prev2Label={null}
+            next2Label={null}
+            prevLabel={<FiChevronLeft className="text-slate-400 hover:text-white transition-colors" />}
+            nextLabel={<FiChevronRight className="text-slate-400 hover:text-white transition-colors" />}
+            calendarType="gregory"
+            showWeekNumbers={false}
+            formatShortWeekday={(locale, date) => {
+              const weekdays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+              return weekdays[date.getDay()];
+            }}
           />
         </div>
         
-        {/* Fecha seleccionada incluida dentro del contenedor del calendario */}
-        <div className="text-center mt-4 pt-3 border-t border-slate-100">
-          <p className="font-medium text-slate-700">
+        {/* Fecha seleccionada */}
+        <div className="mt-4 text-center">
+          <p className="text-sm text-slate-300">
             {date ? format(date, "EEEE, d 'de' MMMM", { locale: es }) : 'Ninguna fecha seleccionada'}
           </p>
         </div>
       </div>
-      
-      {/* Botón de configuración */}
-      <div className="mx-4 mb-8">
+
+      {/* Botones de acción */}
+      <div className="relative z-10 p-6 space-y-3">
         <button
           onClick={onSettingsClick}
-          className="w-full flex items-center justify-center px-4 py-3 bg-white/30 backdrop-blur-sm hover:bg-white/50 text-slate-700 rounded-[15px] border border-white/20 transition-colors shadow-sm"
+          className="w-full bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white rounded-xl py-3 px-4 transition-all duration-200 flex items-center justify-center space-x-2 border border-white/10 hover:border-white/20 group"
         >
-          <FiSettings className="mr-2" size={18} />
+          <FiSettings className="group-hover:rotate-45 transition-transform duration-300" />
           <span className="font-medium">Configuración</span>
         </button>
+        
+        <div className="flex items-center justify-center space-x-2 text-xs text-slate-400">
+          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+          <span>Sincronizado</span>
+        </div>
       </div>
     </div>
   );

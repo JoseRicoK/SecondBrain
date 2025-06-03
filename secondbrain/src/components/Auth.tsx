@@ -119,6 +119,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
               alt="SecondBrain"
               width={200}
               height={80}
+              priority
               className="h-16 w-auto"
             />
           </div>

@@ -51,7 +51,11 @@ export const useDiaryStore = create<DiaryState>((set, get) => {
     
     // Acciones
     setCurrentDate: (date: string, manuallySelected = false) => {
-      console.log('🏪 Store: setCurrentDate llamado con:', date, 'manual:', manuallySelected);
+      const currentState = get();
+      // Solo loguear si la fecha realmente cambió
+      if (currentState.currentDate !== date) {
+        console.log('🏪 Store: setCurrentDate llamado con:', date, 'manual:', manuallySelected);
+      }
       set({ currentDate: date, dateManuallySelected: manuallySelected });
     },
   
@@ -68,7 +72,13 @@ export const useDiaryStore = create<DiaryState>((set, get) => {
       
       // Si hay una entrada, cargamos las transcripciones
       if (entry) {
-        await get().fetchTranscriptions();
+        try {
+          const transcriptions = await getTranscriptionsByEntryId(entry.id);
+          set({ transcriptions });
+        } catch (error) {
+          console.error('Error fetching transcriptions:', error);
+          set({ transcriptions: [] });
+        }
       } else {
         set({ transcriptions: [] });
       }
@@ -137,16 +147,12 @@ export const useDiaryStore = create<DiaryState>((set, get) => {
     
     if (!currentEntry) return;
     
-    set({ isLoading: true });
-    
     try {
       const transcriptions = await getTranscriptionsByEntryId(currentEntry.id);
       set({ transcriptions });
     } catch (error) {
       console.error('Error fetching transcriptions:', error);
       set({ error: 'No se pudieron cargar las transcripciones' });
-    } finally {
-      set({ isLoading: false });
     }
   },
   
