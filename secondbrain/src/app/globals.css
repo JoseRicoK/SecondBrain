@@ -637,11 +637,22 @@ body {
 }
 
 /* Estilos para el botón flotante de personas */
-.floating-people-button {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
+.floating-people-icon {
+  height: 24px;
+  margin-bottom: 8px;
+}
+
+.floating-people-icon svg {
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+
+.floating-people-text-container {
+  height: 60px;
 }
 
 .floating-people-text {
-  transform: rotate(180deg);
+  transform: rotate(-90deg);
+  white-space: nowrap;
+  transform-origin: center;
 }

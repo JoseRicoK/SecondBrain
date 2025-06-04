@@ -703,13 +703,21 @@ export default function Home() {
         {!showPeoplePanel && isDesktop && (
           <button
             onClick={() => setShowPeoplePanel(true)}
-            className="floating-people-button fixed top-1/2 right-0 transform -translate-y-1/2 w-14 h-32 flex flex-col items-center justify-center transition-all duration-300 shadow-lg z-40 group bg-purple-500 text-white hover:bg-purple-600 translate-x-2 hover:translate-x-0 rounded-l-xl"
+            className="fixed top-1/2 right-0 transform -translate-y-1/2 w-14 h-32 flex flex-col items-center justify-center transition-all duration-300 shadow-lg z-40 group bg-purple-500 text-white hover:bg-purple-600 translate-x-2 hover:translate-x-0 rounded-l-xl p-1"
             title="Abrir panel de personas"
+            aria-label="Abrir panel de personas"
           >
-            <FiUsers size={20} className="group-hover:scale-110 transition-transform duration-200 mb-2" />
-            <span className="floating-people-text text-xs font-bold tracking-widest whitespace-nowrap">
-              PERSONAS
-            </span>
+            <div className="floating-people-icon flex items-center justify-center">
+              <FiUsers
+                size={20}
+                className="group-hover:scale-110 transition-transform duration-200"
+              />
+            </div>
+            <div className="floating-people-text-container flex items-center justify-center">
+              <div className="floating-people-text text-xs font-bold">
+                PERSONAS
+              </div>
+            </div>
           </button>
         )}
 
