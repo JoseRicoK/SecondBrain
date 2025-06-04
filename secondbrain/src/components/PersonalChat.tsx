@@ -189,38 +189,48 @@ Puedo ayudarte a:
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed bottom-4 right-4 bg-white rounded-lg shadow-2xl border border-slate-200 z-50 transition-all duration-300 ${
-      isMinimized ? 'w-80 h-16' : 'w-[32rem] h-[40rem] max-h-[85vh]'
-    }`}>
+    <>
+      {/* Overlay de fondo para cerrar el chat al hacer clic fuera */}
+      <div 
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+        onClick={onClose}
+      />
+      
+      {/* Chat centrado en la pantalla */}
+      <div className={`fixed z-50 transition-all duration-300 ${
+        isMinimized 
+          ? 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-16' 
+          : 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-[calc(100vw-2rem)] md:max-w-2xl h-[32rem] max-h-[85vh]'
+      } bg-white rounded-xl shadow-2xl border border-slate-200`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-gradient-to-r from-purple-50 to-blue-50 rounded-t-lg">
-        <div className="flex items-center space-x-3">
-          <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-2 rounded-full">
-            <FiZap size={16} />
+      <div className="flex items-center justify-between p-3 md:p-4 border-b border-slate-200 bg-gradient-to-r from-purple-50 to-blue-50 rounded-t-xl">
+        <div className="flex items-center space-x-2 md:space-x-3 min-w-0 flex-1">
+          <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-1.5 md:p-2 rounded-full">
+            <FiZap size={14} className="md:w-4 md:h-4" />
           </div>
-          <div>
-            <h3 className="font-medium text-slate-900">Chat Personal</h3>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-medium text-slate-900 text-sm md:text-base truncate">Chat Personal</h3>
             {!isMinimized && (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 truncate">
                 {entriesAnalyzed > 0 ? `${entriesAnalyzed} entradas analizadas` : 'Asistente inteligente'}
               </p>
             )}
           </div>
         </div>
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 flex-shrink-0">
           <button
             onClick={onToggleMinimize}
             title={isMinimized ? "Expandir chat" : "Minimizar chat"}
             className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-white/50 transition-colors"
           >
-            {isMinimized ? <FiMaximize2 size={16} /> : <FiMinimize2 size={16} />}
+            {isMinimized ? <FiMaximize2 size={14} className="md:w-4 md:h-4" /> : <FiMinimize2 size={14} className="md:w-4 md:h-4" />}
           </button>
           <button
             onClick={onClose}
             title="Cerrar chat"
             className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-white/50 transition-colors"
           >
-            <FiX size={18} />
+            <FiX size={16} className="md:w-[18px] md:h-[18px]" />
           </button>
         </div>
       </div>
@@ -228,14 +238,14 @@ Puedo ayudarte a:
       {/* Messages - Solo visible cuando no está minimizado */}
       {!isMinimized && (
         <>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 h-96">
+          <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 h-80 md:h-96">
             {messages.map((message, index) => (
               <div
                 key={index}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[90%] rounded-lg p-4 ${
+                  className={`max-w-[85%] md:max-w-[90%] rounded-lg p-3 md:p-4 ${
                     message.role === 'user'
                       ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
                       : 'bg-slate-100 text-slate-900'
@@ -273,13 +283,13 @@ Puedo ayudarte a:
 
           {/* Error message */}
           {error && (
-            <div className="px-4 py-2 bg-red-50 border-t border-red-200">
+            <div className="px-3 md:px-4 py-2 bg-red-50 border-t border-red-200">
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
 
           {/* Input */}
-          <div className="p-4 border-t border-slate-200 bg-slate-50 rounded-b-lg">
+          <div className="p-3 md:p-4 border-t border-slate-200 bg-slate-50 rounded-b-xl">
             <div className="flex space-x-2">
               <input
                 ref={inputRef}
@@ -296,7 +306,7 @@ Puedo ayudarte a:
                 disabled={!inputMessage.trim() || isLoading}
                 title="Enviar mensaje"
                 aria-label="Enviar mensaje"
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-md hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                className="px-3 md:px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-md hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
               >
                 {isLoading ? (
                   <FiLoader className="animate-spin" size={16} />
@@ -305,13 +315,14 @@ Puedo ayudarte a:
                 )}
               </button>
             </div>
-            <p className="text-xs text-slate-500 mt-2">
+            <p className="text-xs text-slate-500 mt-2 hidden md:block">
               Presiona Enter para enviar • Shift+Enter para nueva línea
             </p>
           </div>
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 

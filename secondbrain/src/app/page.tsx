@@ -691,12 +691,34 @@ export default function Home() {
 
       {/* Botones flotantes */}
       <>
-        {/* Botón del Chat Personal */}
+        {/* Botón del Chat Personal para Desktop - al lado del sidebar */}
         {!isChatOpen && (
           <PersonalChatButton 
             onClick={handleChatToggle}
             isActive={false}
+            className="hidden md:flex"
           />
+        )}
+
+        {/* Botón del Chat Personal para Móvil e iPad - más visible */}
+        {!isChatOpen && (
+          <button
+            onClick={handleChatToggle}
+            title="Chat Personal"
+            className="fixed bottom-6 left-6 z-40 md:hidden
+              flex flex-col items-center justify-center w-16 h-20
+              bg-gradient-to-br from-purple-500 to-blue-600 
+              hover:from-purple-600 hover:to-blue-700
+              text-white shadow-xl hover:shadow-2xl
+              rounded-2xl transition-all duration-300 hover:scale-105"
+          >
+            <div className="relative mb-1">
+              <FiZap size={20} />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full border-2 border-white animate-ping"></div>
+            </div>
+            <span className="font-bold text-xs text-center leading-tight">CHAT</span>
+            <span className="font-medium text-[10px] text-center leading-tight opacity-90">Personal</span>
+          </button>
         )}
 
         {/* Botón flotante de personas para escritorio - solo visible cuando el panel está cerrado */}
