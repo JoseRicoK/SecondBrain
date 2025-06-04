@@ -692,3 +692,122 @@ export async function getUserInfo(): Promise<{ name: string; email: string | nul
     return { name: 'Usuario', email: null };
   }
 }
+
+// Funciones de autenticación
+export async function updateUserProfile(updates: { display_name?: string }) {
+  if (!supabase) {
+    throw new Error('Supabase no está configurado');
+  }
+
+  const { data, error } = await supabase.auth.updateUser({
+    data: updates
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function updateUserPassword(newPassword: string) {
+  if (!supabase) {
+    throw new Error('Supabase no está configurado');
+  }
+
+  if (newPassword.length < 6) {
+    throw new Error('La contraseña debe tener al menos 6 caracteres');
+  }
+
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function deleteUserAccount() {
+  if (!supabase) {
+    throw new Error('Supabase no está configurado');
+  }
+
+  // Obtener el usuario actual
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('No hay usuario autenticado');
+  }
+
+  // Eliminar todos los datos del usuario primero
+  await deleteAllUserData(user.id);
+
+  // Cerrar sesión
+  const { error } = await supabase.auth.signOut();
+  
+  if (error) {
+    throw error;
+  }
+
+  return true;
+}
+
+async function deleteAllUserData(userId: string) {
+  if (!supabase) {
+    throw new Error('Supabase no está configurado');
+  }
+
+  // Eliminar entradas del diario
+  await supabase
+    .from('diary_entries')
+    .delete()
+    .eq('user_id', userId);
+
+  // Eliminar transcripciones de audio
+  const { data: entries } = await supabase
+    .from('diary_entries')
+    .select('id')
+    .eq('user_id', userId);
+    
+  if (entries && entries.length > 0) {
+    await supabase
+      .from('audio_transcriptions')
+      .delete()
+      .in('entry_id', entries.map((entry: { id: string }) => entry.id));
+  }
+
+  // Eliminar personas
+  await supabase
+    .from('people')
+    .delete()
+    .eq('user_id', userId);
+}
+
+export async function sendFeedbackEmail(type: 'suggestion' | 'problem', message: string, userEmail: string) {
+  try {
+    const response = await fetch('/api/send-feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type,
+        message,
+        userEmail,
+        timestamp: new Date().toISOString()
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al enviar el mensaje');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error sending feedback:', error);
+    throw error;
+  }
+}
