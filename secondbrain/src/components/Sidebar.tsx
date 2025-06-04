@@ -49,7 +49,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onD
       }
       setCurrentDate(todayString, false); // false porque es automático
     }
-    // NO llamamos fetchCurrentEntry aquí - esa es responsabilidad del IntegratedDiary
+    // NO llamamos fetchCurrentEntry aquí; esto se maneja en page.tsx
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -84,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onD
       const formattedDate = format(newDate, 'yyyy-MM-dd');
       console.log('📅 Sidebar: Usuario seleccionó fecha manualmente:', formattedDate);
       setCurrentDate(formattedDate, true); // true porque es selección manual
-      // NO llamamos fetchCurrentEntry aquí - el IntegratedDiary se encargará automáticamente
+      // NO llamamos fetchCurrentEntry aquí; page.tsx lo maneja automáticamente
       
       // Cerrar configuración si está abierta
       if (onDateChange) {
