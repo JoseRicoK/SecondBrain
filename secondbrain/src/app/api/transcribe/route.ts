@@ -40,6 +40,8 @@ export async function POST(request: Request) {
 
     // Convertir File a Buffer para enviarlo a OpenAI
     const arrayBuffer = await audioFile.arrayBuffer();
+    const audioBase64 = Buffer.from(arrayBuffer).toString('base64');
+    const audioUrl = `data:${audioFile.type};base64,${audioBase64}`;
     
     // Crear un archivo temporal para la transcripción
     const tempFileName = `whisper-${Date.now()}.mp3`; // Cambiamos a .mp3 que funciona mejor con Whisper
@@ -52,10 +54,10 @@ export async function POST(request: Request) {
     // Usar el modelo más reciente con más opciones para mejor calidad
     const response = await openai.audio.transcriptions.create({
       file: transcriptionFile,
-      model: 'whisper-1',  // Modelo más reciente de Whisper
-      language: 'es',      // Especificamos español
+      model: 'whisper-1', // Modelo más reciente de Whisper
+      language: 'es', // Especificamos español
       prompt: 'Transcribe literalmente lo que se dice en español', // Prompt para guiar la transcripción
-      temperature: 0.0,    // Menor temperatura para transcripción más precisa
+      temperature: 0.0, // Menor temperatura para transcripción más precisa
       response_format: 'json'
     });
 
@@ -71,7 +73,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      text: transcription
+      text: transcription,
+      audioUrl
     });
     
   } catch (error) {
