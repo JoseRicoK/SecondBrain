@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { FiCalendar, FiCheck, FiLink, FiSlash, FiUser, FiTrash2, FiMessageSquare, FiMail, FiAlertTriangle, FiSave, FiEye, FiEyeOff } from 'react-icons/fi';
-import UserHeader from './UserHeader';
+import { FiCalendar, FiCheck, FiLink, FiSlash, FiUser, FiTrash2, FiMessageSquare, FiMail, FiAlertTriangle, FiSave, FiEye, FiEyeOff, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 import { updateUserProfile, updateUserPassword, deleteUserAccount, sendFeedbackEmail } from '@/lib/supabase';
 
@@ -10,11 +9,7 @@ interface SettingsProps {
 
 const Settings: React.FC<SettingsProps> = ({ userId }) => {
   console.log('Settings component loaded for user:', userId);
-  const { user } = useAuth();
-  
-  // Estados para el calendario
-  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { user, signOut } = useAuth();
   
   // Estados para cambio de datos personales
   const [newDisplayName, setNewDisplayName] = useState(
@@ -40,22 +35,6 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
   const [contactEmail, setContactEmail] = useState(user?.email || '');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState('');
-
-  const handleConnectGoogle = async () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsGoogleConnected(true);
-      setIsLoading(false);
-    }, 1500);
-  };
-
-  const handleDisconnectGoogle = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsGoogleConnected(false);
-      setIsLoading(false);
-    }, 1000);
-  };
 
   const handleUpdateProfile = async () => {
     setUpdateLoading(true);
@@ -156,12 +135,6 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
-        {/* Header elegante */}
-        <div className="mb-8">
-          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20">
-            <UserHeader />
-          </div>
-        </div>
         
         {/* Título principal */}
         <div className="text-center mb-8">
@@ -280,7 +253,7 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex flex-col sm:flex-row justify-center items-center gap-4">
               <button
                 onClick={handleUpdateProfile}
                 disabled={updateLoading}
@@ -298,6 +271,14 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
                   </>
                 )}
               </button>
+              
+              <button
+                onClick={signOut}
+                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg transition-all"
+              >
+                <FiLogOut size={18} />
+                <span>Cerrar sesión</span>
+              </button>
             </div>
           </div>
 
@@ -314,47 +295,30 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
             </div>
             
             <div className="space-y-4">
-              <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-200/50">
+              <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-200/50 relative">
+                {/* Badge de "Próximamente" */}
+                <div className="absolute -top-2 -right-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg">
+                  Próximamente
+                </div>
+                
                 <div className="flex items-center justify-between mb-3">
-                  <div>
+                  <div className="opacity-60">
                     <h3 className="font-medium text-slate-800">Google Calendar</h3>
                     <p className="text-slate-600 text-sm">Sincroniza eventos y recordatorios</p>
+                    <p className="text-amber-600 text-xs mt-1 font-medium">
+                      🚧 Funcionalidad en desarrollo
+                    </p>
                   </div>
                   
-                  {isGoogleConnected ? (
+                  <button
+                    onClick={() => alert('🚧 Función en desarrollo\n\nLa integración con Google Calendar estará disponible en una próxima actualización. ¡Mantente atento!')}
+                    className="px-4 py-2 bg-gradient-to-r from-slate-400 to-slate-500 text-white rounded-xl transition-all cursor-pointer hover:from-slate-500 hover:to-slate-600"
+                  >
                     <div className="flex items-center space-x-2">
-                      <div className="flex items-center space-x-1 text-green-600 text-sm font-medium">
-                        <FiCheck size={16} />
-                        <span>Conectado</span>
-                      </div>
-                      <button
-                        onClick={handleDisconnectGoogle}
-                        disabled={isLoading}
-                        aria-label="Desconectar Google Calendar"
-                        className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50"
-                      >
-                        <FiSlash size={14} />
-                      </button>
+                      <FiLink size={16} />
+                      <span>Próximamente</span>
                     </div>
-                  ) : (
-                    <button
-                      onClick={handleConnectGoogle}
-                      disabled={isLoading}
-                      className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-70"
-                    >
-                      {isLoading ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                          <span>Conectando...</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <FiLink size={16} />
-                          <span>Conectar</span>
-                        </div>
-                      )}
-                    </button>
-                  )}
+                  </button>
                 </div>
               </div>
             </div>

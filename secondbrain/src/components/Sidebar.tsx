@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Calendar, { OnArgs } from 'react-calendar';
 import type { CalendarProps } from 'react-calendar';
 import { format } from 'date-fns';
-import { FiX, FiSettings, FiCalendar, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiX, FiSettings, FiCalendar, FiChevronLeft, FiChevronRight, FiBookOpen } from 'react-icons/fi';
 import { es } from 'date-fns/locale';
 import { useDiaryStore } from '@/lib/store';
 import { getEntriesByMonth } from '@/lib/supabase';
@@ -181,6 +181,22 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onD
           <p className="text-sm text-slate-300">
             {date ? format(date, "EEEE, d 'de' MMMM", { locale: es }) : 'Ninguna fecha seleccionada'}
           </p>
+        </div>
+        
+        {/* Botón Ir al Diario de Hoy */}
+        <div className="mt-4">
+          <button
+            onClick={() => {
+              const today = new Date();
+              const todayFormatted = formatDateToString(today);
+              setCurrentDate(todayFormatted, true);
+              if (onDateChange) onDateChange();
+            }}
+            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-3 px-4 transition-all duration-200 flex items-center justify-center space-x-2 border border-indigo-400/30 hover:border-indigo-300/50 group shadow-lg hover:shadow-xl"
+          >
+            <FiBookOpen className="group-hover:scale-110 transition-transform duration-200" />
+            <span className="font-medium">Ir al Diario de Hoy</span>
+          </button>
         </div>
       </div>
 
