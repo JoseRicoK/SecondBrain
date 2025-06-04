@@ -17,7 +17,11 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
   const [isLoading, setIsLoading] = useState(false);
   
   // Estados para cambio de datos personales
-  const [newDisplayName, setNewDisplayName] = useState(user?.user_metadata?.display_name || '');
+  const [newDisplayName, setNewDisplayName] = useState(
+    user?.user_metadata?.display_name || 
+    user?.user_metadata?.name || 
+    ''
+  );
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
@@ -62,7 +66,8 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
       let hasUpdates = false;
       
       // Actualizar nombre de usuario si ha cambiado
-      if (newDisplayName.trim() && newDisplayName.trim() !== (user?.user_metadata?.display_name || '')) {
+      const currentDisplayName = user?.user_metadata?.display_name || user?.user_metadata?.name || '';
+      if (newDisplayName.trim() && newDisplayName.trim() !== currentDisplayName) {
         await updateUserProfile({ display_name: newDisplayName.trim() });
         setUpdateSuccess('Nombre actualizado correctamente');
         hasUpdates = true;

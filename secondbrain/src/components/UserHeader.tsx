@@ -14,6 +14,10 @@ export default function UserHeader() {
   };
 
   const getUserDisplayName = () => {
+    // Priorizar display_name, luego name, luego email
+    if (user?.user_metadata?.display_name) {
+      return user.user_metadata.display_name;
+    }
     if (user?.user_metadata?.name) {
       return user.user_metadata.name;
     }

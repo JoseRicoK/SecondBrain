@@ -80,6 +80,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           options: {
             data: {
               name: name,
+              display_name: name, // Guardar también en display_name para consistencia
             }
           }
         });

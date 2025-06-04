@@ -34,6 +34,10 @@ export const PersonalChat: React.FC<PersonalChatProps> = ({
   
   // Get user display name from auth - using useCallback to avoid dependency issues
   const getUserDisplayName = useCallback(() => {
+    // Priorizar display_name, luego name, luego email
+    if (user?.user_metadata?.display_name) {
+      return user.user_metadata.display_name;
+    }
     if (user?.user_metadata?.name) {
       return user.user_metadata.name;
     }

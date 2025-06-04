@@ -677,9 +677,11 @@ export async function getUserInfo(): Promise<{ name: string; email: string | nul
       return { name: 'Usuario', email: null };
     }
 
-    // Extract name from raw_user_meta_data (where Supabase stores it)
-    const name = user.raw_user_meta_data?.name || 
+    // Extract name prioritizing display_name over name
+    const name = user.user_metadata?.display_name ||
                  user.user_metadata?.name || 
+                 user.raw_user_meta_data?.display_name ||
+                 user.raw_user_meta_data?.name || 
                  user.email?.split('@')[0] || 
                  'Usuario';
 
@@ -699,8 +701,14 @@ export async function updateUserProfile(updates: { display_name?: string }) {
     throw new Error('Supabase no está configurado');
   }
 
+  // Actualizamos tanto display_name como name para consistencia
+  const userData = updates.display_name ? {
+    display_name: updates.display_name,
+    name: updates.display_name
+  } : updates;
+
   const { data, error } = await supabase.auth.updateUser({
-    data: updates
+    data: userData
   });
 
   if (error) {
