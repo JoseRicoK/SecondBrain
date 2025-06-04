@@ -384,8 +384,16 @@ export default function Home() {
           <Sidebar 
             userId={user.id} 
             onClose={() => setIsSidebarOpen(false)} 
-            onSettingsClick={() => setShowSettings(true)}
-            onDateChange={() => setShowSettings(false)}
+            onSettingsClick={() => {
+              setShowSettings(true);
+              // Auto-cerrar sidebar en móvil al abrir configuración
+              setIsSidebarOpen(false);
+            }}
+            onDateChange={() => {
+              setShowSettings(false);
+              // Auto-cerrar sidebar en móvil al seleccionar fecha
+              setIsSidebarOpen(false);
+            }}
           />
         </div>
       </aside>
@@ -700,8 +708,8 @@ export default function Home() {
           />
         )}
 
-        {/* Botón del Chat Personal para Móvil e iPad - más visible */}
-        {!isChatOpen && (
+        {/* Botón del Chat Personal para Móvil e iPad - más visible - solo cuando sidebar está cerrado */}
+        {!isChatOpen && !isSidebarOpen && (
           <button
             onClick={handleChatToggle}
             title="Chat Personal"
@@ -743,8 +751,8 @@ export default function Home() {
           </button>
         )}
 
-        {/* Botón flotante de personas para móvil y tablet - abajo a la derecha */}
-        {!showPeoplePanel && !isDesktop && (
+        {/* Botón flotante de personas para móvil y tablet - abajo a la derecha - solo cuando sidebar está cerrado */}
+        {!showPeoplePanel && !isDesktop && !isSidebarOpen && (
           <button
             onClick={() => setShowPeoplePanel(true)}
             className={`fixed right-6 w-16 h-16 bg-purple-500 hover:bg-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-40 group ${

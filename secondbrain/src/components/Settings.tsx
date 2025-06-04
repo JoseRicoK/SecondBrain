@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiCalendar, FiCheck, FiLink, FiSlash, FiUser, FiTrash2, FiMessageSquare, FiMail, FiAlertTriangle, FiSave, FiEye, FiEyeOff, FiLogOut } from 'react-icons/fi';
+import { FiCalendar, FiCheck, FiLink, FiUser, FiTrash2, FiMessageSquare, FiMail, FiAlertTriangle, FiSave, FiEye, FiEyeOff, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 import { updateUserProfile, updateUserPassword, deleteUserAccount, sendFeedbackEmail } from '@/lib/supabase';
 
