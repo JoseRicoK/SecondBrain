@@ -15,12 +15,15 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // Verificar si las variables de entorno están definidas
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    '⚠️ Las variables de entorno para Supabase no están configuradas.\n' +
+  console.error(
+    '❌ ERROR CRÍTICO: Las variables de entorno para Supabase no están configuradas.\n' +
     'Por favor, crea un archivo .env.local en la raíz del proyecto con:\n' +
     'NEXT_PUBLIC_SUPABASE_URL=tu_url_de_supabase\n' +
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anon_key'
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anon_key\n' +
+    'URL actual:', supabaseUrl, '\n' +
+    'Key presente:', !!supabaseAnonKey
   );
+  // No lanzar error aquí para evitar que la app se rompa completamente
 }
 
 // Crear el cliente de Supabase con persistencia mejorada

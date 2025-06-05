@@ -399,6 +399,20 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
             
             <div className="space-y-4">
               <div>
+                <label htmlFor="contactEmailProblem" className="block text-sm font-medium text-slate-700 mb-2">
+                  Tu email de contacto
+                </label>
+                <input
+                  id="contactEmailProblem"
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  placeholder="tu@email.com"
+                />
+              </div>
+              
+              <div>
                 <label htmlFor="problem" className="block text-sm font-medium text-slate-700 mb-2">
                   Describe el problema
                 </label>

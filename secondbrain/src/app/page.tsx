@@ -56,6 +56,7 @@ export default function Home() {
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
   const lastUserId = useRef<string | null>(null);
+  const currentStream = useRef<MediaStream | null>(null);
   const recordingTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Referencia para el último estado logueado para evitar logs duplicados
@@ -249,6 +250,7 @@ export default function Home() {
 
       recorder.start();
       setIsRecording(true);
+      console.log('📝 DIARY: Grabación iniciada exitosamente');
       recordingTimeout.current = setTimeout(() => {
         stopRecording();
       }, MAX_RECORDING_DURATION);
@@ -338,6 +340,16 @@ export default function Home() {
         const newContent = content + (content ? '\n\n' : '') + data.text;
         setContent(newContent);
         console.log('📝 DIARY: Transcripción procesada exitosamente:', data.text);
+        
+        // Guardar automáticamente después de la transcripción
+        console.log('📝 DIARY: Guardando entrada automáticamente después de la transcripción...');
+        try {
+          await saveCurrentEntry(newContent, user.id);
+          console.log('📝 DIARY: Entrada guardada automáticamente después de la transcripción');
+        } catch (saveError) {
+          console.error('📝 DIARY: Error al guardar automáticamente después de la transcripción:', saveError);
+          setError('Transcripción exitosa, pero error al guardar automáticamente');
+        }
       } else {
         console.warn('📝 DIARY: No se recibió texto de la transcripción');
       }
@@ -348,7 +360,7 @@ export default function Home() {
       setIsProcessing(false);
       setAudioBlob(null);
     }
-  }, [audioBlob, user?.id, content]);
+  }, [audioBlob, user?.id, content, saveCurrentEntry]);
 
   // Sincronizar content con currentEntry
   useEffect(() => {

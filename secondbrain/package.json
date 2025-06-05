@@ -11,12 +11,10 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",
     "@types/js-cookie": "^3.0.6",
-    "@types/nodemailer": "^6.4.17",
     "date-fns": "^4.1.0",
     "isomorphic-dompurify": "^2.25.0",
     "js-cookie": "^3.0.5",
     "next": "15.3.2",
-    "nodemailer": "^7.0.3",
     "openai": "^4.103.0",
     "react": "^19.0.0",
     "react-calendar": "^5.1.0",
@@ -25,6 +23,7 @@
     "react-markdown": "^10.1.0",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
+    "resend": "^4.5.2",
     "uuid": "^11.1.0",
     "zustand": "^5.0.5"
   },
