@@ -399,7 +399,8 @@ export default function Home() {
         className={`
           fixed md:relative z-30 h-screen transition-all duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} 
-          md:translate-x-0 md:shadow-xl md:w-[420px] w-[85%] max-w-md
+          md:translate-x-0 md:shadow-xl 
+          md:w-[340px] lg:w-[380px] xl:w-[420px] w-[85%] max-w-md
           bg-white/95 backdrop-blur-xl border-r border-white/20
         `}
       >
