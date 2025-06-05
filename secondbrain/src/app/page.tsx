@@ -469,7 +469,7 @@ export default function Home() {
                 {/* Contenido principal del diario - siempre toma el espacio completo */}
                 <div className="flex-1 bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
                   {/* Barra de herramientas mejorada con fecha arriba */}
-                  <div className="border-b border-slate-200/60 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
+                  <div className="p-6 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
                     {/* Fecha arriba - centrada y más pequeña */}
                     <div className="flex items-center justify-center space-x-3 mb-4">
                       <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
@@ -480,8 +480,8 @@ export default function Home() {
                       </span>
                     </div>
                     
-                    {/* Botones de acción abajo */}
-                    <div className="flex items-center justify-end space-x-2">
+                    {/* Botones de acción abajo - centrados */}
+                    <div className="flex items-center justify-center space-x-2">
                       {storeIsEditing ? (
                         <>
                           <button 
@@ -552,7 +552,7 @@ export default function Home() {
                   <div className="relative bg-gradient-to-r from-indigo-50 to-purple-50">
                     {/* Mensajes de error mejorados */}
                     {error && (
-                      <div className="m-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center space-x-3">
+                      <div className="m-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center space-x-3">
                         <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                         <span>{error}</span>
                       </div>
@@ -560,7 +560,7 @@ export default function Home() {
                     
                     {/* Indicador de procesamiento mejorado */}
                     {isProcessing && audioBlob && (
-                      <div className="m-6 p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-sm flex items-center space-x-3">
+                      <div className="m-4 p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-sm flex items-center space-x-3">
                         <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -571,7 +571,7 @@ export default function Home() {
                     
                     {/* Indicador de estilización mejorado */}
                     {isStylizing && (
-                      <div className="m-6 p-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-sm flex items-center space-x-3">
+                      <div className="m-4 p-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-sm flex items-center space-x-3">
                         <svg className="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -581,7 +581,7 @@ export default function Home() {
                     )}
                     
                     {/* Editor/Visualizador de contenido mejorado */}
-                    <div className="p-8 min-h-[600px]">
+                    <div className="p-4 pt-2 min-h-[600px]">
                       {storeIsEditing ? (
                         <div className="relative">
                           <textarea
