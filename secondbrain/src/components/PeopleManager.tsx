@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiUser, FiEdit2, FiChevronRight, FiChevronDown, FiX, FiEye, FiEyeOff, FiCalendar, FiSearch, FiMessageCircle } from 'react-icons/fi';
 import { Person, PersonDetailCategory, PersonDetailEntry, getPeopleByUserId, savePerson, getPersonDetailsWithDates } from '@/lib/supabase';
 import PersonChat from './PersonChat';
+import styles from './PeopleManager.module.css';
 
 interface PeopleManagerProps {
   userId: string;
@@ -514,7 +515,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                   placeholder="Buscar por nombre, relación, rol..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none transition-shadow"
+                  className={`w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none transition-shadow ${styles.searchInput}`}
                 />
                 {searchTerm && (
                   <button

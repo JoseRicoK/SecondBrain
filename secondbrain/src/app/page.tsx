@@ -8,6 +8,7 @@ import Auth from '@/components/Auth';
 import Loading from '@/components/Loading';
 import Settings from '@/components/Settings';
 import PeopleManager from '@/components/PeopleManager';
+import peopleStyles from '@/components/PeopleManager.module.css';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiaryStore } from '@/lib/store';
 import { FiMenu, FiEdit2, FiSave, FiX, FiMic, FiStopCircle, FiMessageCircle, FiUsers, FiUser, FiZap } from 'react-icons/fi';
@@ -656,11 +657,44 @@ export default function Home() {
                     }}
                   />
                   
-                  {/* Panel modal */}
-                  <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 sm:pt-16 pointer-events-none">
+                  {/* Contenedor del modal con posicionamiento fijo robusto usando CSS module */}
+                  <div className={`${peopleStyles.mobileModalContainer} fixed inset-0 w-full h-full bg-white z-50 overflow-hidden md:hidden`}>
+                    {/* Header fijo en la parte superior */}
+                    <div className={`${peopleStyles.mobileModalHeader} bg-gradient-to-r from-purple-50 to-pink-50`}>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                        <FiUsers className="text-purple-600" size={20} />
+                        <span className="text-slate-800 text-lg font-semibold">Personas</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowPeoplePanel(false);
+                          setSelectedPersonId(null);
+                        }}
+                        className="p-2 rounded-xl hover:bg-purple-100 text-purple-600 transition-all duration-200 border border-purple-200/60"
+                        aria-label="Cerrar panel de personas"
+                        title="Cerrar"
+                      >
+                        <FiX size={20} />
+                      </button>
+                    </div>
+                    
+                    {/* Área de contenido con scroll independiente */}
+                    <div className={peopleStyles.mobileContentArea}>
+                      <PeopleManager 
+                        userId={user.id} 
+                        refreshTrigger={peopleRefreshTrigger} 
+                        className="shadow-none"
+                        initialSelectedName={selectedPersonId}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Versión tablet/desktop más grande */}
+                  <div className="hidden md:flex fixed inset-0 z-50 items-start justify-center p-4 pt-16 pointer-events-none">
                     <div 
-                      className="w-full max-w-md sm:max-w-lg md:max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white/20 overflow-hidden animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto"
-                      onClick={(e) => e.stopPropagation()} // Evitar que el clic en el modal lo cierre
+                      className="w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white/20 overflow-hidden animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-purple-50 to-pink-50 sticky top-0 z-10">
                         <div className="flex items-center space-x-3">
@@ -680,6 +714,7 @@ export default function Home() {
                           <FiX size={20} />
                         </button>
                       </div>
+                      
                       <div className="flex-1 overflow-y-auto p-6 max-h-[calc(90vh-80px)]">
                         <PeopleManager 
                           userId={user.id} 

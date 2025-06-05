@@ -1,0 +1,162 @@
+/* Estilos base para el contenedor de personas */
+.peopleContainer {
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Estilos para el contenedor principal en móvil */
+.mobileContainer {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Header fijo en la parte superior */
+.peopleHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+/* Área de contenido con scroll independiente */
+.contentArea {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Scrollbar personalizada para el área de contenido */
+.contentArea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.contentArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.contentArea::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 3px;
+}
+
+.contentArea::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* Input de búsqueda optimizado para móvil */
+.searchInput {
+  font-size: 16px !important; /* Previene zoom automático en móvil */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Optimización para móvil - Modal de pantalla completa con posicionamiento fijo robusto */
+@media (max-width: 768px) {
+  /* Contenedor del modal: Ocupa toda la pantalla */
+  .mobileModalContainer {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    z-index: 9999 !important;
+    overflow: hidden !important;
+    display: block !important;
+  }
+
+  /* Header del modal: FIJO en la parte superior, nunca se mueve */
+  .mobileModalHeader {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 10001 !important;
+    height: 80px !important;
+    background: white !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 24px !important;
+    padding-top: env(safe-area-inset-top, 0) !important;
+  }
+
+  /* Área de contenido: Entre header fijo y parte inferior fija */
+  .mobileContentArea {
+    position: fixed !important;
+    top: 80px !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    bottom: env(safe-area-inset-bottom, 0) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 24px !important;
+    z-index: 10000 !important;
+    background: white !important;
+    /* Scroll suave en móvil */
+    scroll-behavior: smooth !important;
+  }
+
+  .searchInput {
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    min-height: 44px !important;
+    touch-action: manipulation !important;
+    font-size: 16px !important;
+    line-height: 1.4 !important;
+  }
+}
+
+/* CSS específico para móviles pequeños - Usar viewport estable */
+@media (max-width: 767px) {
+  .mobileModalContainer {
+    height: 100vh !important;
+    height: 100svh !important; /* Small viewport height - no cambia con el teclado */
+  }
+  
+  .mobileModalHeader {
+    /* Asegurar que el header nunca se mueva */
+    position: fixed !important;
+    top: 0 !important;
+    height: 70px !important;
+  }
+  
+  .mobileContentArea {
+    top: 70px !important;
+  }
+}
+
+/* CSS para dispositivos con soporte de viewport dinámico */
+@supports (height: 100dvh) {
+  @media (max-width: 768px) {
+    .mobileModalContainer {
+      height: 100dvh !important; /* Dynamic viewport height */
+    }
+  }
+}
+
+/* Fallback adicional para casos extremos */
+@media (max-width: 480px) {
+  .mobileModalHeader {
+    height: 65px !important;
+    padding: 0 16px !important;
+  }
+  
+  .mobileContentArea {
+    top: 65px !important;
+    padding: 16px !important;
+  }
+}
