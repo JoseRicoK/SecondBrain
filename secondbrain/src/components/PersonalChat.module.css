@@ -1,0 +1,62 @@
+/* Estilos base para el input */
+.mobileInput {
+  font-size: 16px !important; /* Previene zoom automático en móvil */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Estilos para el contenedor de mensajes con scrollbar personalizada */
+.messagesContainer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messagesContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messagesContainer::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 3px;
+}
+
+.messagesContainer::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* Contenedor principal del chat */
+.chatContainer {
+  transition: all 0.3s ease;
+}
+
+/* Optimización para móvil */
+@media (max-width: 768px) {
+  .chatContainer {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    transform: none !important;
+    height: 100vh !important;
+    height: 100dvh !important; /* Altura dinámica para móvil */
+  }
+  
+  .mobileInput {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: text;
+    user-select: text;
+    min-height: 44px;
+    touch-action: manipulation;
+    font-size: 16px !important;
+    line-height: 1.4;
+  }
+
+  .inputContainer {
+    position: sticky;
+    bottom: 0;
+    z-index: 1000;
+    background: white;
+    border-top: 2px solid #e2e8f0;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}

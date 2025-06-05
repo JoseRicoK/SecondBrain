@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FiSend, FiX, FiLoader, FiZap, FiMinimize2, FiMaximize2 } from 'react-icons/fi';
+import { FiSend, FiX, FiLoader, FiMessageCircle, FiMinimize2, FiMaximize2 } from 'react-icons/fi';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAuth } from '@/hooks/useAuth';
+import styles from './PersonalChat.module.css';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -59,10 +60,12 @@ export const PersonalChat: React.FC<PersonalChatProps> = ({
     }
   }, [messages, isMinimized]);
 
-  // Focus en el input cuando se abre el chat o se desminimiza
+  // Focus en el input cuando se abre el chat
   useEffect(() => {
     if (isOpen && !isMinimized && inputRef.current) {
-      inputRef.current.focus();
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   }, [isOpen, isMinimized]);
 
@@ -195,18 +198,17 @@ Puedo ayudarte a:
         className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
         onClick={onClose}
       />
-      
-      {/* Chat centrado en la pantalla */}
-      <div className={`fixed z-50 transition-all duration-300 ${
-        isMinimized 
+       {/* Chat centrado en la pantalla */}
+      <div className={`fixed z-50 transition-all duration-300 flex flex-col ${styles.chatContainer} ${
+        isMinimized
           ? 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-16' 
-          : 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-[calc(100vw-2rem)] md:max-w-2xl h-[32rem] max-h-[85vh]'
-      } bg-white rounded-xl shadow-2xl border border-slate-200`}>
+          : 'inset-0 md:top-1/2 md:left-1/2 md:transform md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl md:h-[32rem] md:max-h-[85vh] h-full w-full'
+      } bg-white md:rounded-xl shadow-2xl border border-slate-200`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-3 md:p-4 border-b border-slate-200 bg-gradient-to-r from-purple-50 to-blue-50 rounded-t-xl">
+      <div className="flex items-center justify-between p-3 md:p-4 border-b border-slate-200 bg-gradient-to-r from-purple-50 to-blue-50 md:rounded-t-xl">
         <div className="flex items-center space-x-2 md:space-x-3 min-w-0 flex-1">
           <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-1.5 md:p-2 rounded-full">
-            <FiZap size={14} className="md:w-4 md:h-4" />
+            <FiMessageCircle size={14} className="md:w-4 md:h-4" />
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-medium text-slate-900 text-sm md:text-base truncate">Chat Personal</h3>
@@ -218,19 +220,20 @@ Puedo ayudarte a:
           </div>
         </div>
         <div className="flex items-center space-x-1 flex-shrink-0">
+          {/* Solo mostrar botón minimizar en desktop */}
           <button
             onClick={onToggleMinimize}
             title={isMinimized ? "Expandir chat" : "Minimizar chat"}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-white/50 transition-colors"
+            className="hidden md:block text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-white/50 transition-colors"
           >
             {isMinimized ? <FiMaximize2 size={14} className="md:w-4 md:h-4" /> : <FiMinimize2 size={14} className="md:w-4 md:h-4" />}
           </button>
           <button
             onClick={onClose}
             title="Cerrar chat"
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-white/50 transition-colors"
+            className="text-slate-400 hover:text-slate-600 p-2 md:p-1 rounded-full hover:bg-white/50 transition-colors"
           >
-            <FiX size={16} className="md:w-[18px] md:h-[18px]" />
+            <FiX size={20} className="md:w-[18px] md:h-[18px]" />
           </button>
         </div>
       </div>
@@ -238,7 +241,7 @@ Puedo ayudarte a:
       {/* Messages - Solo visible cuando no está minimizado */}
       {!isMinimized && (
         <>
-          <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 h-80 md:h-96">
+          <div className={`flex-1 overflow-y-auto p-3 md:p-4 space-y-4 min-h-0 messages-container ${styles.messagesContainer}`}>
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -288,17 +291,28 @@ Puedo ayudarte a:
             </div>
           )}
 
-          {/* Input */}
-          <div className="p-3 md:p-4 border-t border-slate-200 bg-slate-50 rounded-b-xl">
+          {/* Input - Fijo en la parte inferior para móvil */}
+          <div className={`p-3 md:p-4 border-t border-slate-200 bg-white md:rounded-b-xl sticky bottom-0 z-10 ${styles.inputContainer}`}>
             <div className="flex space-x-2">
               <input
                 ref={inputRef}
                 type="text"
+                inputMode="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
+                onFocus={(e) => {
+                  // Scroll suave hacia el input al hacer focus
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }, 300);
+                }}
                 placeholder="Pregúntame sobre tu vida, patrones, crecimiento..."
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm"
+                className={`flex-1 px-3 py-3 md:py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:bg-white outline-none text-base transition-colors ${styles.mobileInput}`}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
                 disabled={isLoading}
               />
               <button
@@ -306,7 +320,7 @@ Puedo ayudarte a:
                 disabled={!inputMessage.trim() || isLoading}
                 title="Enviar mensaje"
                 aria-label="Enviar mensaje"
-                className="px-3 md:px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-md hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                className="px-3 md:px-4 py-3 md:py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1 flex-shrink-0"
               >
                 {isLoading ? (
                   <FiLoader className="animate-spin" size={16} />
@@ -315,6 +329,7 @@ Puedo ayudarte a:
                 )}
               </button>
             </div>
+            
             <p className="text-xs text-slate-500 mt-2 hidden md:block">
               Presiona Enter para enviar • Shift+Enter para nueva línea
             </p>

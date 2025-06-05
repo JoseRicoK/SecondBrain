@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiZap } from 'react-icons/fi';
+import { FiMessageCircle } from 'react-icons/fi';
 
 interface PersonalChatButtonProps {
   onClick: () => void;
@@ -30,10 +30,7 @@ export const PersonalChatButton: React.FC<PersonalChatButtonProps> = ({
       `}
     >
       <div className="relative mb-2">
-        <FiZap size={22} className={isActive ? 'animate-pulse' : ''} />
-        {!isActive && (
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full border-2 border-white animate-ping"></div>
-        )}
+        <FiMessageCircle size={22} />
       </div>
       <span className="font-bold text-xs text-center leading-tight">CHAT</span>
       <span className="font-medium text-[10px] text-center leading-tight opacity-90">Personal</span>

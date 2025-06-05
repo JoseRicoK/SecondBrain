@@ -10,7 +10,7 @@ import Settings from '@/components/Settings';
 import PeopleManager from '@/components/PeopleManager';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiaryStore } from '@/lib/store';
-import { FiMenu, FiEdit2, FiSave, FiX, FiMic, FiStopCircle, FiZap, FiUsers, FiUser } from 'react-icons/fi';
+import { FiMenu, FiEdit2, FiSave, FiX, FiMic, FiStopCircle, FiMessageCircle, FiUsers, FiUser, FiZap } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Image from 'next/image';
@@ -721,8 +721,7 @@ export default function Home() {
               rounded-2xl transition-all duration-300 hover:scale-105"
           >
             <div className="relative mb-1">
-              <FiZap size={20} />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full border-2 border-white animate-ping"></div>
+              <FiMessageCircle size={20} />
             </div>
             <span className="font-bold text-xs text-center leading-tight">CHAT</span>
             <span className="font-medium text-[10px] text-center leading-tight opacity-90">Personal</span>

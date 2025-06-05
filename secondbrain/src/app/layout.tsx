@@ -16,6 +16,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SecondBrain",
   description: "Tu diario personal con IA",
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: 'cover' // Importante para Safari iOS con safe areas
+  }
 };
 
 export default function RootLayout({
