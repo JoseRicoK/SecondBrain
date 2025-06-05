@@ -581,7 +581,7 @@ export default function Home() {
                     )}
                     
                     {/* Editor/Visualizador de contenido mejorado */}
-                    <div className="px-4 pt-4 pb-4 min-h-[600px]">
+                    <div className="px-4 pt-2 pb-4 min-h-[600px]">
                       {storeIsEditing ? (
                         <div className="relative">
                           <textarea
