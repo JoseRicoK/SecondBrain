@@ -581,14 +581,14 @@ export default function Home() {
                     )}
                     
                     {/* Editor/Visualizador de contenido mejorado */}
-                    <div className="p-4 pt-2 min-h-[600px]">
+                    <div className="px-4 pt-4 pb-4 min-h-[600px]">
                       {storeIsEditing ? (
                         <div className="relative">
                           <textarea
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="Escribe tu entrada del diario aquí... ✨"
-                            className="w-full h-[500px] p-6 border-2 border-slate-200 rounded-2xl resize-none focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-400 text-slate-700 leading-relaxed text-lg bg-white/50 backdrop-blur-sm transition-all duration-200"
+                            className="w-full h-[500px] p-4 border-2 border-slate-200 rounded-2xl resize-none focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-400 text-slate-700 leading-relaxed text-lg bg-white/50 backdrop-blur-sm transition-all duration-200"
                           />
                           <div className="absolute bottom-4 right-4 text-xs text-slate-400">
                             {content.length} caracteres
