@@ -26,9 +26,58 @@
 /* Contenedor principal del chat */
 .chatContainer {
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Optimización para móvil */
+/* Variable CSS para altura dinámica en móvil */
+.dynamicHeight {
+  height: var(--dynamic-viewport-height, 100vh) !important;
+}
+
+/* Header fijo en la parte superior */
+.chatHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0; /* No se comprime */
+}
+
+/* Área de mensajes con scroll independiente */
+.messagesArea {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0; /* Importante para que funcione el flex */
+}
+
+/* Input fijo en la parte inferior */
+.inputArea {
+  position: sticky;
+  bottom: 0;
+  z-index: 1001;
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  flex-shrink: 0; /* No se comprime */
+}
+
+/* Asegurar que el contenedor interno del input use todo el ancho disponible */
+.inputArea > div {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Remover cualquier espacio entre elementos del input */
+.inputArea * {
+  box-sizing: border-box;
+}
+
+/* Optimización para móvil - Estrategia de posicionamiento fijo robusto */
 @media (max-width: 768px) {
   .chatContainer {
     position: fixed !important;
@@ -36,27 +85,136 @@
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    transform: none !important;
+    width: 100% !important;
     height: 100vh !important;
-    height: 100dvh !important; /* Altura dinámica para móvil */
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    display: block !important; /* Cambio a block para posicionamiento absoluto */
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    z-index: 9999 !important;
+  }
+  
+  /* Header: FIJO en la parte superior, no se mueve nunca */
+  .chatHeader {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 10001 !important;
+    height: 60px !important;
+    background: white !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 16px !important;
+  }
+
+  /* Área de mensajes: Entre header y input, scroll independiente */
+  .messagesArea {
+    position: fixed !important;
+    top: 60px !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 80px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 16px !important;
+    z-index: 10000 !important;
+    background: white !important;
+    /* Scroll suave en móvil */
+    scroll-behavior: smooth !important;
+  }
+
+  /* Input: FIJO en la parte inferior, no se mueve nunca */
+  .inputArea {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 10001 !important;
+    height: 80px !important;
+    background: white !important;
+    border-top: 2px solid #e2e8f0 !important;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.15) !important;
+    padding: 12px 16px !important;
+    padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  /* Asegurar que el contenedor del input use todo el ancho */
+  .inputArea > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 8px !important; /* Reemplaza space-x-2 con gap */
   }
   
   .mobileInput {
-    -webkit-tap-highlight-color: transparent;
-    -webkit-user-select: text;
-    user-select: text;
-    min-height: 44px;
-    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    min-height: 44px !important;
+    touch-action: manipulation !important;
     font-size: 16px !important;
-    line-height: 1.4;
+    line-height: 1.4 !important;
+    /* Prevenir zoom automático */
+    transform: scale(1) !important;
+    transform-origin: left top !important;
+    /* Asegurar que el input use todo el ancho disponible */
+    flex: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    min-width: 0 !important; /* Permite que el flex funcione correctamente */
   }
+}
 
-  .inputContainer {
-    position: sticky;
-    bottom: 0;
-    z-index: 1000;
-    background: white;
-    border-top: 2px solid #e2e8f0;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
+/* CSS específico para móviles pequeños - Usar viewport estable */
+@media (max-width: 767px) {
+  .chatContainer {
+    height: 100vh !important;
+    height: 100svh !important; /* Small viewport height - no cambia con el teclado */
+  }
+  
+  .chatHeader {
+    /* Asegurar que el header nunca se mueva */
+    position: fixed !important;
+    top: 0 !important;
+  }
+  
+  .inputArea {
+    /* Asegurar que el input nunca se mueva */
+    position: fixed !important;
+    bottom: 0 !important;
+  }
+}
+
+/* CSS para dispositivos con soporte de viewport dinámico */
+@supports (height: 100dvh) {
+  @media (max-width: 768px) {
+    .chatContainer {
+      height: 100dvh !important; /* Dynamic viewport height */
+    }
+  }
+}
+
+/* Fallback adicional para casos extremos */
+@media (max-width: 480px) {
+  .chatHeader {
+    height: 56px !important; /* Header más pequeño en pantallas muy pequeñas */
+  }
+  
+  .messagesArea {
+    top: 56px !important;
+    bottom: 76px !important;
+  }
+  
+  .inputArea {
+    height: 76px !important;
   }
 }

@@ -69,6 +69,17 @@ export const PersonalChat: React.FC<PersonalChatProps> = ({
     }
   }, [isOpen, isMinimized]);
 
+  // Debug simplificado para móvil
+  useEffect(() => {
+    if (isOpen && !isMinimized) {
+      console.log('📱 Chat abierto - Viewport:', {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        isMobile: window.innerWidth < 768
+      });
+    }
+  }, [isOpen, isMinimized]);
+
   // Update user name when user changes
   useEffect(() => {
     const displayName = getUserDisplayName();
@@ -199,13 +210,15 @@ Puedo ayudarte a:
         onClick={onClose}
       />
        {/* Chat centrado en la pantalla */}
-      <div className={`fixed z-50 transition-all duration-300 flex flex-col ${styles.chatContainer} ${
-        isMinimized
-          ? 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-16' 
-          : 'inset-0 md:top-1/2 md:left-1/2 md:transform md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl md:h-[32rem] md:max-h-[85vh] h-full w-full'
-      } bg-white md:rounded-xl shadow-2xl border border-slate-200`}>
+      <div 
+        className={`fixed z-50 transition-all duration-300 flex flex-col ${styles.chatContainer} ${
+          isMinimized
+            ? 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-16' 
+            : 'inset-0 md:top-1/2 md:left-1/2 md:transform md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl md:h-[32rem] md:max-h-[85vh] h-full w-full'
+        } bg-white md:rounded-xl shadow-2xl border border-slate-200`}
+      >
       {/* Header */}
-      <div className="flex items-center justify-between p-3 md:p-4 border-b border-slate-200 bg-gradient-to-r from-purple-50 to-blue-50 md:rounded-t-xl">
+      <div className={`flex items-center justify-between p-3 md:p-4 border-b border-slate-200 bg-gradient-to-r from-purple-50 to-blue-50 md:rounded-t-xl ${styles.chatHeader}`}>
         <div className="flex items-center space-x-2 md:space-x-3 min-w-0 flex-1">
           <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-1.5 md:p-2 rounded-full">
             <FiMessageCircle size={14} className="md:w-4 md:h-4" />
@@ -241,7 +254,7 @@ Puedo ayudarte a:
       {/* Messages - Solo visible cuando no está minimizado */}
       {!isMinimized && (
         <>
-          <div className={`flex-1 overflow-y-auto p-3 md:p-4 space-y-4 min-h-0 messages-container ${styles.messagesContainer}`}>
+          <div className={`flex-1 overflow-y-auto p-3 md:p-4 space-y-4 min-h-0 messages-container ${styles.messagesContainer} ${styles.messagesArea}`}>
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -292,8 +305,8 @@ Puedo ayudarte a:
           )}
 
           {/* Input - Fijo en la parte inferior para móvil */}
-          <div className={`p-3 md:p-4 border-t border-slate-200 bg-white md:rounded-b-xl sticky bottom-0 z-10 ${styles.inputContainer}`}>
-            <div className="flex space-x-2">
+          <div className={`p-3 md:p-4 border-t border-slate-200 bg-white md:rounded-b-xl ${styles.inputArea}`}>
+            <div className="flex w-full">
               <input
                 ref={inputRef}
                 type="text"
@@ -320,7 +333,7 @@ Puedo ayudarte a:
                 disabled={!inputMessage.trim() || isLoading}
                 title="Enviar mensaje"
                 aria-label="Enviar mensaje"
-                className="px-3 md:px-4 py-3 md:py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1 flex-shrink-0"
+                className="ml-2 px-3 md:px-4 py-3 md:py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1 flex-shrink-0"
               >
                 {isLoading ? (
                   <FiLoader className="animate-spin" size={16} />
@@ -329,10 +342,6 @@ Puedo ayudarte a:
                 )}
               </button>
             </div>
-            
-            <p className="text-xs text-slate-500 mt-2 hidden md:block">
-              Presiona Enter para enviar • Shift+Enter para nueva línea
-            </p>
           </div>
         </>
       )}
