@@ -685,3 +685,32 @@ body {
     font-size: 0.8125rem;
   }
 }
+
+/* Safe Area y adaptación para Safari móvil */
+@supports (height: 100dvh) {
+  .h-full-dvh {
+    height: 100dvh;
+  }
+  
+  .max-h-screen-dvh {
+    max-height: 100dvh;
+  }
+}
+
+.pt-safe-or-4 {
+  padding-top: max(env(safe-area-inset-top), 1rem);
+}
+
+.pb-safe-or-4 {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+/* Para mantener el modal siempre visible en Safari */
+@media (max-width: 640px) {
+  .mobile-modal-height {
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+  }
+}

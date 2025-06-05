@@ -681,13 +681,14 @@ export default function Home() {
                     }}
                   />
                   
-                  {/* Panel modal */}
-                  <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 sm:pt-16 pointer-events-none">
+                  {/* Panel modal - adaptado para Safari móvil con viewport dinámico */}
+                  <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
                     <div 
-                      className="w-full max-w-md sm:max-w-lg md:max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white/20 overflow-hidden animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto"
+                      className="w-full mobile-modal-height sm:w-auto sm:h-auto sm:max-w-lg sm:max-h-[85dvh] bg-white sm:rounded-2xl shadow-2xl border-0 sm:border border-white/20 overflow-hidden animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto flex flex-col"
                       onClick={(e) => e.stopPropagation()} // Evitar que el clic en el modal lo cierre
                     >
-                      <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-purple-50 to-pink-50 sticky top-0 z-10">
+                      {/* Header fijo con safe area para muesca */}
+                      <div className="flex items-center justify-between border-b border-slate-200/60 p-4 sm:p-6 bg-gradient-to-r from-purple-50 to-pink-50 flex-shrink-0 pt-safe-or-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                           <FiUsers className="text-purple-600" size={20} />
@@ -705,7 +706,9 @@ export default function Home() {
                           <FiX size={20} />
                         </button>
                       </div>
-                      <div className="flex-1 overflow-y-auto p-6 max-h-[calc(90vh-80px)]">
+                      
+                      {/* Contenido scrolleable con safe area para barra de Safari */}
+                      <div className="flex-1 overflow-y-auto p-4 sm:p-6 overscroll-contain pb-safe-or-4 min-h-0">
                         <PeopleManager 
                           userId={user.id} 
                           refreshTrigger={peopleRefreshTrigger} 
