@@ -468,9 +468,10 @@ export default function Home() {
               <div className="flex gap-6 h-full relative">
                 {/* Contenido principal del diario - siempre toma el espacio completo */}
                 <div className="flex-1 bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-                  {/* Barra de herramientas mejorada */}
-                  <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
-                    <div className="flex items-center space-x-3">
+                  {/* Barra de herramientas mejorada con fecha arriba */}
+                  <div className="border-b border-slate-200/60 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
+                    {/* Fecha arriba - centrada y más pequeña */}
+                    <div className="flex items-center justify-center space-x-3 mb-4">
                       <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
                       <span className="text-slate-600 text-sm font-medium">
                         {currentEntry?.date
@@ -479,7 +480,8 @@ export default function Home() {
                       </span>
                     </div>
                     
-                    <div className="flex items-center space-x-2">
+                    {/* Botones de acción abajo */}
+                    <div className="flex items-center justify-end space-x-2">
                       {storeIsEditing ? (
                         <>
                           <button 
@@ -546,8 +548,8 @@ export default function Home() {
                     </div>
                   </div>
                 
-                  {/* Contenido principal mejorado */}
-                  <div className="relative">
+                  {/* Contenido principal mejorado con fondo unificado */}
+                  <div className="relative bg-gradient-to-r from-indigo-50 to-purple-50">
                     {/* Mensajes de error mejorados */}
                     {error && (
                       <div className="m-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center space-x-3">
