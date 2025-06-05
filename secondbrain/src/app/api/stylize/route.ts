@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { getAuthenticatedUser } from '@/lib/api-auth';
 import { isValidUUID, getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo } from '@/lib/supabase';
 import { v5 as uuidv5 } from 'uuid';
 
@@ -31,9 +32,22 @@ interface PersonExtracted {
 
 export async function POST(request: Request) {
   try {
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    const user = await getAuthenticatedUser(token);
+
+    // validar usuario
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Extraemos y validamos los datos de la solicitud
     const body = await request.json();
     const { text, userId, extractPeople = true, entryDate } = body as StylizeRequest;
+
+    if (user.id !== userId) {
+      return NextResponse.json({ error: 'User mismatch' }, { status: 403 });
+    }
 
     // Asegurar que siempre tenemos una fecha válida
     const validEntryDate = entryDate || new Date().toISOString().split('T')[0];

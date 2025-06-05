@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useDiaryStore } from '@/lib/store';
 import { FaMicrophone, FaStop, FaPlay, FaPause } from 'react-icons/fa';
-import { saveAudioTranscription } from '@/lib/supabase';
+import { saveAudioTranscription, supabase } from '@/lib/supabase';
 
 // Este componente actualmente no necesita props
 type AudioRecorderProps = Record<string, never>;
@@ -17,9 +17,11 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Iniciar grabación
   const startRecording = async () => {
+    const MAX_RECORDING_DURATION = 5 * 60 * 1000; // 5 minutos
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -43,6 +45,9 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
       mediaRecorder.start();
       setIsRecording(true);
       setError(null);
+      recordingTimeoutRef.current = setTimeout(() => {
+        stopRecording();
+      }, MAX_RECORDING_DURATION);
     } catch (err) {
       console.error('Error al iniciar la grabación:', err);
       setError('No se pudo acceder al micrófono. Verifica los permisos.');
@@ -54,6 +59,10 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current);
+        recordingTimeoutRef.current = null;
+      }
     }
   };
   
@@ -90,8 +99,13 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
       formData.append('entryId', currentEntry.id);
       
       // Enviar a la API de transcripción
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const response = await fetch('/api/transcribe', {
         method: 'POST',
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
         body: formData,
       });
       
@@ -204,7 +218,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
               ? "Grabando... Haz clic en detener cuando termines."
               : audioBlob 
                 ? "Puedes reproducir la grabación o transcribir el audio."
-                : "Haz clic en el micrófono para comenzar a grabar (máximo 30 segundos)."}
+                : "Haz clic en el micrófono para comenzar a grabar (máximo 5 minutos)."}
         </p>
       </div>
     </div>
