@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { getAuthenticatedUser } from '@/lib/api-auth';
 
 // Configuración de OpenAI
 const openai = new OpenAI({
@@ -8,6 +9,13 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    const user = await getAuthenticatedUser(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Verificar la clave API de OpenAI
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(

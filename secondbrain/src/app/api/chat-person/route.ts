@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { Person } from '@/lib/supabase';
+import { getAuthenticatedUser } from '@/lib/api-auth';
 
 // Configurar OpenAI con GPT-4.1 mini
 const openai = new OpenAI({
@@ -9,6 +10,13 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    const user = await getAuthenticatedUser(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { person, message, conversationHistory } = await request.json();
 
     if (!person || !message) {

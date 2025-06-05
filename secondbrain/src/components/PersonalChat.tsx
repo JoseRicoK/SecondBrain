@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAuth } from '@/hooks/useAuth';
 import styles from './PersonalChat.module.css';
+import { supabase } from '@/lib/supabase';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -133,10 +134,13 @@ Puedo ayudarte a:
         content: msg.content
       }));
 
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const response = await fetch('/api/personal-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify({
           userId,

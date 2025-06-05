@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Image from 'next/image';
 import { User } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -55,7 +56,7 @@ export default function Home() {
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
   const lastUserId = useRef<string | null>(null);
-  const currentStream = useRef<MediaStream | null>(null);
+  const recordingTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Referencia para el último estado logueado para evitar logs duplicados
   const lastLoggedState = useRef<{
@@ -128,12 +129,15 @@ export default function Home() {
     setError(null);
     
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const response = await fetch('/api/stylize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : '',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           text: content,
           userId: user.id,
           entryDate: currentEntry?.date || new Date().toISOString().split('T')[0]
@@ -175,6 +179,11 @@ export default function Home() {
   };
 
   const startRecording = async () => {
+    const MAX_RECORDING_DURATION = 5 * 60 * 1000; // 5 minutos
+    if (recordingTimeout.current) {
+      clearTimeout(recordingTimeout.current);
+    }
+
     console.log('📝 DIARY: Iniciando grabación...');
     setError(null);
     
@@ -240,8 +249,9 @@ export default function Home() {
 
       recorder.start();
       setIsRecording(true);
-      console.log('📝 DIARY: Grabación iniciada exitosamente');
-      
+      recordingTimeout.current = setTimeout(() => {
+        stopRecording();
+      }, MAX_RECORDING_DURATION);
     } catch (error) {
       console.error('📝 DIARY: Error al acceder al micrófono:', error);
       
@@ -283,6 +293,10 @@ export default function Home() {
     } else {
       console.warn('📝 DIARY: No hay grabación activa para detener');
       setIsRecording(false);
+      if (recordingTimeout.current) {
+        clearTimeout(recordingTimeout.current);
+        recordingTimeout.current = null;
+      }
     }
     
     // Detener el stream independientemente
@@ -304,8 +318,13 @@ export default function Home() {
       formData.append('file', audioBlob, 'recording.wav');
       formData.append('userId', user.id);
 
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const response = await fetch('/api/transcribe', {
         method: 'POST',
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
         body: formData,
       });
 
