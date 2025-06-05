@@ -454,7 +454,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
           <div className="mt-4 text-center">
             <button 
               onClick={handleAddDetail}
-              className="inline-flex items-center px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 transition-colors"
+              className="inline-flex items-center px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 transition-colors"
             >
               <span className="mr-1 font-bold">+</span> Añadir categoría
             </button>
@@ -471,10 +471,10 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
           <h2 className="text-lg font-semibold text-slate-800">Personas</h2>
           <button 
             onClick={() => setCollapsed(!collapsed)}
-            className="text-slate-500 hover:text-slate-700 transition-colors"
+            className="text-slate-500 hover:text-slate-700 transition-colors p-1"
             title={collapsed ? "Mostrar panel" : "Ocultar panel"}
           >
-            {collapsed ? <FiEye size={18} /> : <FiEyeOff size={18} />}
+            {collapsed ? <FiEye size={20} /> : <FiEyeOff size={20} />}
           </button>
         </div>
         <div className="flex justify-center items-center h-20">
@@ -490,10 +490,10 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
         <h2 className="text-lg font-semibold text-slate-800">Personas</h2>
         <button 
           onClick={() => setCollapsed(!collapsed)}
-          className="text-slate-500 hover:text-slate-700 transition-colors"
+          className="text-slate-500 hover:text-slate-700 transition-colors p-1"
           title={collapsed ? "Mostrar panel" : "Ocultar panel"}
         >
-          {collapsed ? <FiEye size={18} /> : <FiEyeOff size={18} />}
+          {collapsed ? <FiEye size={20} /> : <FiEyeOff size={20} />}
         </button>
       </div>
       
@@ -571,9 +571,9 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                     </div>
                     <div className="text-slate-400">
                       {selectedPersonId === person.id ? (
-                        <FiChevronDown size={16} />
+                        <FiChevronDown size={18} />
                       ) : (
-                        <FiChevronRight size={16} />
+                        <FiChevronRight size={18} />
                       )}
                     </div>
                   </div>
@@ -583,9 +583,9 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                       <div className="flex justify-between items-center mb-3">
                         <button 
                           onClick={(e) => handleChatClick(person, e)}
-                          className="flex items-center px-2.5 py-1.5 text-xs text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
+                          className="flex items-center px-3 py-2 text-sm text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
                         >
-                          <FiMessageCircle size={12} className="mr-1" />
+                          <FiMessageCircle size={14} className="mr-1.5" />
                           Chat con {person.name}
                         </button>
                         
@@ -594,13 +594,13 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                             <>
                               <button 
                                 onClick={handleCancelEdit}
-                                className="px-3 py-1.5 text-sm text-slate-600 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors"
+                                className="px-4 py-2 text-sm text-slate-600 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors"
                               >
                                 Cancelar
                               </button>
                               <button 
                                 onClick={handleSaveEdit}
-                                className="px-3 py-1.5 text-sm text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors"
+                                className="px-4 py-2 text-sm text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors"
                                 disabled={isLoading}
                               >
                                 {isLoading ? 'Guardando...' : 'Guardar'}
@@ -609,9 +609,9 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                           ) : (
                             <button 
                               onClick={handleEditClick}
-                              className="flex items-center px-3 py-1.5 text-sm text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
+                              className="flex items-center px-4 py-2 text-sm text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
                             >
-                              <FiEdit2 size={14} className="mr-1.5" />
+                              <FiEdit2 size={16} className="mr-2" />
                               Editar
                             </button>
                           )}

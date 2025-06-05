@@ -55,6 +55,7 @@ export default function Home() {
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
   const lastUserId = useRef<string | null>(null);
+  const currentStream = useRef<MediaStream | null>(null);
 
   // Referencia para el último estado logueado para evitar logs duplicados
   const lastLoggedState = useRef<{
@@ -178,8 +179,36 @@ export default function Home() {
     setError(null);
     
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      // Verificar si el navegador soporta getUserMedia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Tu navegador no soporta grabación de audio');
+      }
+
+      // Verificar si estamos en un contexto seguro (HTTPS o localhost)
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+        throw new Error('La grabación de audio solo funciona en sitios seguros (HTTPS)');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      
+      // Guardar referencia al stream
+      currentStream.current = stream;
+      
+      // Verificar si MediaRecorder está disponible
+      if (!window.MediaRecorder) {
+        throw new Error('Tu navegador no soporta grabación de audio');
+      }
+
+      const recorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+      });
+      
       mediaRecorder.current = recorder;
       audioChunks.current = [];
 
@@ -190,25 +219,76 @@ export default function Home() {
       };
 
       recorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
+        const audioBlob = new Blob(audioChunks.current, { 
+          type: recorder.mimeType || 'audio/webm' 
+        });
         setAudioBlob(audioBlob);
         console.log('📝 DIARY: Grabación completada');
+        
+        // Detener todas las pistas del stream y limpiar la referencia
+        if (currentStream.current) {
+          currentStream.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+          currentStream.current = null;
+        }
+      };
+
+      recorder.onerror = (event) => {
+        console.error('📝 DIARY: Error en MediaRecorder:', event);
+        setError('Error durante la grabación');
+        setIsRecording(false);
       };
 
       recorder.start();
       setIsRecording(true);
+      console.log('📝 DIARY: Grabación iniciada exitosamente');
+      
     } catch (error) {
       console.error('📝 DIARY: Error al acceder al micrófono:', error);
-      setError('Error al acceder al micrófono');
+      
+      // Mensajes de error más específicos y claros
+      let errorMessage = 'Error al acceder al micrófono';
+      
+      if (error instanceof DOMException) {
+        switch (error.name) {
+          case 'NotAllowedError':
+            errorMessage = 'Micrófono bloqueado. Permite el acceso en tu navegador.';
+            break;
+          case 'NotFoundError':
+            errorMessage = 'No se encontró micrófono. Verifica tu dispositivo.';
+            break;
+          case 'NotReadableError':
+            errorMessage = 'Micrófono ocupado por otra aplicación.';
+            break;
+          case 'OverconstrainedError':
+            errorMessage = 'Configuración de audio no compatible.';
+            break;
+          default:
+            errorMessage = `Error del navegador: ${error.message}`;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+      setIsRecording(false);
     }
   };
 
   const stopRecording = () => {
     console.log('📝 DIARY: Deteniendo grabación...');
-    if (mediaRecorder.current && isRecording) {
+    
+    if (mediaRecorder.current && mediaRecorder.current.state === 'recording') {
       mediaRecorder.current.stop();
-      mediaRecorder.current.stream.getTracks().forEach(track => track.stop());
       setIsRecording(false);
+    } else {
+      console.warn('📝 DIARY: No hay grabación activa para detener');
+      setIsRecording(false);
+    }
+    
+    // Detener el stream independientemente
+    if (currentStream.current) {
+      currentStream.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      currentStream.current = null;
     }
   };
 
@@ -268,6 +348,7 @@ export default function Home() {
       setContent('');
       setMentionedPeople([]);
       setError(null);
+      
       console.log('📝 DIARY: Contenido limpiado - no hay entrada para esta fecha');
     }
   }, [currentEntry]);
@@ -339,7 +420,18 @@ export default function Home() {
     return () => {
       window.removeEventListener('resize', checkScreenSize);
     };
-  }, [showPeoplePanel]);
+  }, []); // Sin dependencias porque solo necesita ejecutarse una vez
+
+  // Limpiar errores automáticamente después de 5 segundos
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   if (!isClient) {
     return <Loading />;
@@ -444,19 +536,104 @@ export default function Home() {
               <div className="flex gap-6 h-full relative">
                 {/* Contenido principal del diario - siempre toma el espacio completo */}
                 <div className="flex-1 bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-                  {/* Barra de herramientas mejorada */}
-                  <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
-                      <span className="text-slate-600 text-sm font-medium">
-                        {currentEntry?.date
-                          ? format(new Date(currentEntry.date), "EEEE, d 'de' MMMM", { locale: es })
-                          : "Nueva entrada"}
-                      </span>
-                    </div>
+                  
+                  {/* Barra de herramientas unificada - Responsive layout */}
+                  <div className="border-b border-slate-200/60 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
                     
-                    <div className="flex items-center space-x-2">
-                      {storeIsEditing ? (
+                    {/* Layout móvil - fecha arriba, botones abajo en la misma barra */}
+                    <div className="md:hidden">
+                      {/* Fecha */}
+                      <div className="p-4 pb-3 text-center">
+                        <div className="flex items-center justify-center space-x-3">
+                          <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+                          <span className="text-slate-600 text-sm font-medium">
+                            {currentEntry?.date
+                              ? format(new Date(currentEntry.date), "EEEE, d 'de' MMMM", { locale: es })
+                              : "Nueva entrada"}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Botones móvil - tamaño original pero sin flex-wrap */}
+                      <div className="px-4 pb-4">
+                        <div className="flex items-center justify-center space-x-3 overflow-x-auto">
+                          {storeIsEditing ? (
+                            <>
+                              <button 
+                                onClick={handleStylize}
+                                disabled={isStylizing || !content}
+                                className={`flex items-center space-x-2 px-3 py-2 rounded-xl transition-all duration-200 ${isStylizing ? 'bg-indigo-400' : 'bg-indigo-500'} text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg text-sm font-medium whitespace-nowrap`}
+                                title="Estilizar con IA"
+                              >
+                                <FiZap size={16} />
+                                <span>Estilizar</span>
+                              </button>
+                              
+                              <button 
+                                onClick={handleSave}
+                                className="flex items-center space-x-2 px-3 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all duration-200 shadow-lg text-sm font-medium whitespace-nowrap"
+                              >
+                                <FiSave size={16} />
+                                <span>Guardar</span>
+                              </button>
+                              
+                              <button 
+                                onClick={handleToggleEditMode}
+                                className="flex items-center space-x-2 px-3 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200 text-sm font-medium whitespace-nowrap"
+                              >
+                                <FiX size={16} />
+                                <span>Cancelar</span>
+                              </button>
+                            </>
+                          ) : (
+                            <button 
+                              onClick={handleToggleEditMode}
+                              className="flex items-center space-x-2 px-3 py-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-slate-100 transition-all duration-200 border border-slate-200 text-sm font-medium whitespace-nowrap"
+                              disabled={isRecording || isProcessing}
+                            >
+                              <FiEdit2 size={16} />
+                              <span>Editar</span>
+                            </button>
+                          )}
+                          
+                          {/* Botón de grabación siempre visible (como en desktop) */}
+                          {!isRecording ? (
+                            <button
+                              onClick={startRecording}
+                              disabled={isProcessing}
+                              className="flex items-center space-x-2 px-3 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg text-sm font-medium whitespace-nowrap"
+                              title="Iniciar grabación"
+                            >
+                              <FiMic size={16} />
+                              <span>Grabar</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={stopRecording}
+                              className="flex items-center space-x-2 px-3 py-2 bg-slate-700 text-white rounded-xl hover:bg-slate-800 transition-all duration-200 shadow-lg animate-pulse text-sm font-medium whitespace-nowrap"
+                              title="Detener grabación"
+                            >
+                              <FiStopCircle size={16} />
+                              <span>Detener</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Layout desktop - inline como antes */}
+                    <div className="hidden md:flex items-center justify-between p-6">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+                        <span className="text-slate-600 text-sm font-medium">
+                          {currentEntry?.date
+                            ? format(new Date(currentEntry.date), "EEEE, d 'de' MMMM", { locale: es })
+                            : "Nueva entrada"}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        {storeIsEditing ? (
                         <>
                           <button 
                             onClick={handleStylize}
@@ -554,15 +731,15 @@ export default function Home() {
                       </div>
                     )}
                     
-                    {/* Editor/Visualizador de contenido mejorado */}
-                    <div className="p-8 min-h-[600px]">
+                    {/* Editor/Visualizador de contenido mejorado - márgenes reducidos en móvil */}
+                    <div className="p-4 md:p-8 min-h-[600px]">
                       {storeIsEditing ? (
                         <div className="relative">
                           <textarea
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="Escribe tu entrada del diario aquí... ✨"
-                            className="w-full h-[500px] p-6 border-2 border-slate-200 rounded-2xl resize-none focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-400 text-slate-700 leading-relaxed text-lg bg-white/50 backdrop-blur-sm transition-all duration-200"
+                            className="w-full h-[500px] p-4 md:p-6 border-2 border-slate-200 rounded-2xl resize-none focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-400 text-slate-700 leading-relaxed text-lg bg-white/50 backdrop-blur-sm transition-all duration-200"
                           />
                           <div className="absolute bottom-4 right-4 text-xs text-slate-400">
                             {content.length} caracteres
@@ -571,16 +748,24 @@ export default function Home() {
                       ) : (
                         <div className="prose prose-slate prose-lg max-w-none">
                           {content ? (
-                            <div className="whitespace-pre-wrap text-slate-700 leading-relaxed text-lg bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60">
+                            <div 
+                              className="whitespace-pre-wrap text-slate-700 leading-relaxed text-lg bg-slate-50/50 p-4 md:p-6 rounded-2xl border border-slate-200/60 cursor-pointer hover:bg-slate-100/50 transition-all duration-200"
+                              onClick={handleToggleEditMode}
+                              title="Haz clic para editar"
+                            >
                               {content}
                             </div>
                           ) : (
-                            <div className="text-center py-24">
+                            <div 
+                              className="text-center py-24 cursor-pointer hover:bg-slate-50/50 rounded-2xl transition-all duration-200"
+                              onClick={handleToggleEditMode}
+                              title="Haz clic para comenzar a escribir"
+                            >
                               <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
                                 <FiEdit2 className="text-indigo-500 text-2xl" />
                               </div>
                               <h3 className="text-slate-400 text-xl font-medium mb-2">Tu diario está esperando</h3>
-                              <p className="text-slate-400">Haz clic en &quot;Editar&quot; para comenzar a escribir tu día.</p>
+                              <p className="text-slate-400">Haz clic aquí para comenzar a escribir tu día.</p>
                             </div>
                           )}
                         </div>
@@ -727,6 +912,7 @@ export default function Home() {
                   </div>
                 </>
               )}
+            </div>
             </div>
           )}
         </div>
