@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { Person } from '@/lib/supabase';
+import { Person } from '@/lib/firebase-operations';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
 // Configurar OpenAI con GPT-4.1 mini

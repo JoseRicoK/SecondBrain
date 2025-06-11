@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       to: ['josemariark@gmail.com'],
       subject: emailSubject,
       html: emailHtml,
-      reply_to: userEmail, // Para poder responder directamente al usuario
+      replyTo: userEmail, // Para poder responder directamente al usuario
     });
 
     if (error) {

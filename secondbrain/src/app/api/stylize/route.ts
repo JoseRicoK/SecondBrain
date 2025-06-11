@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { isValidUUID, getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo } from '@/lib/supabase';
+import { isValidUUID, getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo } from '@/lib/firebase-operations';
 import { v5 as uuidv5 } from 'uuid';
 
 // Namespace para generar UUIDs determinísticos (este es un UUID arbitrario)
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { text, userId, extractPeople = true, entryDate } = body as StylizeRequest;
 
-    if (user.id !== userId) {
+    if (user.uid !== userId) {
       return NextResponse.json({ error: 'User mismatch' }, { status: 403 });
     }
 

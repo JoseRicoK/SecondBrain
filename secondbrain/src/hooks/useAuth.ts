@@ -1,6 +1,10 @@
-// Hook simplificado que usa el contexto de autenticación
-import { useAuthContext } from '@/contexts/AuthContext';
+// Hook para autenticación con Firebase
+// Para la migración, usaremos Firebase por defecto
+import { useFirebaseAuthContext } from '@/contexts/FirebaseAuthContext';
 
 export function useAuth() {
-  return useAuthContext();
+  return useFirebaseAuthContext();
 }
+
+// Hook para compatibilidad durante la migración
+export { useFirebaseAuthContext as useFirebaseAuth };

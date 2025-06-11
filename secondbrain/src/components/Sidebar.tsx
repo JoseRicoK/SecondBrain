@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { FiX, FiSettings, FiCalendar, FiChevronLeft, FiChevronRight, FiBookOpen } from 'react-icons/fi';
 import { es } from 'date-fns/locale';
 import { useDiaryStore } from '@/lib/store';
-import { getEntriesByMonth } from '@/lib/supabase';
+import { getEntriesByMonth } from '@/lib/firebase-operations';
 // Importante: Asegúrate de que los estilos globales del calendario se importen en globals.css o en el layout principal
 // import 'react-calendar/dist/Calendar.css'; // Ya no es necesario aquí si se maneja globalmente
 

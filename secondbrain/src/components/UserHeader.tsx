@@ -1,25 +1,40 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FiLogOut, FiChevronDown } from 'react-icons/fi';
+import { FiLogOut, FiChevronDown, FiMail, FiAlertCircle } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
+import { sendEmailVerificationToCurrentUser } from '@/lib/firebase-operations';
 
 export default function UserHeader() {
   const { user, signOut } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [sendingVerification, setSendingVerification] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await signOut();
     setIsDropdownOpen(false);
   };
 
-  const getUserDisplayName = () => {
-    // Priorizar display_name, luego name, luego email
-    if (user?.user_metadata?.display_name) {
-      return user.user_metadata.display_name;
+  const handleSendVerification = async () => {
+    setSendingVerification(true);
+    setVerificationMessage(null);
+    
+    try {
+      await sendEmailVerificationToCurrentUser();
+      setVerificationMessage('Email de verificación enviado. Revisa tu bandeja de entrada.');
+    } catch (error) {
+      console.error('Error enviando verificación:', error);
+      setVerificationMessage('Error al enviar el email. Inténtalo más tarde.');
+    } finally {
+      setSendingVerification(false);
     }
-    if (user?.user_metadata?.name) {
-      return user.user_metadata.name;
+  };
+
+  const getUserDisplayName = () => {
+    // Para Firebase Auth
+    if (user?.displayName) {
+      return user.displayName;
     }
     if (user?.email) {
       return user.email.split('@')[0];
@@ -40,7 +55,37 @@ export default function UserHeader() {
   if (!user) return null;
 
   return (
-    <div className="relative inline-block">
+    <>
+      {/* Banner de verificación de email */}
+      {!user.emailVerified && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <FiAlertCircle className="text-yellow-400 mr-3" size={20} />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">
+                  Email no verificado
+                </p>
+                <p className="text-sm text-yellow-700">
+                  Verifica tu email para mayor seguridad de tu cuenta.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleSendVerification}
+              disabled={sendingVerification}
+              className="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 px-3 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {sendingVerification ? 'Enviando...' : 'Reenviar email'}
+            </button>
+          </div>
+          {verificationMessage && (
+            <p className="text-sm text-yellow-700 mt-2">{verificationMessage}</p>
+          )}
+        </div>
+      )}
+
+      <div className="relative inline-block">
       <button
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
         className="flex items-center space-x-3 bg-white rounded-lg px-3 py-2 border border-gray-200 hover:bg-gray-50 transition-colors w-full"
@@ -72,7 +117,24 @@ export default function UserHeader() {
               <div className="px-4 py-3 border-b border-gray-100">
                 <p className="text-sm font-medium text-gray-900">{getUserDisplayName()}</p>
                 <p className="text-sm text-gray-500">{user.email}</p>
+                {!user.emailVerified && (
+                  <p className="text-xs text-yellow-600 mt-1 flex items-center">
+                    <FiAlertCircle className="w-3 h-3 mr-1" />
+                    Email no verificado
+                  </p>
+                )}
               </div>
+              
+              {!user.emailVerified && (
+                <button
+                  onClick={handleSendVerification}
+                  disabled={sendingVerification}
+                  className="flex items-center w-full px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50 transition-colors"
+                >
+                  <FiMail className="w-4 h-4 mr-3" />
+                  {sendingVerification ? 'Enviando verificación...' : 'Verificar email'}
+                </button>
+              )}
               
               <button
                 onClick={handleSignOut}
@@ -85,6 +147,7 @@ export default function UserHeader() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }

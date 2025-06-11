@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiSend, FiX, FiUser, FiLoader } from 'react-icons/fi';
-import { Person } from '@/lib/supabase';
-import { supabase } from '@/lib/supabase';
+import { Person } from '@/lib/firebase-operations';
+import { auth } from '@/lib/firebase';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -70,8 +70,7 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
         content: msg.content
       }));
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/chat-person', {
         method: 'POST',
         headers: {

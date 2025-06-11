@@ -10,12 +10,12 @@ import Settings from '@/components/Settings';
 import PeopleManager from '@/components/PeopleManager';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiaryStore } from '@/lib/store';
-import { supabase } from '@/lib/supabase';
 import { FiMenu, FiEdit2, FiSave, FiX, FiMic, FiStopCircle, FiZap, FiUsers, FiUser } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Image from 'next/image';
-import { User } from '@supabase/supabase-js';
+import { FirebaseUser } from '@/lib/firebase-operations';
+import { auth } from '@/lib/firebase';
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -108,11 +108,11 @@ export default function Home() {
   };
 
   const handleSave = async () => {
-    if (!user?.id) return;
+    if (!user?.uid) return;
     
     console.log('📝 DIARY: Guardando entrada...');
     try {
-      await saveCurrentEntry(content, user.id);
+      await saveCurrentEntry(content, user.uid);
       console.log('📝 DIARY: Entrada guardada exitosamente');
     } catch (error) {
       console.error('📝 DIARY: Error al guardar:', error);
@@ -121,7 +121,7 @@ export default function Home() {
   };
 
   const handleStylize = async () => {
-    if (!user?.id) return;
+    if (!user?.uid) return;
     
     console.log('📝 DIARY: Estilizando texto...');
     setIsStylizing(true);
@@ -135,7 +135,7 @@ export default function Home() {
         },
         body: JSON.stringify({ 
           text: content,
-          userId: user.id,
+          userId: user.uid,
           entryDate: currentEntry?.date || new Date().toISOString().split('T')[0]
         }),
       });
@@ -220,7 +220,7 @@ export default function Home() {
   };
 
   const processTranscription = useCallback(async () => {
-    if (!audioBlob || !user?.id) return;
+    if (!audioBlob || !user?.uid) return;
 
     console.log('📝 DIARY: Procesando transcripción...');
     setIsProcessing(true);
@@ -229,11 +229,10 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append('file', audioBlob, 'recording.wav');
-      formData.append('userId', user.id);
+      formData.append('userId', user.uid);
 
-      // Obtener el token de autenticación
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      // Obtener el token de autenticación de Firebase
+      const token = await auth.currentUser?.getIdToken();
 
       const response = await fetch('/api/transcribe', {
         method: 'POST',
@@ -256,7 +255,7 @@ export default function Home() {
         
         // Guardar automáticamente después de la transcripción
         try {
-          await saveCurrentEntry(newContent, user.id);
+          await saveCurrentEntry(newContent, user.uid);
           console.log('📝 DIARY: Entrada guardada automáticamente después de la transcripción');
         } catch (saveError) {
           console.error('📝 DIARY: Error al guardar automáticamente:', saveError);
@@ -272,7 +271,7 @@ export default function Home() {
       setIsProcessing(false);
       setAudioBlob(null);
     }
-  }, [audioBlob, user?.id, content, saveCurrentEntry]);
+  }, [audioBlob, user?.uid, content, saveCurrentEntry]);
 
   // Sincronizar content con currentEntry
   useEffect(() => {
@@ -329,17 +328,17 @@ export default function Home() {
     setIsChatMinimized(!isChatMinimized);
   };
 
-  const handleAuthSuccess = (authenticatedUser: User) => {
+  const handleAuthSuccess = (authenticatedUser: FirebaseUser) => {
     // El hook useAuth se encargará de actualizar el estado
-    console.log('Usuario autenticado:', authenticatedUser.id);
+    console.log('Usuario autenticado:', authenticatedUser.uid);
   };
   
   // Obtener los datos de la entrada actual cuando cambia la fecha o el usuario
   useEffect(() => {
-    if (isClient && user?.id) {
-      fetchCurrentEntry(user.id);
+    if (isClient && user?.uid) {
+      fetchCurrentEntry(user.uid);
     }
-  }, [fetchCurrentEntry, isClient, currentDate, user?.id]);
+  }, [fetchCurrentEntry, isClient, currentDate, user?.uid]);
 
   // Evitar errores de hidratación y detectar tamaño de pantalla
   useEffect(() => {
@@ -379,9 +378,9 @@ export default function Home() {
   }
 
   // Log de renderizado solo cuando el usuario cambia
-  if (user?.id && user.id !== lastUserId.current) {
-    console.log('🎯 PAGE: Renderizando aplicación para user:', user.id);
-    lastUserId.current = user.id;
+  if (user?.uid && user.uid !== lastUserId.current) {
+    console.log('🎯 PAGE: Renderizando aplicación para user:', user.uid);
+    lastUserId.current = user.uid;
   }
 
   return (
@@ -407,7 +406,7 @@ export default function Home() {
         {/* El botón X se moverá al componente Sidebar para superponerse */}
         <div className="overflow-y-auto h-full">
           <Sidebar 
-            userId={user.id} 
+            userId={user.uid} 
             onClose={() => setIsSidebarOpen(false)} 
             onSettingsClick={() => {
               setShowSettings(true);
@@ -459,7 +458,7 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                <Settings userId={user.id} />
+                <Settings userId={user.uid} />
               </div>
             </div>
           ) : (
@@ -661,7 +660,7 @@ export default function Home() {
                     </div>
                     <div className="flex-1 min-h-0 overflow-y-auto p-6">
                       <PeopleManager 
-                        userId={user.id} 
+                        userId={user.uid} 
                         refreshTrigger={peopleRefreshTrigger} 
                         className="shadow-none"
                         initialSelectedName={selectedPersonId}
@@ -712,7 +711,7 @@ export default function Home() {
                       {/* Contenido scrolleable con safe area para barra de Safari */}
                       <div className="flex-1 overflow-y-auto p-4 sm:p-6 overscroll-contain pb-safe-or-4 min-h-0">
                         <PeopleManager 
-                          userId={user.id} 
+                          userId={user.uid} 
                           refreshTrigger={peopleRefreshTrigger} 
                           className="shadow-none"
                           initialSelectedName={selectedPersonId}
@@ -797,7 +796,7 @@ export default function Home() {
         {/* Componente de Chat Personal */}
         {isChatOpen && (
           <PersonalChat
-            userId={user.id}
+            userId={user.uid}
             isOpen={isChatOpen}
             isMinimized={isChatMinimized}
             onClose={handleChatClose}

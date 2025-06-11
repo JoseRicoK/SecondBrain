@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiUser, FiEdit2, FiChevronRight, FiChevronDown, FiX, FiEye, FiEyeOff, FiCalendar, FiSearch, FiMessageCircle } from 'react-icons/fi';
-import { Person, PersonDetailCategory, PersonDetailEntry, getPeopleByUserId, savePerson, getPersonDetailsWithDates } from '@/lib/supabase';
+import { Person, PersonDetailCategory, PersonDetailEntry, getPeopleByUserId, savePerson, getPersonDetailsWithDates } from '@/lib/firebase-operations';
 import PersonChat from './PersonChat';
 import styles from './PeopleManager.module.css';
 

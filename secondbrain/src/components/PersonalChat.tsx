@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAuth } from '@/hooks/useAuth';
 import styles from './PersonalChat.module.css';
-import { supabase } from '@/lib/supabase';
+import { auth } from '@/lib/firebase';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -36,12 +36,9 @@ export const PersonalChat: React.FC<PersonalChatProps> = ({
   
   // Get user display name from auth - using useCallback to avoid dependency issues
   const getUserDisplayName = useCallback(() => {
-    // Priorizar display_name, luego name, luego email
-    if (user?.user_metadata?.display_name) {
-      return user.user_metadata.display_name;
-    }
-    if (user?.user_metadata?.name) {
-      return user.user_metadata.name;
+    // Para Firebase Auth
+    if (user?.displayName) {
+      return user.displayName;
     }
     if (user?.email) {
       return user.email.split('@')[0];
@@ -134,8 +131,8 @@ Puedo ayudarte a:
         content: msg.content
       }));
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      // Obtener token de Firebase
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/personal-chat', {
         method: 'POST',
         headers: {

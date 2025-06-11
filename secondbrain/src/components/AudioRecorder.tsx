@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useDiaryStore } from '@/lib/store';
 import { FaMicrophone, FaStop, FaPlay, FaPause } from 'react-icons/fa';
-import { saveAudioTranscription, supabase } from '@/lib/supabase';
+import { saveAudioTranscription } from '@/lib/firebase-operations';
+import { auth } from '@/lib/firebase';
 
 // Este componente actualmente no necesita props
 type AudioRecorderProps = Record<string, never>;
@@ -99,8 +100,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
       formData.append('entryId', currentEntry.id);
       
       // Enviar a la API de transcripción
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/transcribe', {
         method: 'POST',
         headers: {
@@ -115,7 +115,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
       
       const data = await response.json();
       
-      // Guardar la transcripción en Supabase
+      // Guardar la transcripción en Firebase
       await saveAudioTranscription(
         currentEntry.id,
         data.audioUrl,

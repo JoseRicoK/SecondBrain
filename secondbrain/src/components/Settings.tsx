@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FiCalendar, FiCheck, FiLink, FiUser, FiTrash2, FiMessageSquare, FiMail, FiAlertTriangle, FiSave, FiEye, FiEyeOff, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
-import { updateUserProfile, updateUserPassword, deleteUserAccount, sendFeedbackEmail } from '@/lib/supabase';
+import { updateUserProfile, updateUserPassword, deleteUserAccount } from '@/lib/firebase-operations';
 
 interface SettingsProps {
   userId: string;
@@ -13,8 +13,8 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
   
   // Estados para cambio de datos personales
   const [newDisplayName, setNewDisplayName] = useState(
-    user?.user_metadata?.display_name || 
-    user?.user_metadata?.name || 
+    user?.displayName || 
+    user?.email?.split('@')[0] || 
     ''
   );
   const [newPassword, setNewPassword] = useState('');
@@ -45,9 +45,9 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
       let hasUpdates = false;
       
       // Actualizar nombre de usuario si ha cambiado
-      const currentDisplayName = user?.user_metadata?.display_name || user?.user_metadata?.name || '';
+      const currentDisplayName = user?.displayName || user?.email?.split('@')[0] || '';
       if (newDisplayName.trim() && newDisplayName.trim() !== currentDisplayName) {
-        await updateUserProfile({ display_name: newDisplayName.trim() });
+        await updateUserProfile({ displayName: newDisplayName.trim() });
         setUpdateSuccess('Nombre actualizado correctamente');
         hasUpdates = true;
       }
@@ -113,8 +113,23 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
         throw new Error('Por favor escribe tu mensaje');
       }
 
-      // Enviar el feedback usando la función real
-      await sendFeedbackEmail(type, text.trim(), contactEmail);
+      // Enviar el feedback usando fetch directo
+      const response = await fetch('/api/send-feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type,
+          message: text.trim(),
+          userEmail: contactEmail,
+          timestamp: new Date().toISOString()
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al enviar el mensaje');
+      }
       
       setFeedbackSuccess(`Tu ${type === 'suggestion' ? 'sugerencia' : 'reporte'} ha sido enviado correctamente`);
       

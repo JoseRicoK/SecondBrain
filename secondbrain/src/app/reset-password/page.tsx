@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { FiLock, FiEye, FiEyeOff, FiCheck, FiX } from 'react-icons/fi';
-import { supabase } from '@/lib/supabase';
+import { auth } from '@/lib/firebase';
+import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
@@ -14,41 +15,32 @@ function ResetPasswordForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [oobCode, setOobCode] = useState<string | null>(null);
   
   const router = useRouter();
-  // Removemos searchParams ya que no se usa
-  // const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Obtener los parámetros de la URL usando window.location para evitar problemas con SSR
-    const urlParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = urlParams.get('access_token');
-    const refreshToken = urlParams.get('refresh_token');
+    // Para Firebase, obtenemos el código de verificación de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('oobCode');
+    const mode = urlParams.get('mode');
     
-    if (!accessToken || !refreshToken) {
+    if (mode !== 'resetPassword' || !code) {
       setError('Enlace de recuperación inválido o expirado. Por favor, solicita un nuevo enlace.');
       return;
     }
-
-    // Configurar la sesión con los tokens de la URL
-    const setSession = async () => {
-      try {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        
-        if (error) {
-          console.error('Error al configurar la sesión:', error);
-          setError('Error al validar el enlace de recuperación. Por favor, solicita un nuevo enlace.');
-        }
-      } catch (err) {
-        console.error('Error:', err);
-        setError('Error al procesar el enlace de recuperación.');
-      }
-    };
-
-    setSession();
+    
+    setOobCode(code);
+    
+    // Verificar que el código es válido
+    verifyPasswordResetCode(auth, code)
+      .then(() => {
+        console.log('Código de verificación válido');
+      })
+      .catch((error) => {
+        console.error('Error al verificar código:', error);
+        setError('Enlace de recuperación inválido o expirado. Por favor, solicita un nuevo enlace.');
+      });
   }, []);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -75,13 +67,14 @@ function ResetPasswordForm() {
       return;
     }
 
+    if (!oobCode) {
+      setError('Código de verificación no válido');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      });
-
-      if (error) throw error;
-
+      await confirmPasswordReset(auth, oobCode, password);
       setSuccess(true);
       
       // Redirigir al login después de 3 segundos
