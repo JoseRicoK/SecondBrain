@@ -29,10 +29,22 @@ export function FirebaseAuthProvider({ children }: { children: React.ReactNode }
 
     console.log('🔍 [Firebase] Inicializando listener de autenticación...');
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!mounted) return;
 
-      console.log('🔄 [Firebase] Estado de autenticación cambió:', firebaseUser ? `Usuario: ${firebaseUser.email}` : 'Sin usuario');
+      console.log(
+        '🔄 [Firebase] Estado de autenticación cambió:',
+        firebaseUser ? `Usuario: ${firebaseUser.email}` : 'Sin usuario'
+      );
+
+      // Ignorar usuarios que aún no verificaron su email para evitar redirecciones
+      if (firebaseUser && !firebaseUser.emailVerified) {
+        console.log('⚠️ [Firebase] Email no verificado, cerrando sesión...');
+        await auth.signOut();
+        setUser(null);
+        setLoading(false);
+        return;
+      }
 
       setUser(firebaseUser);
       setLoading(false);
