@@ -13,16 +13,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover' // Importante para Safari iOS con safe areas
+};
+
 export const metadata: Metadata = {
   title: "SecondBrain",
-  description: "Tu diario personal con IA",
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover' // Importante para Safari iOS con safe areas
-  }
+  description: "Tu diario personal con IA"
 };
 
 export default function RootLayout({
