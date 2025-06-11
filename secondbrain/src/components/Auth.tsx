@@ -53,6 +53,64 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     }
   };
 
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email || !password || !name) {
+      setError('Por favor completa todos los campos');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      await signUpUser(email, password, name);
+      setMessage('Registro exitoso. Revisa tu email para verificar la cuenta.');
+      setIsLogin(true);
+      setEmail('');
+      setPassword('');
+      setName('');
+    } catch (error: unknown) {
+      console.error('❌ Error en registro:', error);
+      const authError = error as { message?: string };
+      setError(authError.message || 'Error al registrarse');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError('Ingresa tu email para recuperar la contraseña');
+      return;
+    }
+    try {
+      await resetUserPassword(email);
+      setMessage('Hemos enviado un email para restablecer tu contraseña.');
+    } catch (error: unknown) {
+      console.error('❌ Error al enviar recuperación:', error);
+      const authError = error as { message?: string };
+      setError(authError.message || 'Error al enviar recuperación');
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email || !password) {
+      setError('Ingresa tu email y contraseña para reenviar la verificación');
+      return;
+    }
+    try {
+      await resendEmailVerification(email, password);
+      setMessage('Correo de verificación reenviado. Revisa tu bandeja de entrada.');
+    } catch (error: unknown) {
+      console.error('❌ Error al reenviar verificación:', error);
+      const authError = error as { message?: string };
+      setError(authError.message || 'Error al reenviar verificación');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
@@ -65,7 +123,9 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
             className="mx-auto mb-4"
           />
           <h1 className="text-2xl font-bold text-gray-800">SecondBrain</h1>
-          <p className="text-gray-600 mt-2">Inicia sesión en tu cuenta</p>
+          <p className="text-gray-600 mt-2">
+            {isLogin ? 'Inicia sesión en tu cuenta' : 'Crea una cuenta nueva'}
+          </p>
         </div>
 
         {error && (
@@ -74,8 +134,33 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           </div>
         )}
 
-        <form onSubmit={handleLogin}>
+        {message && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 text-sm">
+            {message}
+          </div>
+        )}
+
+        <form onSubmit={isLogin ? handleLogin : handleSignUp}>
           <div className="space-y-4">
+            {!isLogin && (
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                  Nombre
+                </label>
+                <div className="relative">
+                  <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
+                    placeholder="Tu nombre"
+                    required
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email
@@ -125,9 +210,36 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
             disabled={isLoading}
             className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium mt-6"
           >
-            {isLoading ? 'Procesando...' : 'Iniciar sesión'}
+            {isLoading ? 'Procesando...' : isLogin ? 'Iniciar sesión' : 'Registrarse'}
           </button>
         </form>
+
+        <div className="mt-6 text-center text-sm text-gray-600 space-y-2">
+          {isLogin ? (
+            <>
+              <button type="button" className="text-indigo-600 hover:underline" onClick={() => setIsLogin(false)}>
+                ¿No tienes cuenta? Regístrate
+              </button>
+              <div>
+                <button type="button" className="text-indigo-600 hover:underline mr-2" onClick={handleResetPassword}>
+                  Olvidé mi contraseña
+                </button>
+                <button type="button" className="text-indigo-600 hover:underline" onClick={handleResendVerification}>
+                  Reenviar verificación
+                </button>
+              </div>
+            </>
+          ) : (
+            <button type="button" className="text-indigo-600 hover:underline" onClick={() => setIsLogin(true)}>
+              ¿Ya tienes cuenta? Inicia sesión
+            </button>
+          )}
+          <div className="pt-2">
+            <button type="button" onClick={testFirebaseConnection} className="inline-flex items-center text-gray-500 hover:text-gray-700">
+              <FiWifi className="mr-1" />Probar conexión
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
