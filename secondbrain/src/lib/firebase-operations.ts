@@ -682,6 +682,40 @@ export function getPersonDetailsWithDates(person: Person): Record<string, Person
   return details;
 }
 
+// Función helper para detectar si dos textos son similares (para evitar duplicados)
+function areSimilarTexts(text1: string, text2: string): boolean {
+  // Normalizar textos (minúsculas, sin acentos, sin espacios extra)
+  const normalize = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // quitar acentos
+      .replace(/\s+/g, ' ') // normalizar espacios
+      .trim();
+  };
+  
+  const norm1 = normalize(text1);
+  const norm2 = normalize(text2);
+  
+  // Si son exactamente iguales después de normalizar
+  if (norm1 === norm2) return true;
+  
+  // Si uno contiene al otro (para casos como "examen de mates" vs "examen de matemáticas")
+  if (norm1.includes(norm2) || norm2.includes(norm1)) return true;
+  
+  // Calcular similitud básica por palabras comunes
+  const words1 = norm1.split(' ').filter(w => w.length > 2);
+  const words2 = norm2.split(' ').filter(w => w.length > 2);
+  
+  if (words1.length === 0 || words2.length === 0) return false;
+  
+  const commonWords = words1.filter(word => words2.includes(word));
+  const similarity = commonWords.length / Math.max(words1.length, words2.length);
+  
+  // Si más del 70% de las palabras coinciden, consideramos que son similares
+  return similarity > 0.7;
+}
+
 // Función para guardar información de personas extraída de las entradas del diario
 export async function saveExtractedPersonInfo(
   personName: string, 
@@ -738,10 +772,19 @@ export async function saveExtractedPersonInfo(
               date: date
             };
             
-            // Evitar duplicados
-            const exists = category.entries.some(
-              entry => entry.value === value && entry.date === date
-            );
+            // Evitar duplicados exactos y similares
+            const exists = category.entries.some(entry => {
+              // Duplicado exacto
+              if (entry.value === value && entry.date === date) return true;
+              
+              // Duplicado similar (especialmente importante para el mismo día)
+              if (entry.date === date && areSimilarTexts(entry.value, value)) {
+                console.log(`🔍 [saveExtractedPersonInfo] Evitando duplicado similar: "${value}" (ya existe: "${entry.value}")`);
+                return true;
+              }
+              
+              return false;
+            });
             
             if (!exists) {
               category.entries.push(newEntry);

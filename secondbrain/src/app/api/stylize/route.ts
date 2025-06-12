@@ -106,19 +106,77 @@ export async function POST(request: Request) {
       // 2.1 Obtener personas existentes de la base de datos para proporcionar contexto
       const existingPeople = await getPeopleByUserId(validUUID);
       
-      // Crear una lista simple de nombres conocidos para el prompt
-      let knownNames: string[] = [];
+      // Construir contexto detallado de personas conocidas para el día actual
+      let peopleContext = '';
       if (existingPeople && existingPeople.length > 0) {
-        knownNames = existingPeople.map((person: Person) => person.name);
+        console.log('🔍 [API Stylize] Construyendo contexto de personas para fecha:', validEntryDate);
+        
+        peopleContext = 'Personas que ya conozco:\n';
+        existingPeople.forEach((person: Person) => {
+          const details = person.details || {};
+          let personInfo = `- ${person.name}:`;
+          
+          // Obtener rol y relación más recientes
+          let currentRole = 'desconocido';
+          let currentRelation = 'desconocido';
+          
+          if (details.rol && typeof details.rol === 'object' && 'entries' in details.rol) {
+            const entries = (details.rol as PersonDetailCategory).entries;
+            if (entries && entries.length > 0) {
+              currentRole = entries[entries.length - 1].value;
+            }
+          } else if (typeof details.rol === 'string') {
+            currentRole = details.rol;
+          }
+          
+          if (details.relacion && typeof details.relacion === 'object' && 'entries' in details.relacion) {
+            const entries = (details.relacion as PersonDetailCategory).entries;
+            if (entries && entries.length > 0) {
+              currentRelation = entries[entries.length - 1].value;
+            }
+          } else if (typeof details.relacion === 'string') {
+            currentRelation = details.relacion;
+          }
+          
+          personInfo += ` rol="${currentRole}", relación="${currentRelation}"`;
+          
+          // Obtener detalles SOLO del día actual
+          const todayDetails: string[] = [];
+          for (const [key, value] of Object.entries(details)) {
+            if (key !== 'rol' && key !== 'relacion' && value) {
+              if (typeof value === 'object' && 'entries' in value) {
+                const entries = (value as PersonDetailCategory).entries;
+                if (entries && entries.length > 0) {
+                  // Filtrar solo las entradas del día actual
+                  const todayEntries = entries.filter(entry => entry.date === validEntryDate);
+                  todayEntries.forEach(entry => {
+                    todayDetails.push(`${key}: ${entry.value}`);
+                  });
+                }
+              } else if (typeof value === 'string') {
+                // Para formato antiguo, no tenemos fecha, lo incluimos con precaución
+                todayDetails.push(`${key}: ${value}`);
+              }
+            }
+          }
+          
+          if (todayDetails.length > 0) {
+            personInfo += `, detalles del día de hoy=[${todayDetails.join(', ')}]`;
+          }
+          
+          peopleContext += personInfo + '\n';
+        });
+      } else {
+        peopleContext = 'No tengo información previa sobre ninguna persona.';
       }
       
       // Log temporal para debug - remover en producción
-      console.log('🔍 [API Stylize] Nombres conocidos:', knownNames);
+      console.log('🔍 [API Stylize] Contexto completo de personas:', peopleContext);
       
       const extractPrompt = `
         Analiza el siguiente texto y extrae información sobre las personas mencionadas en él.
         
-        ${knownNames.length > 0 ? `Personas que ya conozco: ${knownNames.join(', ')}` : 'No tengo información previa sobre ninguna persona.'}
+        ${peopleContext}
         
         Instrucciones para la extracción de personas:
 
@@ -126,27 +184,33 @@ export async function POST(request: Request) {
         2. SOLO incluye información que se menciona EXPLÍCITAMENTE en el texto actual
         3. NO incluyas información que no esté mencionada en el texto
 
-        4. DEFINICIÓN DE CAMPOS:
+        4. EVITAR DUPLICADOS IMPORTANTES:
+           - Revisa cuidadosamente los "detalles del día de hoy" de cada persona conocida
+           - Si el texto menciona algo muy similar a lo que ya está registrado HOY, NO lo incluyas
+           - Solo incluye información realmente nueva o significativamente diferente
+           - Ejemplo: Si ya hay "tiene examen de matemáticas" y el texto dice "examen de mates", NO lo duplicar
+
+        5. DEFINICIÓN DE CAMPOS:
            - 'rol': SOLO si el texto menciona una ocupación o profesión (estudiante, médico, ingeniero, etc.)
            - 'relacion': SOLO si el texto menciona una relación contigo (amigo, madre, pareja, hermano, etc.)
            - 'detalles': Eventos, actividades o hechos mencionados sobre la persona
 
-        5. Si una persona conocida se menciona pero no se dice nueva información sobre ella, NO la incluyas en la respuesta
+        6. Si una persona conocida se menciona pero no se dice nueva información sobre ella, NO la incluyas en la respuesta
 
-        6. Si el texto dice "mi madre" o "mi hermana" pero ya conoces el nombre de esa persona, usa el nombre conocido
+        7. Si el texto dice "mi madre" o "mi hermana" pero ya conoces el nombre de esa persona, usa el nombre conocido
 
-        EJEMPLOS:
+        EJEMPLOS DE COMPORTAMIENTO CORRECTO:
         
+        Contexto: "Vero: rol='estudiante', relación='novia', detalles del día de hoy=[tiene examen de matemáticas]"
         Texto: "Vero tiene examen mañana"
-        Persona conocida: Vero
-        Respuesta: {"people": [{"name": "Vero", "information": {"detalles": ["tiene examen mañana"]}}]}
+        Respuesta: {"people": []} (porque "examen" ya está registrado hoy)
         
-        Texto: "Hablé con Vero"
-        Persona conocida: Vero
-        Respuesta: {"people": []} (porque no se menciona información nueva)
+        Contexto: "Vero: rol='estudiante', relación='novia', detalles del día de hoy=[tiene examen de matemáticas]"
+        Texto: "Vero fue al gimnasio"
+        Respuesta: {"people": [{"name": "Vero", "information": {"detalles": ["fue al gimnasio"]}}]}
         
+        Contexto: "No tengo información previa"
         Texto: "Conocí a Juan, es médico"
-        Personas conocidas: Vero
         Respuesta: {"people": [{"name": "Juan", "information": {"rol": "médico"}}]}
         
         Texto a analizar:
@@ -161,7 +225,7 @@ export async function POST(request: Request) {
                 "rol": "OPCIONAL - Solo si se menciona ocupación",
                 "relacion": "OPCIONAL - Solo si se menciona relación",
                 "detalles": [
-                  "Solo información nueva mencionada en el texto"
+                  "Solo información nueva mencionada en el texto que NO esté ya registrada hoy"
                 ]
               }
             }
