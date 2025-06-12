@@ -398,7 +398,7 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden">
+    <main className="flex h-screen min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden">
       {/* Sidebar con overlay cuando está abierto en móvil */}
       {isSidebarOpen && (
         <div 
@@ -453,11 +453,11 @@ export default function Home() {
         </header>
         
         {/* Área principal */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="flex-1 overflow-y-auto">
           {/* Renderizar vista de configuración */}
           {showSettings ? (
-            <div className="max-w-7xl mx-auto">
-              <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+            <div className="max-w-7xl mx-auto p-4 md:p-8">
+              <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
                 <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
                   <div className="flex items-center space-x-3">
                     <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
@@ -478,9 +478,9 @@ export default function Home() {
           ) : (
             /* Vista principal del diario */
             <div className="max-w-7xl mx-auto h-full">
-              <div className="flex gap-6 h-full relative">
+              <div className="flex gap-6 h-full relative p-4 md:p-8">
                 {/* Contenido principal del diario - siempre toma el espacio completo */}
-                <div className="flex-1 bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                <div className="flex-1 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
                   {/* Barra de herramientas mejorada con fecha arriba */}
                   <div className="p-6 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
                     {/* Fecha arriba - centrada y más pequeña */}
@@ -504,23 +504,25 @@ export default function Home() {
                             title="Estilizar con IA"
                           >
                             <FiZap size={18} />
-                            <span className="font-medium">Estilizar</span>
+                            <span className="font-medium hidden sm:inline">Estilizar</span>
                           </button>
                           
                           <button 
                             onClick={handleSave}
                             className="flex items-center space-x-2 px-4 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all duration-200 shadow-lg"
+                            title="Guardar"
                           >
                             <FiSave size={18} />
-                            <span className="font-medium">Guardar</span>
+                            <span className="font-medium hidden sm:inline">Guardar</span>
                           </button>
                           
                           <button 
                             onClick={handleToggleEditMode}
                             className="flex items-center space-x-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200"
+                            title="Cancelar"
                           >
                             <FiX size={18} />
-                            <span className="font-medium">Cancelar</span>
+                            <span className="font-medium hidden sm:inline">Cancelar</span>
                           </button>
                         </>
                       ) : (
@@ -528,9 +530,10 @@ export default function Home() {
                           onClick={handleToggleEditMode}
                           className="flex items-center space-x-2 px-4 py-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-slate-100 transition-all duration-200 border border-slate-200"
                           disabled={isRecording || isProcessing}
+                          title="Editar"
                         >
                           <FiEdit2 size={18} />
-                          <span className="font-medium">Editar</span>
+                          <span className="font-medium hidden sm:inline">Editar</span>
                         </button>
                       )}
                       
@@ -544,7 +547,7 @@ export default function Home() {
                               title="Iniciar grabación"
                             >
                               <FiMic size={18} />
-                              <span className="font-medium">Grabar</span>
+                              <span className="font-medium hidden sm:inline">Grabar</span>
                             </button>
                           ) : (
                             <button
@@ -553,7 +556,7 @@ export default function Home() {
                               title="Detener grabación"
                             >
                               <FiStopCircle size={18} />
-                              <span className="font-medium">Detener</span>
+                              <span className="font-medium hidden sm:inline">Detener</span>
                             </button>
                           )}
                         </>
@@ -565,7 +568,7 @@ export default function Home() {
                   <div className="relative bg-gradient-to-r from-indigo-50 to-purple-50">
                     {/* Mensajes de error mejorados */}
                     {error && (
-                      <div className="m-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center space-x-3">
+                      <div className="mx-4 mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center space-x-3">
                         <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                         <span>{error}</span>
                       </div>
@@ -573,7 +576,7 @@ export default function Home() {
                     
                     {/* Indicador de procesamiento mejorado */}
                     {isProcessing && audioBlob && (
-                      <div className="m-4 p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-sm flex items-center space-x-3">
+                      <div className="mx-4 mb-4 p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-sm flex items-center space-x-3">
                         <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -584,7 +587,7 @@ export default function Home() {
                     
                     {/* Indicador de estilización mejorado */}
                     {isStylizing && (
-                      <div className="m-4 p-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-sm flex items-center space-x-3">
+                      <div className="mx-4 mb-4 p-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-sm flex items-center space-x-3">
                         <svg className="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
