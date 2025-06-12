@@ -693,6 +693,8 @@ export async function saveExtractedPersonInfo(
     const validUUID = isValidUUID(userId) ? userId : generateUUID(userId);
     const date = entryDate || new Date().toISOString().split('T')[0];
     
+    console.log(`🔍 [saveExtractedPersonInfo] Procesando: ${personName}`, information);
+    
     // Buscar si la persona ya existe
     const peopleRef = collection(db, 'people');
     const q = query(
@@ -722,24 +724,47 @@ export async function saveExtractedPersonInfo(
       const updatedDetails = { ...person.details };
       
       for (const [key, value] of Object.entries(information)) {
-        if (value && typeof value === 'string') {
+        if (value) {
           if (!updatedDetails[key]) {
             updatedDetails[key] = { entries: [] };
           }
           
           const category = updatedDetails[key] as PersonDetailCategory;
-          const newEntry: PersonDetailEntry = {
-            value: value,
-            date: date
-          };
           
-          // Evitar duplicados
-          const exists = category.entries.some(
-            entry => entry.value === value && entry.date === date
-          );
-          
-          if (!exists) {
-            category.entries.push(newEntry);
+          // Manejar tanto strings como arrays
+          if (typeof value === 'string') {
+            const newEntry: PersonDetailEntry = {
+              value: value,
+              date: date
+            };
+            
+            // Evitar duplicados
+            const exists = category.entries.some(
+              entry => entry.value === value && entry.date === date
+            );
+            
+            if (!exists) {
+              category.entries.push(newEntry);
+            }
+          } else if (Array.isArray(value)) {
+            // Procesar arrays (como "detalles")
+            value.forEach((item: unknown) => {
+              if (typeof item === 'string') {
+                const newEntry: PersonDetailEntry = {
+                  value: item,
+                  date: date
+                };
+                
+                // Evitar duplicados
+                const exists = category.entries.some(
+                  entry => entry.value === item && entry.date === date
+                );
+                
+                if (!exists) {
+                  category.entries.push(newEntry);
+                }
+              }
+            });
           }
         }
       }
@@ -751,13 +776,29 @@ export async function saveExtractedPersonInfo(
       const newDetails: Record<string, PersonDetailCategory> = {};
       
       for (const [key, value] of Object.entries(information)) {
-        if (value && typeof value === 'string') {
-          newDetails[key] = {
-            entries: [{
-              value: value,
-              date: date
-            }]
-          };
+        if (value) {
+          if (typeof value === 'string') {
+            newDetails[key] = {
+              entries: [{
+                value: value,
+                date: date
+              }]
+            };
+          } else if (Array.isArray(value)) {
+            // Procesar arrays (como "detalles")
+            const entries: PersonDetailEntry[] = [];
+            value.forEach((item: unknown) => {
+              if (typeof item === 'string') {
+                entries.push({
+                  value: item,
+                  date: date
+                });
+              }
+            });
+            if (entries.length > 0) {
+              newDetails[key] = { entries };
+            }
+          }
         }
       }
       

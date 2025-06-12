@@ -106,95 +106,70 @@ export async function POST(request: Request) {
       // 2.1 Obtener personas existentes de la base de datos para proporcionar contexto
       const existingPeople = await getPeopleByUserId(validUUID);
       
-      // Crear una lista formateada de personas existentes para el prompt
-      let existingPeopleContext = '';
+      // Crear una lista simple de nombres conocidos para el prompt
+      let knownNames: string[] = [];
       if (existingPeople && existingPeople.length > 0) {
-        existingPeopleContext = `
-Contexto de personas que ya conozco:
-`;
-        
-        existingPeople.forEach((person: Person) => {
-          const details = person.details || {};
-          let relationInfo = 'desconocido';
-          let rolInfo = 'desconocido';
-          
-          // Extraer información del nuevo formato de detalles
-          if (details.relacion && typeof details.relacion === 'object' && 'entries' in details.relacion) {
-            const entries = (details.relacion as PersonDetailCategory).entries;
-            if (entries && entries.length > 0) {
-              relationInfo = entries[entries.length - 1].value; // Usar el más reciente
-            }
-          } else if (typeof details.relacion === 'string') {
-            relationInfo = details.relacion;
-          }
-          
-          if (details.rol && typeof details.rol === 'object' && 'entries' in details.rol) {
-            const entries = (details.rol as PersonDetailCategory).entries;
-            if (entries && entries.length > 0) {
-              rolInfo = entries[entries.length - 1].value; // Usar el más reciente
-            }
-          } else if (typeof details.rol === 'string') {
-            rolInfo = details.rol;
-          }
-          
-          existingPeopleContext += `- ${person.name}: relación="${relationInfo}", rol="${rolInfo}"\n`;
-        });
+        knownNames = existingPeople.map((person: Person) => person.name);
       }
+      
+      // Log temporal para debug - remover en producción
+      console.log('🔍 [API Stylize] Nombres conocidos:', knownNames);
       
       const extractPrompt = `
         Analiza el siguiente texto y extrae información sobre las personas mencionadas en él.
-        ${existingPeopleContext}
         
-        Instrucciones IMPORTANTES para la extracción de personas:
+        ${knownNames.length > 0 ? `Personas que ya conozco: ${knownNames.join(', ')}` : 'No tengo información previa sobre ninguna persona.'}
+        
+        Instrucciones para la extracción de personas:
 
-        1. DEFINICIÓN DE CAMPOS:
-           - 'rol': SOLO la ocupación o profesión de la persona (estudiante, médico, ingeniero, florista, profesor, etc.)
-           - 'relacion': SOLO el vínculo con el narrador (amigo, madre, pareja, hermano, jefe, etc.)
-           - 'detalles': Eventos, actividades o hechos relevantes sobre la persona
+        1. SOLO incluye personas que se mencionan EXPLÍCITAMENTE en el texto actual
+        2. SOLO incluye información que se menciona EXPLÍCITAMENTE en el texto actual
+        3. NO incluyas información que no esté mencionada en el texto
 
-        2. DISTINGUIR ROL DE RELACIÓN:
-           - INCORRECTO: rol="madre del narrador" - Esto NO es un rol sino una relación
-           - CORRECTO: rol="florista", relacion="madre" - El rol es la ocupación, la relación es el vínculo
+        4. DEFINICIÓN DE CAMPOS:
+           - 'rol': SOLO si el texto menciona una ocupación o profesión (estudiante, médico, ingeniero, etc.)
+           - 'relacion': SOLO si el texto menciona una relación contigo (amigo, madre, pareja, hermano, etc.)
+           - 'detalles': Eventos, actividades o hechos mencionados sobre la persona
 
-        3. VALORES ÚNICOS Y PRESERVACIÓN:
-           - Los campos 'rol' y 'relacion' deben tener UN SOLO VALOR por persona
-           - Si en el contexto ya existe información válida (no "desconocido"), MANTÉN esa información exacta a menos que el texto mencione CLARAMENTE un cambio
-           - NO uses "desconocido" si ya hay información válida en el contexto
-           - NO cambies relaciones específicas por genéricas ("novia" NO debe cambiar a "pareja" si ya está establecido como "novia")
-           - Solo usa "desconocido" cuando realmente no puedas determinar la información
+        5. Si una persona conocida se menciona pero no se dice nueva información sobre ella, NO la incluyas en la respuesta
 
-        4. IDENTIFICACIÓN DE PERSONAS:
-           - Incluye tanto personas mencionadas por nombre como referencias relacionales ("mi madre", "mi hermana")
-           - Si una referencia relacional ("mi madre") coincide con alguien del contexto, usa ese nombre
+        6. Si el texto dice "mi madre" o "mi hermana" pero ya conoces el nombre de esa persona, usa el nombre conocido
 
-        5. CUANDO NO HAY INFORMACIÓN CLARA:
-           - Si no puedes determinar el rol profesional, usa "desconocido" (NO uses la relación como rol)
-           - Si no puedes determinar la relación, usa "desconocido" (NO uses el rol como relación)
+        EJEMPLOS:
+        
+        Texto: "Vero tiene examen mañana"
+        Persona conocida: Vero
+        Respuesta: {"people": [{"name": "Vero", "information": {"detalles": ["tiene examen mañana"]}}]}
+        
+        Texto: "Hablé con Vero"
+        Persona conocida: Vero
+        Respuesta: {"people": []} (porque no se menciona información nueva)
+        
+        Texto: "Conocí a Juan, es médico"
+        Personas conocidas: Vero
+        Respuesta: {"people": [{"name": "Juan", "information": {"rol": "médico"}}]}
         
         Texto a analizar:
         ${text}
         
-        Tu respuesta DEBE ser un objeto JSON con la siguiente estructura exacta:
+        Responde con un objeto JSON con esta estructura exacta:
         {
           "people": [
             {
               "name": "Nombre completo",
               "information": {
-                "rol": "OBLIGATORIO - Ocupación o actividad principal (estudiante, médico, ingeniero)",
-                "relacion": "OBLIGATORIO - Tu relación con esta persona (amigo, pareja, familiar)",
+                "rol": "OPCIONAL - Solo si se menciona ocupación",
+                "relacion": "OPCIONAL - Solo si se menciona relación",
                 "detalles": [
-                  "Incluye aquí datos adicionales como eventos, actividades, etc.",
-                  "Cada elemento en una línea separada"
+                  "Solo información nueva mencionada en el texto"
                 ]
               }
             }
           ]
         }
         
-        RECUERDA: Los campos 'rol' y 'relacion' son OBLIGATORIOS para cada persona. Si no puedes determinarlos con seguridad, utiliza "desconocido".
-        
-        Si no hay personas mencionadas, devuelve: {"people": []}
-        Responde SOLO con el JSON, sin explicaciones adicionales.
+        Si no hay personas mencionadas con información nueva, devuelve: {"people": []}
+        Responde SOLO con el JSON, sin explicaciones.
       `;
 
       const extractCompletion = await openai.chat.completions.create({
@@ -209,6 +184,11 @@ Contexto de personas que ya conozco:
 
       try {
         const content = extractCompletion.choices[0].message.content || '{}';
+        
+        // Log temporal para debug - remover en producción
+        console.log('🔍 [API Stylize] Respuesta de la IA:');
+        console.log(content);
+        
         const extractResponse = JSON.parse(content);
         
         // Comprobar si la respuesta es un array o un objeto con propiedad 'people'

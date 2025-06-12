@@ -111,8 +111,9 @@ export default function Home() {
     if (!user?.uid) return;
     
     console.log('📝 DIARY: Guardando entrada...');
+    console.log('📝 DIARY: Personas mencionadas a guardar:', mentionedPeople);
     try {
-      await saveCurrentEntry(content, user.uid);
+      await saveCurrentEntry(content, user.uid, mentionedPeople);
       console.log('📝 DIARY: Entrada guardada exitosamente');
     } catch (error) {
       console.error('📝 DIARY: Error al guardar:', error);
@@ -128,10 +129,14 @@ export default function Home() {
     setError(null);
     
     try {
+      // Obtener token de Firebase
+      const token = await user.getIdToken();
+      
       const response = await fetch('/api/stylize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ 
           text: content,
@@ -160,6 +165,15 @@ export default function Home() {
         const peopleNames = data.peopleExtracted.map((person: { name: string }) => person.name).filter(Boolean);
         setMentionedPeople(peopleNames);
         console.log('📝 DIARY: Personas extraídas:', peopleNames);
+        
+        // Guardar automáticamente la entrada con las personas mencionadas actualizadas
+        try {
+          await saveCurrentEntry(data.stylizedText || content, user.uid, peopleNames);
+          console.log('📝 DIARY: Entrada guardada automáticamente con personas mencionadas');
+        } catch (saveError) {
+          console.error('📝 DIARY: Error al guardar entrada automáticamente:', saveError);
+          // No mostramos error al usuario ya que la estilización fue exitosa
+        }
         
         // Disparar actualización del panel de personas si está abierto
         if (showPeoplePanel) {
@@ -255,7 +269,7 @@ export default function Home() {
         
         // Guardar automáticamente después de la transcripción
         try {
-          await saveCurrentEntry(newContent, user.uid);
+          await saveCurrentEntry(newContent, user.uid, mentionedPeople);
           console.log('📝 DIARY: Entrada guardada automáticamente después de la transcripción');
         } catch (saveError) {
           console.error('📝 DIARY: Error al guardar automáticamente:', saveError);
