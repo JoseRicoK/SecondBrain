@@ -497,28 +497,28 @@ export default function Home() {
                     <div className="flex items-center justify-center space-x-2">
                       {storeIsEditing ? (
                         <>
-                          <button 
+                          <button
                             onClick={handleStylize}
                             disabled={isStylizing || !content}
-                            className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all duration-200 ${isStylizing ? 'bg-indigo-400' : 'bg-indigo-500'} text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
+                            className={`flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 rounded-xl transition-all duration-200 ${isStylizing ? 'bg-indigo-400' : 'bg-indigo-500'} text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
                             title="Estilizar con IA"
                           >
                             <FiZap size={18} />
                             <span className="font-medium hidden sm:inline">Estilizar</span>
                           </button>
-                          
-                          <button 
+
+                          <button
                             onClick={handleSave}
-                            className="flex items-center space-x-2 px-4 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all duration-200 shadow-lg"
+                            className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all duration-200 shadow-lg"
                             title="Guardar"
                           >
                             <FiSave size={18} />
                             <span className="font-medium hidden sm:inline">Guardar</span>
                           </button>
-                          
-                          <button 
+
+                          <button
                             onClick={handleToggleEditMode}
-                            className="flex items-center space-x-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200"
+                            className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200"
                             title="Cancelar"
                           >
                             <FiX size={18} />
@@ -526,9 +526,9 @@ export default function Home() {
                           </button>
                         </>
                       ) : (
-                        <button 
+                        <button
                           onClick={handleToggleEditMode}
-                          className="flex items-center space-x-2 px-4 py-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-slate-100 transition-all duration-200 border border-slate-200"
+                          className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-slate-100 transition-all duration-200 border border-slate-200"
                           disabled={isRecording || isProcessing}
                           title="Editar"
                         >
@@ -543,7 +543,7 @@ export default function Home() {
                             <button
                               onClick={startRecording}
                               disabled={isProcessing}
-                              className="flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                              className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                               title="Iniciar grabación"
                             >
                               <FiMic size={18} />
@@ -552,7 +552,7 @@ export default function Home() {
                           ) : (
                             <button
                               onClick={stopRecording}
-                              className="flex items-center space-x-2 px-4 py-2 bg-slate-700 text-white rounded-xl hover:bg-slate-800 transition-all duration-200 shadow-lg animate-pulse"
+                              className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-slate-700 text-white rounded-xl hover:bg-slate-800 transition-all duration-200 shadow-lg animate-pulse"
                               title="Detener grabación"
                             >
                               <FiStopCircle size={18} />
