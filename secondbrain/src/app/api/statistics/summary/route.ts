@@ -35,24 +35,27 @@ export async function GET(request: Request) {
       ).join('\n\n');
 
       const summaryPrompt = `
-        Analiza las siguientes entradas de diario de los últimos 7 días y crea un resumen reflexivo y positivo de la semana.
+        Crea un resumen conciso y fluido de la semana basado en las siguientes entradas de diario de los últimos 7 días.
         
-        Enfócate en:
-        - Eventos importantes y logros
-        - Patrones de comportamiento o emociones
-        - Relaciones y actividades sociales
-        - Crecimiento personal o aprendizajes
-        - Una perspectiva motivadora para la próxima semana
+        INSTRUCCIONES IMPORTANTES:
+        - Máximo 120 palabras
+        - Texto corrido EN PÁRRAFO ÚNICO, sin listas, numeraciones, viñetas o secciones
+        - NO uses estructuras como "1. Eventos importantes" o "• Celebraciones"
+        - Enfoque positivo y motivador
+        - Incluye eventos principales, emociones y relaciones importantes en un texto fluido
+        - Termina con una perspectiva optimista para la semana que viene
+        - Escribe en segunda persona (tú/tu)
+        - Evita ser repetitivo o redundante
         
         Entradas del diario:
         ${entriesText}
         
-        Resumen de la semana:
+        Resumen fluido de la semana (máximo 120 palabras en párrafo único):
       `;
 
       try {
         const summaryCompletion = await openai.chat.completions.create({
-          model: "o4-mini-2025-04-16",
+          model: "gpt-4o-mini",
           messages: [
             { role: "system", content: "Eres un asistente especializado en análisis de diarios personales y desarrollo personal." },
             { role: "user", content: summaryPrompt }

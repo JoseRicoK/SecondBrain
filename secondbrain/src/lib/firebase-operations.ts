@@ -380,6 +380,7 @@ export async function getPeopleByUserId(userId: string): Promise<Person[]> {
         id: doc.id,
         user_id: data.user_id,
         name: data.name,
+        mention_count: data.mention_count || 0,
         details: data.details || {},
         created_at: timestampToISOString(data.created_at),
         updated_at: timestampToISOString(data.updated_at)

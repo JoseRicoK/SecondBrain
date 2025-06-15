@@ -32,24 +32,26 @@ export async function GET(request: Request) {
       const entriesText = weekEntries.map(entry => entry.content).join(' ').slice(0, 1000);
 
       const quotePrompt = `
-        Basándote en las siguientes entradas de diario, crea una cita inspiracional que pueda compartirse en redes sociales.
+        Basándote en las siguientes entradas de diario de los últimos 7 días, crea un texto breve y atractivo para compartir en redes sociales.
         
-        La cita debe:
-        - Ser motivadora y positiva
-        - Reflejar los temas o emociones del contenido sin ser demasiado específica
-        - Ser aplicable de manera general
-        - Tener máximo 2 líneas
-        - No mencionar detalles personales específicos
+        INSTRUCCIONES:
+        - Debe ser una reflexión, pensamiento o consejo inspirado en las experiencias de la semana
+        - Máximo 200 caracteres (perfecto para Twitter/X)
+        - Lenguaje positivo, motivador y universal
+        - No incluyas detalles personales específicos (nombres, lugares, etc.)
+        - Debe sonar natural y humano, no forzado
+        - Puede incluir emojis apropiados al final
+        - Sin comillas ni formato de cita tradicional
         
         Contenido del diario:
         ${entriesText}
         
-        Cita inspiracional:
+        Texto para redes sociales (máximo 200 caracteres):
       `;
 
       try {
         const quoteCompletion = await openai.chat.completions.create({
-          model: "o4-mini-2025-04-16",
+          model: "gpt-4o-mini",
           messages: [
             { role: "system", content: "Eres un especialista en crear citas inspiracionales personalizadas." },
             { role: "user", content: quotePrompt }

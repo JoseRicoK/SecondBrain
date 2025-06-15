@@ -3,10 +3,10 @@ import type { NextConfig } from "next";
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
-    value: "default-src 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.googleapis.com https://*.firebase.com https://*.firebaseapp.com https://*.cloudfunctions.net wss://*.firebaseio.com"
+    value: "default-src 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.googleapis.com https://*.firebase.com https://*.firebaseapp.com https://*.cloudfunctions.net wss://*.firebaseio.com; frame-src 'self' https://*.firebaseapp.com https://*.googleapis.com https://accounts.google.com"
   },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' }, // Cambiado de DENY a SAMEORIGIN para permitir Firebase Auth
   { key: 'Referrer-Policy', value: 'same-origin' },
 ];
 

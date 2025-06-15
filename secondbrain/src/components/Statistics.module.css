@@ -1,0 +1,5 @@
+.progressBar {
+  transition: width 0.5s ease-in-out;
+  background-color: var(--bar-color);
+  width: var(--bar-width);
+}

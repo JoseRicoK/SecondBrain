@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
+import styles from './Statistics.module.css';
 
 interface PersonMention {
   name: string;
@@ -159,13 +160,8 @@ export default function Statistics(props: StatisticsProps) {
     if (user?.uid) {
       loadStatistics();
     }
-  }, [user?.uid, loadStatistics]);
-
-  useEffect(() => {
-    if (user?.uid && data) {
-      updateSection('mood');
-    }
-  }, [moodPeriod, user?.uid, data, updateSection]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, moodPeriod]);
 
   const formatPeriodText = () => {
     const now = new Date();
@@ -180,6 +176,11 @@ export default function Statistics(props: StatisticsProps) {
   };
 
   const displayedPeople = showAllPeople ? data?.topPeople || [] : (data?.topPeople || []).slice(0, 5);
+
+  const getProgressBarStyle = (percentage: number, color: string) => ({
+    '--bar-width': `${Math.min(100, Math.max(0, percentage))}%`,
+    '--bar-color': color,
+  } as React.CSSProperties);
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8">
@@ -401,8 +402,8 @@ export default function Statistics(props: StatisticsProps) {
                     </div>
                     <div className="w-full bg-red-100 rounded-full h-2">
                       <div 
-                        className="bg-red-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, Math.max(0, data?.moodData?.[0]?.stress || 0))}%` }}
+                        className={`h-2 rounded-full ${styles.progressBar}`}
+                        style={getProgressBarStyle(data?.moodData?.[0]?.stress || 0, 'rgb(239, 68, 68)')}
                       />
                     </div>
                   </div>
@@ -413,8 +414,8 @@ export default function Statistics(props: StatisticsProps) {
                     </div>
                     <div className="w-full bg-green-100 rounded-full h-2">
                       <div 
-                        className="bg-green-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, Math.max(0, data?.moodData?.[0]?.happiness || 0))}%` }}
+                        className={`h-2 rounded-full ${styles.progressBar}`}
+                        style={getProgressBarStyle(data?.moodData?.[0]?.happiness || 0, 'rgb(34, 197, 94)')}
                       />
                     </div>
                   </div>
@@ -425,8 +426,8 @@ export default function Statistics(props: StatisticsProps) {
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-2">
                       <div 
-                        className="bg-gray-400 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, Math.max(0, data?.moodData?.[0]?.neutral || 0))}%` }}
+                        className={`h-2 rounded-full ${styles.progressBar}`}
+                        style={getProgressBarStyle(data?.moodData?.[0]?.neutral || 0, 'rgb(156, 163, 175)')}
                       />
                     </div>
                   </div>

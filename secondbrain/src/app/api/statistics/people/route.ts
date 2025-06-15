@@ -16,6 +16,9 @@ export async function GET(request: Request) {
 
     // Obtener personas ordenadas por menciones
     const peopleData = await getPeopleByUserId(userId);
+    console.log('📊 [Statistics] Datos de personas obtenidos:', peopleData.length);
+    console.log('📊 [Statistics] Primeras 3 personas:', peopleData.slice(0, 3).map(p => ({ name: p.name, mention_count: p.mention_count })));
+    
     const topPeople = peopleData
       .map((person: { name: string; mention_count?: number }) => ({
         name: person.name,
@@ -24,6 +27,9 @@ export async function GET(request: Request) {
       .filter((person: { count: number }) => person.count > 0)
       .sort((a: { count: number }, b: { count: number }) => b.count - a.count)
       .slice(0, 20);
+    
+    console.log('📊 [Statistics] Top people calculado:', topPeople.length);
+    console.log('📊 [Statistics] Top 5 personas:', topPeople.slice(0, 5));
     
     return NextResponse.json({ topPeople });
 

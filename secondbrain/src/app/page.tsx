@@ -360,7 +360,7 @@ export default function Home() {
       setIsProcessing(false);
       setAudioBlob(null);
     }
-  }, [audioBlob, user?.uid, content, saveCurrentEntry]);
+  }, [audioBlob, user?.uid, content, saveCurrentEntry, mentionedPeople]);
 
   // Sincronizar content con currentEntry
   useEffect(() => {
