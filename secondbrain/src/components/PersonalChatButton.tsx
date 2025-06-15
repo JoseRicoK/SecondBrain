@@ -17,7 +17,7 @@ export const PersonalChatButton: React.FC<PersonalChatButtonProps> = ({
       onClick={onClick}
       title="Chat Personal - Analiza tu vida con IA"
       className={`
-        fixed left-[420px] bottom-20 z-40
+        fixed md:left-[340px] lg:left-[380px] xl:left-[420px] bottom-20 z-40
         flex flex-col items-center justify-center w-16 h-24
         bg-gradient-to-br from-purple-500 to-blue-600 
         hover:from-purple-600 hover:to-blue-700
