@@ -729,6 +729,15 @@ export async function saveExtractedPersonInfo(
     
     console.log(`🔍 [saveExtractedPersonInfo] Procesando: ${personName}`, information);
     
+    // Verificar específicamente si "cumpleaños" llega con ñ
+    if (information.cumpleaños || information.cumpleanos) {
+      console.log('🎂 [saveExtractedPersonInfo] Verificando cumpleaños:');
+      console.log('- Tiene "cumpleaños" (con ñ):', !!information.cumpleaños);
+      console.log('- Tiene "cumpleanos" (sin ñ):', !!information.cumpleanos);
+      console.log('- Valor con ñ:', information.cumpleaños);
+      console.log('- Valor sin ñ:', information.cumpleanos);
+    }
+    
     // Buscar si la persona ya existe
     const peopleRef = collection(db, 'people');
     const q = query(
@@ -759,11 +768,14 @@ export async function saveExtractedPersonInfo(
       
       for (const [key, value] of Object.entries(information)) {
         if (value) {
-          if (!updatedDetails[key]) {
-            updatedDetails[key] = { entries: [] };
+          // Normalizar "cumpleanos" a "cumpleaños" si llegara sin ñ
+          const normalizedKey = key === 'cumpleanos' ? 'cumpleaños' : key;
+          
+          if (!updatedDetails[normalizedKey]) {
+            updatedDetails[normalizedKey] = { entries: [] };
           }
           
-          const category = updatedDetails[key] as PersonDetailCategory;
+          const category = updatedDetails[normalizedKey] as PersonDetailCategory;
           
           // Manejar tanto strings como arrays
           if (typeof value === 'string') {
@@ -820,8 +832,11 @@ export async function saveExtractedPersonInfo(
       
       for (const [key, value] of Object.entries(information)) {
         if (value) {
+          // Normalizar "cumpleanos" a "cumpleaños" si llegara sin ñ
+          const normalizedKey = key === 'cumpleanos' ? 'cumpleaños' : key;
+          
           if (typeof value === 'string') {
-            newDetails[key] = {
+            newDetails[normalizedKey] = {
               entries: [{
                 value: value,
                 date: date
@@ -839,7 +854,7 @@ export async function saveExtractedPersonInfo(
               }
             });
             if (entries.length > 0) {
-              newDetails[key] = { entries };
+              newDetails[normalizedKey] = { entries };
             }
           }
         }
