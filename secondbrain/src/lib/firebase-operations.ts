@@ -96,6 +96,12 @@ function timestampToISOString(timestamp: unknown): string {
   return new Date().toISOString();
 }
 
+// Función para capitalizar la primera letra de un string
+function capitalizeFirstLetter(text: string): string {
+  if (!text || typeof text !== 'string') return text;
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 // =====================================
 // FUNCIONES DE DIARIO
 // =====================================
@@ -779,19 +785,20 @@ export async function saveExtractedPersonInfo(
           
           // Manejar tanto strings como arrays
           if (typeof value === 'string') {
+            const capitalizedValue = capitalizeFirstLetter(value);
             const newEntry: PersonDetailEntry = {
-              value: value,
+              value: capitalizedValue,
               date: date
             };
             
             // Evitar duplicados exactos y similares
             const exists = category.entries.some(entry => {
               // Duplicado exacto
-              if (entry.value === value && entry.date === date) return true;
+              if (entry.value === capitalizedValue && entry.date === date) return true;
               
               // Duplicado similar (especialmente importante para el mismo día)
-              if (entry.date === date && areSimilarTexts(entry.value, value)) {
-                console.log(`🔍 [saveExtractedPersonInfo] Evitando duplicado similar: "${value}" (ya existe: "${entry.value}")`);
+              if (entry.date === date && areSimilarTexts(entry.value, capitalizedValue)) {
+                console.log(`🔍 [saveExtractedPersonInfo] Evitando duplicado similar: "${capitalizedValue}" (ya existe: "${entry.value}")`);
                 return true;
               }
               
@@ -805,14 +812,15 @@ export async function saveExtractedPersonInfo(
             // Procesar arrays (como "detalles")
             value.forEach((item: unknown) => {
               if (typeof item === 'string') {
+                const capitalizedItem = capitalizeFirstLetter(item);
                 const newEntry: PersonDetailEntry = {
-                  value: item,
+                  value: capitalizedItem,
                   date: date
                 };
                 
                 // Evitar duplicados
                 const exists = category.entries.some(
-                  entry => entry.value === item && entry.date === date
+                  entry => entry.value === capitalizedItem && entry.date === date
                 );
                 
                 if (!exists) {
@@ -836,9 +844,10 @@ export async function saveExtractedPersonInfo(
           const normalizedKey = key === 'cumpleanos' ? 'cumpleaños' : key;
           
           if (typeof value === 'string') {
+            const capitalizedValue = capitalizeFirstLetter(value);
             newDetails[normalizedKey] = {
               entries: [{
-                value: value,
+                value: capitalizedValue,
                 date: date
               }]
             };
@@ -847,8 +856,9 @@ export async function saveExtractedPersonInfo(
             const entries: PersonDetailEntry[] = [];
             value.forEach((item: unknown) => {
               if (typeof item === 'string') {
+                const capitalizedItem = capitalizeFirstLetter(item);
                 entries.push({
-                  value: item,
+                  value: capitalizedItem,
                   date: date
                 });
               }
@@ -907,14 +917,15 @@ export async function addPersonDetail(
     }
     
     const categoryData = person.details[category] as PersonDetailCategory;
+    const capitalizedValue = capitalizeFirstLetter(value);
     const newEntry: PersonDetailEntry = {
-      value: value,
+      value: capitalizedValue,
       date: entryDate
     };
     
     // Evitar duplicados
     const exists = categoryData.entries.some(
-      entry => entry.value === value && entry.date === entryDate
+      entry => entry.value === capitalizedValue && entry.date === entryDate
     );
     
     if (!exists) {

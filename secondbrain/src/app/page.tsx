@@ -10,7 +10,7 @@ import Settings from '@/components/Settings';
 import PeopleManager from '@/components/PeopleManager';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiaryStore } from '@/lib/store';
-import { FiMenu, FiEdit2, FiSave, FiX, FiMic, FiStopCircle, FiZap, FiUsers, FiUser } from 'react-icons/fi';
+import { FiMenu, FiEdit2, FiSave, FiX, FiMic, FiStopCircle, FiZap, FiUsers, FiUser, FiUserPlus } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Image from 'next/image';
@@ -140,8 +140,7 @@ export default function Home() {
         },
         body: JSON.stringify({ 
           text: content,
-          userId: user.uid,
-          entryDate: currentEntry?.date || new Date().toISOString().split('T')[0]
+          userId: user.uid
         }),
       });
 
@@ -155,11 +154,60 @@ export default function Home() {
       if (data.stylizedText) {
         setContent(data.stylizedText);
         console.log('📝 DIARY: Texto estilizado exitosamente');
+        
+        // Guardar automáticamente la entrada estilizada
+        try {
+          await saveCurrentEntry(data.stylizedText, user.uid, mentionedPeople);
+          console.log('📝 DIARY: Entrada estilizada guardada automáticamente');
+        } catch (saveError) {
+          console.error('📝 DIARY: Error al guardar entrada automáticamente:', saveError);
+          // No mostramos error al usuario ya que la estilización fue exitosa
+        }
       } else {
         console.warn('📝 DIARY: No se recibió texto estilizado');
         setError('No se pudo estilizar el texto');
       }
+    } catch (error) {
+      console.error('📝 DIARY: Error al estilizar:', error);
+      setError('Error al estilizar el texto');
+    } finally {
+      setIsStylizing(false);
+    }
+  };
 
+  const handleExtractPeople = async () => {
+    if (!user?.uid) return;
+    
+    console.log('📝 DIARY: Extrayendo personas...');
+    console.log('📝 DIARY: Fecha seleccionada para extracción:', currentDate);
+    console.log('📝 DIARY: currentEntry?.date:', currentEntry?.date);
+    setIsStylizing(true); // Usamos el mismo estado de loading
+    setError(null);
+    
+    try {
+      // Obtener token de Firebase
+      const token = await user.getIdToken();
+      
+      const response = await fetch('/api/extract-people', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ 
+          text: content,
+          userId: user.uid,
+          entryDate: currentDate // Usar la fecha seleccionada en el calendario
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error en la respuesta del servidor');
+      }
+
+      const data = await response.json();
+      console.log('📝 DIARY: Respuesta de extracción de personas:', data);
+      
       // Actualizar las personas mencionadas
       if (data.peopleExtracted && Array.isArray(data.peopleExtracted)) {
         const peopleNames = data.peopleExtracted.map((person: { name: string }) => person.name).filter(Boolean);
@@ -168,21 +216,28 @@ export default function Home() {
         
         // Guardar automáticamente la entrada con las personas mencionadas actualizadas
         try {
-          await saveCurrentEntry(data.stylizedText || content, user.uid, peopleNames);
+          await saveCurrentEntry(content, user.uid, peopleNames);
           console.log('📝 DIARY: Entrada guardada automáticamente con personas mencionadas');
         } catch (saveError) {
           console.error('📝 DIARY: Error al guardar entrada automáticamente:', saveError);
-          // No mostramos error al usuario ya que la estilización fue exitosa
+          // No mostramos error al usuario ya que la extracción fue exitosa
         }
         
         // Disparar actualización del panel de personas si está abierto
         if (showPeoplePanel) {
           setPeopleRefreshTrigger(prev => prev + 1);
         }
+        
+        // Mostrar mensaje de éxito
+        if (data.message) {
+          console.log('📝 DIARY:', data.message);
+        }
+      } else {
+        console.log('📝 DIARY: No se encontraron personas para extraer');
       }
     } catch (error) {
-      console.error('📝 DIARY: Error al estilizar:', error);
-      setError('Error al estilizar el texto');
+      console.error('📝 DIARY: Error al extraer personas:', error);
+      setError('Error al extraer personas del texto');
     } finally {
       setIsStylizing(false);
     }
@@ -505,6 +560,16 @@ export default function Home() {
                           >
                             <FiZap size={18} />
                             <span className="font-medium hidden sm:inline">Estilizar</span>
+                          </button>
+
+                          <button
+                            onClick={handleExtractPeople}
+                            disabled={isStylizing || !content}
+                            className={`flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 rounded-xl transition-all duration-200 ${isStylizing ? 'bg-purple-400' : 'bg-purple-500'} text-white hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
+                            title="Extraer personas mencionadas"
+                          >
+                            <FiUserPlus size={18} />
+                            <span className="font-medium hidden sm:inline">Extraer personas</span>
                           </button>
 
                           <button
