@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { userId, message, conversationHistory, userName } = await request.json();
+    const { userId, message, conversationHistory, userName, currentDate } = await request.json();
     if (user.uid !== userId) {
       return NextResponse.json({ error: 'User mismatch' }, { status: 403 });
     }
@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     const userDisplayName = userName || 'Usuario';
     
     console.log('Personal chat request - User name:', userDisplayName);
+    console.log('Personal chat request - Current date:', currentDate);
 
     // Obtener todas las entradas del diario del usuario
     const diaryEntries = await getDiaryEntriesByUserId(userId);
@@ -44,6 +45,8 @@ export async function POST(request: NextRequest) {
         role: 'system' as const,
         content: `Eres un asistente personal inteligente especializado en análisis de vida personal y crecimiento personal. Estás ayudando a ${userName} a analizar, reflexionar y obtener insights sobre su vida basándote en todas las entradas de su diario personal.
 
+FECHA Y HORA ACTUAL (España): ${currentDate || 'No disponible'}
+
 ${userContext}
 
 CAPACIDADES ESPECIALES:
@@ -54,11 +57,13 @@ CAPACIDADES ESPECIALES:
 - Sugiere reflexiones y preguntas para el crecimiento personal
 - Conecta eventos y experiencias a lo largo del tiempo
 - Ayuda a identificar logros y áreas de mejora
+- Puede responder sobre eventos relativos como "ayer", "la semana pasada", etc.
 
 INSTRUCCIONES:
 - Dirígete a la persona por su nombre (${userName}) de manera natural y personal
 - Responde basándote únicamente en la información del diario proporcionada
 - Utiliza tu capacidad de análisis para identificar patrones, tendencias y conexiones temporales
+- Cuando se pregunte sobre fechas relativas (ayer, anteayer, etc.), usa la fecha actual para calcular
 - Sé empático, comprensivo y orientado al crecimiento personal
 - Proporciona análisis profundos pero accesibles y útiles
 - Cuando detectes patrones emocionales, menciónalos con tacto

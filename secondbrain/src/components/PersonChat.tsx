@@ -70,6 +70,18 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
         content: msg.content
       }));
 
+      // Obtener la fecha actual en horario de España
+      const now = new Date();
+      const spainDate = new Intl.DateTimeFormat('es-ES', {
+        timeZone: 'Europe/Madrid',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        weekday: 'long'
+      }).format(now);
+
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/chat-person', {
         method: 'POST',
@@ -80,7 +92,8 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
         body: JSON.stringify({
           person,
           message: userMessage,
-          conversationHistory
+          conversationHistory,
+          currentDate: spainDate
         }),
       });
 

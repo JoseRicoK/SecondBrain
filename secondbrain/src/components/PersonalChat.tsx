@@ -131,6 +131,18 @@ Puedo ayudarte a:
         content: msg.content
       }));
 
+      // Obtener la fecha actual en horario de España
+      const now = new Date();
+      const spainDate = new Intl.DateTimeFormat('es-ES', {
+        timeZone: 'Europe/Madrid',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        weekday: 'long'
+      }).format(now);
+
       // Obtener token de Firebase
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/personal-chat', {
@@ -143,7 +155,8 @@ Puedo ayudarte a:
           userId,
           message: userMessage,
           conversationHistory,
-          userName: getUserDisplayName()
+          userName: getUserDisplayName(),
+          currentDate: spainDate
         }),
       });
 

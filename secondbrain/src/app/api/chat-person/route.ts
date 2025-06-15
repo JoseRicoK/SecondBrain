@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { person, message, conversationHistory } = await request.json();
+    const { person, message, conversationHistory, currentDate } = await request.json();
 
     if (!person || !message) {
       return NextResponse.json(
@@ -25,6 +25,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    console.log('Chat person request - Current date:', currentDate);
 
     // Construir el contexto de la persona
     const personContext = buildPersonContext(person);
@@ -35,6 +37,8 @@ export async function POST(request: NextRequest) {
         role: 'system' as const,
         content: `Eres un asistente inteligente especializado en análisis de datos personales y relaciones humanas. Tu objetivo es ayudar a analizar y responder preguntas sobre una persona específica basándote en la información recopilada sobre ella a lo largo del tiempo.
 
+FECHA Y HORA ACTUAL (España): ${currentDate || 'No disponible'}
+
 INFORMACIÓN DE LA PERSONA:
 ${personContext}
 
@@ -44,10 +48,12 @@ CAPACIDADES ESPECIALES:
 - Detecta gaps de información importantes
 - Proporciona insights sobre la dinámica relacional
 - Sugiere preguntas relevantes para profundizar el conocimiento
+- Puede responder sobre eventos relativos como "ayer", "la semana pasada", etc.
 
 INSTRUCCIONES:
 - Responde únicamente basándote en la información proporcionada sobre esta persona
 - Utiliza tu capacidad de análisis para identificar patrones, tendencias y conexiones
+- Cuando se pregunte sobre fechas relativas (ayer, anteayer, etc.), usa la fecha actual para calcular
 - Si detectas información contradictoria o evolutiva, analízala en contexto temporal
 - Cuando no tengas información suficiente, sé específico sobre qué datos serían valiosos
 - Proporciona análisis profundos pero concisos
