@@ -54,12 +54,9 @@
 
 /* Input fijo en la parte inferior */
 .inputArea {
-  position: sticky;
-  bottom: 0;
-  z-index: 1001;
+  flex-shrink: 0; /* No se comprime */
   background: white;
   border-top: 1px solid #e2e8f0;
-  flex-shrink: 0; /* No se comprime */
 }
 
 /* Asegurar que el contenedor interno del input use todo el ancho disponible */
