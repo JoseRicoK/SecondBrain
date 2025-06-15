@@ -702,7 +702,7 @@ export default function Home() {
                   {/* Panel modal - adaptado para Safari móvil con viewport dinámico */}
                   <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
                     <div 
-                      className="w-full mobile-modal-height sm:w-auto sm:h-auto sm:max-w-lg sm:max-h-[85dvh] bg-white sm:rounded-2xl shadow-2xl border-0 sm:border border-white/20 overflow-hidden animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto flex flex-col"
+                      className="w-full mobile-modal-height sm:w-full sm:max-w-2xl sm:h-auto sm:max-h-[85dvh] bg-white sm:rounded-2xl shadow-2xl border-0 sm:border border-white/20 overflow-hidden animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto flex flex-col"
                       onClick={(e) => e.stopPropagation()} // Evitar que el clic en el modal lo cierre
                     >
                       {/* Header fijo con safe area para muesca */}
