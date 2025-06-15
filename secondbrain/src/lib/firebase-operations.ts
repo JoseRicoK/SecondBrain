@@ -783,30 +783,52 @@ export async function saveExtractedPersonInfo(
           
           const category = updatedDetails[normalizedKey] as PersonDetailCategory;
           
+          // Campos únicos: solo debe haber uno por persona (se actualiza, no se agrega)
+          const uniqueFields = ['rol', 'relacion', 'cumpleaños', 'direccion'];
+          
           // Manejar tanto strings como arrays
           if (typeof value === 'string') {
             const capitalizedValue = capitalizeFirstLetter(value);
-            const newEntry: PersonDetailEntry = {
-              value: capitalizedValue,
-              date: date
-            };
             
-            // Evitar duplicados exactos y similares
-            const exists = category.entries.some(entry => {
-              // Duplicado exacto
-              if (entry.value === capitalizedValue && entry.date === date) return true;
-              
-              // Duplicado similar (especialmente importante para el mismo día)
-              if (entry.date === date && areSimilarTexts(entry.value, capitalizedValue)) {
-                console.log(`🔍 [saveExtractedPersonInfo] Evitando duplicado similar: "${capitalizedValue}" (ya existe: "${entry.value}")`);
-                return true;
+            if (uniqueFields.includes(normalizedKey)) {
+              // Para campos únicos, reemplazar si existe o agregar si no existe
+              const existingIndex = category.entries.findIndex(entry => entry.date === date);
+              if (existingIndex >= 0) {
+                // Actualizar valor existente para esta fecha
+                category.entries[existingIndex].value = capitalizedValue;
+                console.log(`🔄 [saveExtractedPersonInfo] Actualizando ${normalizedKey}: "${capitalizedValue}" para fecha ${date}`);
+              } else {
+                // Agregar nuevo valor para esta fecha
+                category.entries.push({
+                  value: capitalizedValue,
+                  date: date
+                });
+                console.log(`➕ [saveExtractedPersonInfo] Agregando ${normalizedKey}: "${capitalizedValue}" para fecha ${date}`);
               }
+            } else {
+              // Para campos no únicos (como detalles), usar la lógica original
+              const newEntry: PersonDetailEntry = {
+                value: capitalizedValue,
+                date: date
+              };
               
-              return false;
-            });
-            
-            if (!exists) {
-              category.entries.push(newEntry);
+              // Evitar duplicados exactos y similares
+              const exists = category.entries.some(entry => {
+                // Duplicado exacto
+                if (entry.value === capitalizedValue && entry.date === date) return true;
+                
+                // Duplicado similar (especialmente importante para el mismo día)
+                if (entry.date === date && areSimilarTexts(entry.value, capitalizedValue)) {
+                  console.log(`🔍 [saveExtractedPersonInfo] Evitando duplicado similar: "${capitalizedValue}" (ya existe: "${entry.value}")`);
+                  return true;
+                }
+                
+                return false;
+              });
+              
+              if (!exists) {
+                category.entries.push(newEntry);
+              }
             }
           } else if (Array.isArray(value)) {
             // Procesar arrays (como "detalles")
@@ -918,22 +940,45 @@ export async function addPersonDetail(
     
     const categoryData = person.details[category] as PersonDetailCategory;
     const capitalizedValue = capitalizeFirstLetter(value);
-    const newEntry: PersonDetailEntry = {
-      value: capitalizedValue,
-      date: entryDate
-    };
     
-    // Evitar duplicados
-    const exists = categoryData.entries.some(
-      entry => entry.value === capitalizedValue && entry.date === entryDate
-    );
+    // Campos únicos: solo debe haber uno por persona (se actualiza, no se agrega)
+    const uniqueFields = ['rol', 'relacion', 'cumpleaños', 'direccion'];
     
-    if (!exists) {
-      categoryData.entries.push(newEntry);
+    if (uniqueFields.includes(category)) {
+      // Para campos únicos, reemplazar si existe o agregar si no existe
+      const existingIndex = categoryData.entries.findIndex(entry => entry.date === entryDate);
+      if (existingIndex >= 0) {
+        // Actualizar valor existente para esta fecha
+        categoryData.entries[existingIndex].value = capitalizedValue;
+        console.log(`🔄 [addPersonDetail] Actualizando ${category}: "${capitalizedValue}" para fecha ${entryDate}`);
+      } else {
+        // Agregar nuevo valor para esta fecha
+        categoryData.entries.push({
+          value: capitalizedValue,
+          date: entryDate
+        });
+        console.log(`➕ [addPersonDetail] Agregando ${category}: "${capitalizedValue}" para fecha ${entryDate}`);
+      }
       return await savePerson(person);
+    } else {
+      // Para campos no únicos (como detalles), usar la lógica original
+      const newEntry: PersonDetailEntry = {
+        value: capitalizedValue,
+        date: entryDate
+      };
+      
+      // Evitar duplicados
+      const exists = categoryData.entries.some(
+        entry => entry.value === capitalizedValue && entry.date === entryDate
+      );
+      
+      if (!exists) {
+        categoryData.entries.push(newEntry);
+        return await savePerson(person);
+      }
+      
+      return person;
     }
-    
-    return person;
   } catch (error) {
     console.error('❌ [Firebase] Error al agregar detalle de persona:', error);
     return null;

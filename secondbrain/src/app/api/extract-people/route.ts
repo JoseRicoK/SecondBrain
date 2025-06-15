@@ -158,7 +158,9 @@ export async function POST(request: Request) {
         }
         
         if (todayDetails.length > 0) {
-          personInfo += `, detalles del día de hoy=[${todayDetails.join(', ')}]`;
+          personInfo += `, INFORMACIÓN YA REGISTRADA HOY (${validEntryDate})=[${todayDetails.join(', ')}]`;
+        } else {
+          personInfo += `, SIN INFORMACIÓN REGISTRADA HOY (${validEntryDate})`;
         }
         
         peopleContext += personInfo + '\n';
@@ -170,6 +172,8 @@ export async function POST(request: Request) {
     // Log temporal para debug - remover en producción
     console.log('🔍 [API Extract People] Contexto completo de personas:', peopleContext);
     console.log('🔍 [API Extract People] Fecha de entrada recibida:', validEntryDate);
+    console.log('🔍 [API Extract People] Texto a analizar:', text);
+    console.log('🔍 [API Extract People] Enviando prompt a OpenAI...');
     
     // Formatear la fecha de la entrada para el contexto - asegurar que use la fecha exacta
     const [year, month, day] = validEntryDate.split('-').map(Number);
@@ -193,15 +197,23 @@ export async function POST(request: Request) {
       
       Instrucciones para la extracción de personas:
 
-      1. SOLO incluye personas que se mencionan EXPLÍCITAMENTE en el texto actual
+      1. INCLUYE personas mencionadas de cualquier forma:
+         - Nombres explícitos: "María", "Juan", "Dr. García"
+         - Referencias familiares: "mi madre", "mi novia", "mi hermano"
+         - Referencias relacionales: "mi amigo", "mi jefe", "mi compañero"
       2. SOLO incluye información que se menciona EXPLÍCITAMENTE en el texto actual
       3. NO incluyas información que no esté mencionada en el texto
 
-      4. EVITAR DUPLICADOS IMPORTANTES:
-         - Revisa cuidadosamente los "detalles del día de hoy" de cada persona conocida
-         - Si el texto menciona algo muy similar a lo que ya está registrado HOY, NO lo incluyas
-         - Solo incluye información realmente nueva o significativamente diferente
-         - Ejemplo: Si ya hay "tiene examen de matemáticas" y el texto dice "examen de mates", NO lo duplicar
+      4. EVITAR DUPLICADOS CRÍTICO - ESPECIALMENTE DEL MISMO DÍA:
+         - La "INFORMACIÓN YA REGISTRADA HOY" es información YA GUARDADA para la fecha ${entryDateFormatted}
+         - Si el texto menciona algo que YA ESTÁ en "INFORMACIÓN YA REGISTRADA HOY", NO lo incluyas
+         - Si una persona muestra "SIN INFORMACIÓN REGISTRADA HOY", puedes agregar cualquier detalle nuevo
+         - Busca información COMPLETAMENTE NUEVA que no esté ya registrada para esta fecha
+         - Ejemplos de duplicados a evitar:
+           * Ya registrado hoy: "tiene examen de matemáticas" → Texto: "examen de mates" = NO incluir
+           * Ya registrado hoy: "fue al gimnasio" → Texto: "estuvo en el gym" = NO incluir
+           * Ya registrado hoy: "comió pizza" → Texto: "cenó pizza" = SÍ incluir (son eventos diferentes)
+         - REGLA DE ORO: Si hay duda sobre si es duplicado del mismo día, NO lo incluyas
 
       5. DEFINICIÓN DE CAMPOS:
          - 'rol': SOLO si el texto menciona una ocupación o profesión (estudiante, médico, ingeniero, etc.)
@@ -218,18 +230,42 @@ export async function POST(request: Request) {
 
       7. Si una persona conocida se menciona pero no se dice nueva información sobre ella, NO la incluyas en la respuesta
 
-      8. Si el texto dice "mi madre" o "mi hermana" pero ya conoces el nombre de esa persona, usa el nombre conocido
+      8. MANEJO DE REFERENCIAS RELACIONALES:
+         - Si el texto dice "mi novia" y ya conoces el nombre de esa persona (ej: relación='novia'), usa el nombre conocido
+         - Si el texto dice "mi novia" y NO conoces quién es la novia, créala como nueva persona con name="mi novia" y relacion="novia"
+         - Si el texto dice "mi madre" y NO conoces quién es la madre, créala como nueva persona con name="mi madre" y relacion="madre"
+         - Mismo principio para: "mi hermano", "mi amigo", "mi jefe", etc.
 
       EJEMPLOS DE COMPORTAMIENTO CORRECTO:
       
-      Contexto: "Vero: rol='estudiante', relación='novia', cumpleaños='15 de marzo', detalles del día de hoy=[tiene examen de matemáticas]"
+      Contexto: "Vero: rol='estudiante', relación='novia', cumpleaños='15 de marzo', INFORMACIÓN YA REGISTRADA HOY (2025-06-15)=[tiene examen de matemáticas]"
       Texto: "Vero tiene examen mañana"
       Respuesta: {"people": []} (porque "examen" ya está registrado hoy)
       
-      Contexto: "Vero: rol='estudiante', relación='novia', detalles del día de hoy=[tiene examen de matemáticas]"
+      Contexto: "Vero: rol='estudiante', relación='novia', INFORMACIÓN YA REGISTRADA HOY (2025-06-20)=[tiene examen de matemáticas]"
       Fecha de entrada: "jueves, 20 de junio de 2025"
       Texto: "Hoy es el cumpleaños de Vero y fue al gimnasio"
-      Respuesta: {"people": [{"name": "Vero", "information": {"cumpleanos": "20 de junio", "detalles": ["fue al gimnasio"]}}]}
+      Respuesta: {"people": [{"name": "Vero", "information": {"cumpleaños": "20 de junio", "detalles": ["fue al gimnasio"]}}]}
+      
+      Contexto: "Ana: rol='médica', INFORMACIÓN YA REGISTRADA HOY (2025-06-15)=[trabajó en el hospital, cenó pasta]"
+      Texto: "Ana estuvo trabajando en el hospital y comió pasta para cenar"
+      Respuesta: {"people": []} (porque "trabajó en el hospital" y "cenó pasta" ya están registrados hoy)
+      
+      Contexto: "Pedro: INFORMACIÓN YA REGISTRADA HOY (2025-06-15)=[fue al gimnasio]"
+      Texto: "Pedro fue al gym por la mañana y luego estudió para el examen"
+      Respuesta: {"people": [{"name": "Pedro", "information": {"detalles": ["estudió para el examen"]}}]} (gimnasio ya registrado, pero estudio es nuevo)
+      
+      Contexto: "Luis: SIN INFORMACIÓN REGISTRADA HOY (2025-06-15)"
+      Texto: "Luis fue a comprar y luego volvió a casa"
+      Respuesta: {"people": [{"name": "Luis", "information": {"detalles": ["fue a comprar", "volvió a casa"]}}]}
+      
+      Contexto: "No tengo información previa"
+      Texto: "Mi novia me ha preparado una tarta"
+      Respuesta: {"people": [{"name": "mi novia", "information": {"relacion": "novia", "detalles": ["me ha preparado una tarta"]}}]}
+      
+      Contexto: "Vero: rol='estudiante', relación='novia'"
+      Texto: "Mi novia me ha preparado una tarta"
+      Respuesta: {"people": [{"name": "Vero", "information": {"detalles": ["me ha preparado una tarta"]}}]} (usa el nombre conocido)
       
       Contexto: "No tengo información previa"
       Texto: "Conocí a Juan, es médico y vive en Barcelona"
@@ -362,8 +398,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       peopleExtracted,
       message: peopleExtracted.length > 0 
-        ? `Se han extraído y guardado ${peopleExtracted.length} persona(s)` 
-        : 'No se encontraron personas mencionadas con información nueva'
+        ? `Se han extraído y guardado ${peopleExtracted.length} persona(s) con información nueva` 
+        : 'No se encontró información nueva para extraer. Las personas ya mencionadas se mantienen sin cambios.',
+      totalPeopleProcessed: peopleExtracted.length,
+      date: validEntryDate
     });
   } catch (error) {
     console.error('Error en API de extracción de personas:', error);

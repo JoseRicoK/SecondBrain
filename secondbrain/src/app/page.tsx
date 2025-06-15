@@ -210,17 +210,34 @@ export default function Home() {
       
       // Actualizar las personas mencionadas
       if (data.peopleExtracted && Array.isArray(data.peopleExtracted)) {
-        const peopleNames = data.peopleExtracted.map((person: { name: string }) => person.name).filter(Boolean);
-        setMentionedPeople(peopleNames);
-        console.log('📝 DIARY: Personas extraídas:', peopleNames);
+        const newPeopleNames = data.peopleExtracted.map((person: { name: string }) => person.name).filter(Boolean);
         
-        // Guardar automáticamente la entrada con las personas mencionadas actualizadas
-        try {
-          await saveCurrentEntry(content, user.uid, peopleNames);
-          console.log('📝 DIARY: Entrada guardada automáticamente con personas mencionadas');
-        } catch (saveError) {
-          console.error('📝 DIARY: Error al guardar entrada automáticamente:', saveError);
-          // No mostramos error al usuario ya que la extracción fue exitosa
+        if (newPeopleNames.length > 0) {
+          // Solo si hay personas nuevas extraídas, agregar a las ya mencionadas
+          const updatedMentionedPeople = [...new Set([...mentionedPeople, ...newPeopleNames])];
+          setMentionedPeople(updatedMentionedPeople);
+          console.log('📝 DIARY: Personas extraídas agregadas:', newPeopleNames);
+          console.log('📝 DIARY: Lista completa de personas mencionadas:', updatedMentionedPeople);
+          
+          // Guardar automáticamente la entrada con las personas mencionadas actualizadas
+          try {
+            await saveCurrentEntry(content, user.uid, updatedMentionedPeople);
+            console.log('📝 DIARY: Entrada guardada automáticamente con personas mencionadas');
+          } catch (saveError) {
+            console.error('📝 DIARY: Error al guardar entrada automáticamente:', saveError);
+            // No mostramos error al usuario ya que la extracción fue exitosa
+          }
+        } else {
+          // Si no hay personas nuevas, mantener las ya mencionadas
+          console.log('📝 DIARY: No se encontraron personas nuevas, manteniendo lista actual:', mentionedPeople);
+          
+          // Guardar automáticamente la entrada sin cambios en personas mencionadas
+          try {
+            await saveCurrentEntry(content, user.uid, mentionedPeople);
+            console.log('📝 DIARY: Entrada guardada automáticamente sin cambios en personas');
+          } catch (saveError) {
+            console.error('📝 DIARY: Error al guardar entrada automáticamente:', saveError);
+          }
         }
         
         // Disparar actualización del panel de personas si está abierto
