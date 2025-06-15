@@ -246,86 +246,89 @@ export default function Statistics(props: StatisticsProps) {
             </div>
           </div>
 
-          {/* Cita inspiracional */}
-          <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 border-b border-blue-100">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
-                  <FiHeart className="text-blue-600" />
-                  <span>Cita inspiracional</span>
-                </h3>
-                <button
-                  onClick={() => updateSection('quote')}
-                  disabled={loadingSection === 'quote'}
-                  className="flex items-center space-x-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors disabled:opacity-50"
-                  title="Actualizar cita"
-                >
-                  <FiRefreshCw size={16} className={`text-blue-600 ${loadingSection === 'quote' ? 'animate-spin' : ''}`} />
-                  <span className="text-blue-600 font-medium">
-                    {loadingSection === 'quote' ? 'Actualizando...' : 'Actualizar'}
-                  </span>
-                </button>
-              </div>
-            </div>
-            <div className="p-6">
-              <blockquote className="text-gray-700 italic text-lg leading-relaxed text-center">
-                &ldquo;{data?.instagramQuote || "Cargando cita inspiracional..."}&rdquo;
-              </blockquote>
-            </div>
-          </div>
-
-          {/* Top personas mencionadas */}
-          <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-            <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 border-b border-green-100">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
-                  <FiUsers className="text-green-600" />
-                  <span>Personas más mencionadas</span>
-                </h3>
-                <button
-                  onClick={() => updateSection('people')}
-                  disabled={loadingSection === 'people'}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-100 hover:bg-green-200 rounded-xl transition-colors disabled:opacity-50"
-                  title="Actualizar ranking"
-                >
-                  <FiRefreshCw size={16} className={`text-green-600 ${loadingSection === 'people' ? 'animate-spin' : ''}`} />
-                  <span className="text-green-600 font-medium">
-                    {loadingSection === 'people' ? 'Actualizando...' : 'Actualizar'}
-                  </span>
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6">
-              <div className="space-y-3">
-                {displayedPeople.map((person, index) => (
-                  <div key={person.name} className="flex items-center justify-between bg-gray-50 rounded-xl p-4">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                        index === 0 ? 'bg-yellow-500' : 
-                        index === 1 ? 'bg-gray-400' : 
-                        index === 2 ? 'bg-yellow-600' : 'bg-green-500'
-                      }`}>
-                        {index + 1}
-                      </div>
-                      <span className="font-medium text-gray-900">{person.name}</span>
-                    </div>
-                    <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                      {person.count} menciones
+          {/* Fila para Cita inspiracional y Personas mencionadas en pantallas grandes */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Cita inspiracional */}
+            <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 border-b border-blue-100">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                    <FiHeart className="text-blue-600" />
+                    <span>Cita personal</span>
+                  </h3>
+                  <button
+                    onClick={() => updateSection('quote')}
+                    disabled={loadingSection === 'quote'}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors disabled:opacity-50"
+                    title="Actualizar cita"
+                  >
+                    <FiRefreshCw size={16} className={`text-blue-600 ${loadingSection === 'quote' ? 'animate-spin' : ''}`} />
+                    <span className="text-blue-600 font-medium">
+                      {loadingSection === 'quote' ? 'Actualizando...' : 'Actualizar'}
                     </span>
-                  </div>
-                ))}
+                  </button>
+                </div>
               </div>
+              <div className="p-6">
+                <blockquote className="text-gray-700 italic text-lg leading-relaxed text-center">
+                  &ldquo;{data?.instagramQuote || "Cargando cita personal..."}&rdquo;
+                </blockquote>
+              </div>
+            </div>
 
-              {(data?.topPeople || []).length > 5 && (
-                <button
-                  onClick={() => setShowAllPeople(!showAllPeople)}
-                  className="w-full mt-4 p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors flex items-center justify-center space-x-2"
-                >
-                  <span>{showAllPeople ? 'Mostrar menos' : `Ver ${(data?.topPeople || []).length - 5} personas más`}</span>
-                  {showAllPeople ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
-                </button>
-              )}
+            {/* Top personas mencionadas */}
+            <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+              <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 border-b border-green-100">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                    <FiUsers className="text-green-600" />
+                    <span>Personas más mencionadas</span>
+                  </h3>
+                  <button
+                    onClick={() => updateSection('people')}
+                    disabled={loadingSection === 'people'}
+                    className="flex items-center space-x-2 px-4 py-2 bg-green-100 hover:bg-green-200 rounded-xl transition-colors disabled:opacity-50"
+                    title="Actualizar ranking"
+                  >
+                    <FiRefreshCw size={16} className={`text-green-600 ${loadingSection === 'people' ? 'animate-spin' : ''}`} />
+                    <span className="text-green-600 font-medium">
+                      {loadingSection === 'people' ? 'Actualizando...' : 'Actualizar'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                <div className="space-y-3">
+                  {displayedPeople.map((person, index) => (
+                    <div key={person.name} className="flex items-center justify-between bg-gray-50 rounded-xl p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                          index === 0 ? 'bg-yellow-500' : 
+                          index === 1 ? 'bg-gray-400' : 
+                          index === 2 ? 'bg-yellow-600' : 'bg-green-500'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <span className="font-medium text-gray-900">{person.name}</span>
+                      </div>
+                      <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                        {person.count} menciones
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {(data?.topPeople || []).length > 5 && (
+                  <button
+                    onClick={() => setShowAllPeople(!showAllPeople)}
+                    className="w-full mt-4 p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <span>{showAllPeople ? 'Mostrar menos' : `Ver ${(data?.topPeople || []).length - 5} personas más`}</span>
+                    {showAllPeople ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
