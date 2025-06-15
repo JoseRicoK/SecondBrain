@@ -127,7 +127,7 @@ function buildPersonContext(person: Person): string {
           });
       } else if (Array.isArray(value)) {
         // Formato antiguo con arrays
-        value.forEach(item => {
+        (value as string[]).forEach(item => {
           context += `- ${item}\n`;
         });
       } else if (typeof value === 'string') {

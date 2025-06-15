@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { getEntriesByDateRange, saveMoodData, getMoodDataByPeriod } from '@/lib/firebase-operations';
+import { getEntriesMoodDataByDateRange } from '@/lib/firebase-operations';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
-
-// Inicializar el cliente de OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 export async function GET(request: Request) {
   try {
@@ -43,98 +37,59 @@ export async function GET(request: Request) {
         break;
     }
 
-    let moodData: any[] = [];
+    // Obtener datos de estado de ánimo directamente de las entradas del diario
+    const entriesMoodData = await getEntriesMoodDataByDateRange(
+      userId, 
+      format(startDate, 'yyyy-MM-dd'), 
+      format(endDate, 'yyyy-MM-dd')
+    );
 
-    // Intentar obtener datos de estado de ánimo existentes
-    try {
-      moodData = await getMoodDataByPeriod(userId, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
-    } catch (error) {
-      console.error('Error obteniendo datos de estado de ánimo:', error);
-      moodData = [];
-    }
+    let moodData: Array<{
+      date: string;
+      stress: number;
+      happiness: number;
+      neutral: number;
+    }> = [];
 
-    // Si no hay datos, analizar y generar
-    if (!moodData || moodData.length === 0) {
-      const periodEntries = await getEntriesByDateRange(userId, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
-      
-      if (periodEntries && periodEntries.length > 0) {
-        const allText = periodEntries.map(entry => entry.content).join(' ');
-        
-        const moodAnalysisPrompt = `
-          Analiza el siguiente texto de entradas de diario y asigna porcentajes de estado de ánimo.
-          Los porcentajes deben sumar exactamente 100.
-          
-          Categorías:
-          - Estrés: Ansiedad, presión, preocupaciones, tensión
-          - Felicidad: Alegría, satisfacción, logros, momentos positivos
-          - Neutral: Estados equilibrados, actividades rutinarias, pensamientos neutros
-          
-          Texto a analizar:
-          ${allText.slice(0, 2000)}
-          
-          Responde SOLO con un objeto JSON en este formato exacto:
-          {"stress": 25, "happiness": 60, "neutral": 15}
-          
-          Asegúrate de que los números sumen exactamente 100.
-        `;
+    if (entriesMoodData && entriesMoodData.length > 0) {
+      // Calcular promedios de todo el periodo
+      const totalEntries = entriesMoodData.length;
+      const averageStress = Math.round(
+        entriesMoodData.reduce((sum, entry) => sum + entry.stress, 0) / totalEntries
+      );
+      const averageHappiness = Math.round(
+        entriesMoodData.reduce((sum, entry) => sum + entry.happiness, 0) / totalEntries
+      );
+      const averageNeutral = Math.round(
+        entriesMoodData.reduce((sum, entry) => sum + entry.neutral, 0) / totalEntries
+      );
 
-        try {
-          const moodCompletion = await openai.chat.completions.create({
-            model: "o4-mini-2025-04-16",
-            messages: [
-              { role: "system", content: "Eres un experto en análisis de estados de ánimo en textos." },
-              { role: "user", content: moodAnalysisPrompt }
-            ],
-            response_format: { type: "json_object" }
-          });
+      // Normalizar para que sume exactamente 100
+      const total = averageStress + averageHappiness + averageNeutral;
+      let finalStress = averageStress;
+      let finalHappiness = averageHappiness;
+      let finalNeutral = averageNeutral;
 
-          const moodAnalysis = JSON.parse(moodCompletion.choices[0].message.content || '{"stress": 20, "happiness": 50, "neutral": 30}');
-          
-          // Normalizar para que sume 100
-          const total = moodAnalysis.stress + moodAnalysis.happiness + moodAnalysis.neutral;
-          if (total !== 100) {
-            moodAnalysis.stress = Math.round((moodAnalysis.stress / total) * 100);
-            moodAnalysis.happiness = Math.round((moodAnalysis.happiness / total) * 100);
-            moodAnalysis.neutral = 100 - moodAnalysis.stress - moodAnalysis.happiness;
-          }
-
-          moodData = [{
-            date: format(now, 'yyyy-MM-dd'),
-            stress: moodAnalysis.stress,
-            happiness: moodAnalysis.happiness,
-            neutral: moodAnalysis.neutral
-          }];
-
-          // Guardar los datos analizados
-          try {
-            await saveMoodData({
-              user_id: userId,
-              date: format(now, 'yyyy-MM-dd'),
-              stress_level: moodAnalysis.stress,
-              happiness_level: moodAnalysis.happiness,
-              neutral_level: moodAnalysis.neutral,
-              analysis_summary: 'Análisis automático'
-            });
-          } catch (saveError) {
-            console.error('Error guardando datos de estado de ánimo:', saveError);
-          }
-        } catch (error) {
-          console.error('Error analizando estado de ánimo:', error);
-          moodData = [{
-            date: format(now, 'yyyy-MM-dd'),
-            stress: 20,
-            happiness: 50,
-            neutral: 30
-          }];
-        }
-      } else {
-        moodData = [{
-          date: format(now, 'yyyy-MM-dd'),
-          stress: 0,
-          happiness: 0,
-          neutral: 100
-        }];
+      if (total !== 100) {
+        finalStress = Math.round((averageStress / total) * 100);
+        finalHappiness = Math.round((averageHappiness / total) * 100);
+        finalNeutral = 100 - finalStress - finalHappiness;
       }
+
+      moodData = [{
+        date: format(now, 'yyyy-MM-dd'),
+        stress: finalStress,
+        happiness: finalHappiness,
+        neutral: finalNeutral
+      }];
+    } else {
+      // Si no hay datos analizados, devolver valores neutrales
+      moodData = [{
+        date: format(now, 'yyyy-MM-dd'),
+        stress: 0,
+        happiness: 0,
+        neutral: 100
+      }];
     }
     
     return NextResponse.json({ moodData });

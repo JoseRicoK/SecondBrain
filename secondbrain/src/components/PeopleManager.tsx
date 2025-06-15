@@ -80,7 +80,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
       setIsLoading(true);
       
       // Limpiar espacios en blanco de los valores antes de guardar
-      const cleanedDetails: Record<string, unknown> = {};
+      const cleanedDetails: Record<string, PersonDetailCategory> = {};
       for (const [key, value] of Object.entries(editedDetails)) {
         if (value && typeof value === 'object' && 'entries' in value) {
           const categoryValue = value as PersonDetailCategory;
@@ -93,7 +93,13 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
               .filter(entry => entry.value) // Eliminar entradas vacías
           };
         } else {
-          cleanedDetails[key] = value;
+          // Convertir valor simple al formato de categoría con entradas
+          cleanedDetails[key] = {
+            entries: [{
+              value: String(value).trim(),
+              date: new Date().toISOString().split('T')[0]
+            }]
+          };
         }
       }
       
@@ -274,14 +280,14 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
             }
           } else if (Array.isArray(value)) {
             // Formato antiguo con arrays
-            for (const item of value) {
+            for (const item of value as string[]) {
               if (typeof item === 'string' && item.toLowerCase().includes(lowercaseSearchTerm)) {
                 return true;
               }
             }
           } else if (typeof value === 'string') {
             // Formato antiguo con strings
-            if (value.toLowerCase().includes(lowercaseSearchTerm)) {
+            if ((value as string).toLowerCase().includes(lowercaseSearchTerm)) {
               return true;
             }
           }
@@ -294,6 +300,8 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
   
   const renderPersonDetails = (person: Person) => {
     const details = editMode ? editedDetails : person.details;
+    
+    if (!details) return null;
     
     // Ordenar las categorías según el orden preferido
     const sortedEntries = Object.entries(details).sort((a, b) => {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { isValidUUID, getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo, incrementPersonMentionCount } from '@/lib/firebase-operations';
+import { isValidUUID, getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo, incrementPersonMentionCount, updateEntryMoodData } from '@/lib/firebase-operations';
 import { v5 as uuidv5 } from 'uuid';
 
 // Namespace para generar UUIDs determinísticos (este es un UUID arbitrario)
@@ -22,6 +22,7 @@ interface ExtractPeopleRequest {
   text: string;
   userId: string;
   entryDate?: string; // Fecha de la entrada del diario para añadir a los detalles
+  entryId?: string; // ID de la entrada para actualizar el estado de ánimo
 }
 
 interface PersonExtracted {
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
 
     // Extraemos y validamos los datos de la solicitud
     const body = await request.json();
-    const { text, userId, entryDate } = body as ExtractPeopleRequest;
+    const { text, userId, entryDate, entryId } = body as ExtractPeopleRequest;
 
     if (user.uid !== userId) {
       return NextResponse.json({ error: 'User mismatch' }, { status: 403 });
@@ -398,8 +399,66 @@ export async function POST(request: Request) {
       );
     }
 
+    // Análisis de estado de ánimo si se proporciona entryId
+    let moodAnalysis = null;
+    if (entryId && text.trim().length > 0) {
+      try {
+        const moodAnalysisPrompt = `
+          Analiza el siguiente texto de entrada de diario y asigna porcentajes de estado de ánimo.
+          Los porcentajes deben sumar exactamente 100.
+          
+          Categorías:
+          - Estrés: Ansiedad, presión, preocupaciones, tensión
+          - Felicidad: Alegría, satisfacción, logros, momentos positivos
+          - Neutral: Estados equilibrados, actividades rutinarias, pensamientos neutros
+          
+          Texto a analizar:
+          ${text.slice(0, 2000)}
+          
+          Responde SOLO con un objeto JSON en este formato exacto:
+          {"stress": 25, "happiness": 60, "neutral": 15}
+          
+          Asegúrate de que los números sumen exactamente 100.
+        `;
+
+        const moodCompletion = await openai.chat.completions.create({
+          model: "o4-mini-2025-04-16",
+          messages: [
+            { role: "system", content: "Eres un experto en análisis de estados de ánimo en textos." },
+            { role: "user", content: moodAnalysisPrompt }
+          ],
+          response_format: { type: "json_object" }
+        });
+
+        const moodResult = JSON.parse(moodCompletion.choices[0].message.content || '{"stress": 20, "happiness": 50, "neutral": 30}');
+        
+        // Normalizar para que sume 100
+        const total = moodResult.stress + moodResult.happiness + moodResult.neutral;
+        if (total !== 100) {
+          moodResult.stress = Math.round((moodResult.stress / total) * 100);
+          moodResult.happiness = Math.round((moodResult.happiness / total) * 100);
+          moodResult.neutral = 100 - moodResult.stress - moodResult.happiness;
+        }
+
+        // Guardar el análisis de estado de ánimo en la entrada
+        const moodUpdated = await updateEntryMoodData(entryId, {
+          happiness: moodResult.happiness,
+          stress: moodResult.stress,
+          neutral: moodResult.neutral
+        });
+
+        if (moodUpdated) {
+          moodAnalysis = moodResult;
+          console.log('✅ [API Extract People] Estado de ánimo analizado y guardado:', moodResult);
+        }
+      } catch (moodError) {
+        console.error('❌ [API Extract People] Error al analizar estado de ánimo:', moodError);
+      }
+    }
+
     return NextResponse.json({ 
       peopleExtracted,
+      moodAnalysis,
       message: peopleExtracted.length > 0 
         ? `Se han extraído y guardado ${peopleExtracted.length} persona(s) con información nueva` 
         : 'No se encontró información nueva para extraer. Las personas ya mencionadas se mantienen sin cambios.',

@@ -43,6 +43,11 @@ export interface DiaryEntry {
   updated_at: string;
   user_id: string;
   mentioned_people?: string[];
+  // Campos de análisis de estado de ánimo
+  happiness?: number;
+  stress?: number;
+  neutral?: number;
+  mood_analyzed_at?: string; // Timestamp de cuándo se analizó
 }
 
 // Exportar el tipo de usuario de Firebase para compatibilidad
@@ -1226,4 +1231,65 @@ export async function incrementPersonMentionCount(userId: string, personName: st
   }
 }
 
-export { auth as firebaseAuth };
+// Función para actualizar el estado de ánimo de una entrada específica
+export async function updateEntryMoodData(entryId: string, moodData: {
+  happiness: number;
+  stress: number;
+  neutral: number;
+}): Promise<boolean> {
+  try {
+    const entriesRef = collection(db, 'diary_entries');
+    const entryDoc = doc(entriesRef, entryId);
+    
+    await updateDoc(entryDoc, {
+      happiness: moodData.happiness,
+      stress: moodData.stress,
+      neutral: moodData.neutral,
+      mood_analyzed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+    
+    console.log('✅ [Firebase] Estado de ánimo actualizado para entrada:', entryId);
+    return true;
+  } catch (error) {
+    console.error('❌ [Firebase] Error al actualizar estado de ánimo:', error);
+    return false;
+  }
+}
+
+// Función para obtener entradas con datos de estado de ánimo en un rango de fechas
+export async function getEntriesMoodDataByDateRange(userId: string, startDate: string, endDate: string): Promise<{
+  date: string;
+  happiness: number;
+  stress: number;
+  neutral: number;
+}[]> {
+  try {
+    const entriesRef = collection(db, 'diary_entries');
+    const q = query(
+      entriesRef,
+      where('user_id', '==', userId),
+      where('date', '>=', startDate),
+      where('date', '<=', endDate),
+      where('happiness', '!=', null) // Solo entradas que tengan análisis de estado de ánimo
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    const moodData = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        date: data.date,
+        happiness: data.happiness || 0,
+        stress: data.stress || 0,
+        neutral: data.neutral || 0
+      };
+    });
+    
+    console.log('✅ [Firebase] Obtenidos datos de estado de ánimo:', moodData.length, 'entradas');
+    return moodData;
+  } catch (error) {
+    console.error('❌ [Firebase] Error al obtener datos de estado de ánimo:', error);
+    return [];
+  }
+}

@@ -11,7 +11,7 @@ import Statistics from '@/components/Statistics';
 import PeopleManager from '@/components/PeopleManager';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiaryStore } from '@/lib/store';
-import { FiMenu, FiEdit2, FiSave, FiX, FiMic, FiStopCircle, FiZap, FiUsers, FiUser, FiUserPlus } from 'react-icons/fi';
+import { FiMenu, FiEdit2, FiSave, FiX, FiMic, FiStopCircle, FiZap, FiUsers, FiUser } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Image from 'next/image';
@@ -199,7 +199,8 @@ export default function Home() {
         body: JSON.stringify({ 
           text: content,
           userId: user.uid,
-          entryDate: currentDate // Usar la fecha seleccionada en el calendario
+          entryDate: currentDate, // Usar la fecha seleccionada en el calendario
+          entryId: currentEntry?.id // Incluir el ID de la entrada para el análisis de estado de ánimo
         }),
       });
 

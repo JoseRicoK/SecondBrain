@@ -17,12 +17,12 @@ export async function GET(request: Request) {
     // Obtener personas ordenadas por menciones
     const peopleData = await getPeopleByUserId(userId);
     const topPeople = peopleData
-      .map((person: any) => ({
+      .map((person: { name: string; mention_count?: number }) => ({
         name: person.name,
         count: person.mention_count || 0
       }))
-      .filter((person: any) => person.count > 0)
-      .sort((a: any, b: any) => b.count - a.count)
+      .filter((person: { count: number }) => person.count > 0)
+      .sort((a: { count: number }, b: { count: number }) => b.count - a.count)
       .slice(0, 20);
     
     return NextResponse.json({ topPeople });

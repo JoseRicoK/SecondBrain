@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiChevronUp } from 'react-icons/fi';
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface PersonMention {
@@ -26,10 +26,13 @@ interface StatisticsData {
 }
 
 interface StatisticsProps {
+  // userId no se usa actualmente pero se mantiene para compatibilidad futura
   userId: string;
 }
 
-export default function Statistics({ userId }: StatisticsProps) {
+export default function Statistics(props: StatisticsProps) {
+  // userId no se usa actualmente pero se mantiene para compatibilidad futura
+  const { } = props;
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<StatisticsData | null>(null);
@@ -39,19 +42,7 @@ export default function Statistics({ userId }: StatisticsProps) {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [loadingSection, setLoadingSection] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user?.uid) {
-      loadStatistics();
-    }
-  }, [user?.uid]);
-
-  useEffect(() => {
-    if (user?.uid && data) {
-      updateSection('mood');
-    }
-  }, [moodPeriod]);
-
-  const loadStatistics = async () => {
+  const loadStatistics = useCallback(async () => {
     if (!user?.uid) return;
     
     setIsLoading(true);
@@ -101,9 +92,9 @@ export default function Statistics({ userId }: StatisticsProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, moodPeriod]);
 
-  const updateSection = async (section: 'summary' | 'quote' | 'people' | 'mood') => {
+  const updateSection = useCallback(async (section: 'summary' | 'quote' | 'people' | 'mood') => {
     if (!user?.uid) return;
     
     setLoadingSection(section);
@@ -162,7 +153,19 @@ export default function Statistics({ userId }: StatisticsProps) {
     } finally {
       setLoadingSection(null);
     }
-  };
+  }, [user, moodPeriod]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      loadStatistics();
+    }
+  }, [user?.uid, loadStatistics]);
+
+  useEffect(() => {
+    if (user?.uid && data) {
+      updateSection('mood');
+    }
+  }, [moodPeriod, user?.uid, data, updateSection]);
 
   const formatPeriodText = () => {
     const now = new Date();
@@ -265,7 +268,7 @@ export default function Statistics({ userId }: StatisticsProps) {
             </div>
             <div className="p-6">
               <blockquote className="text-gray-700 italic text-lg leading-relaxed text-center">
-                "{data?.instagramQuote || "Cargando cita inspiracional..."}"
+                &ldquo;{data?.instagramQuote || "Cargando cita inspiracional..."}&rdquo;
               </blockquote>
             </div>
           </div>
