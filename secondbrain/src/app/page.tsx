@@ -480,9 +480,9 @@ export default function Home() {
             <div className="max-w-7xl mx-auto h-full">
               <div className="flex gap-6 h-full relative p-4 md:p-8">
                 {/* Contenido principal del diario - siempre toma el espacio completo */}
-                <div className="flex-1 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                <div className="flex-1 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden flex flex-col">
                   {/* Barra de herramientas mejorada con fecha arriba */}
-                  <div className="p-6 bg-gradient-to-r from-indigo-50 to-purple-50 sticky top-0 z-10">
+                  <div className="p-6 bg-gradient-to-r from-indigo-50 to-purple-50 flex-shrink-0">
                     {/* Fecha arriba - centrada y más pequeña */}
                     <div className="flex items-center justify-center space-x-3 mb-4">
                       <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
@@ -565,7 +565,7 @@ export default function Home() {
                   </div>
                 
                   {/* Contenido principal mejorado con fondo unificado */}
-                  <div className="relative bg-gradient-to-r from-indigo-50 to-purple-50">
+                  <div className="flex-1 bg-gradient-to-r from-indigo-50 to-purple-50 overflow-y-auto">
                     {/* Mensajes de error mejorados */}
                     {error && (
                       <div className="mx-4 mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center space-x-3">
