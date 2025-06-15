@@ -161,7 +161,14 @@ export default function Statistics(props: StatisticsProps) {
       loadStatistics();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, moodPeriod]);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (user?.uid && data) {
+      updateSection('mood');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moodPeriod]);
 
   const formatPeriodText = () => {
     const now = new Date();
@@ -223,19 +230,16 @@ export default function Statistics(props: StatisticsProps) {
             <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 border-b border-purple-100">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
-                  <FiTrendingUp className="text-purple-600" />
+                  <FiTrendingUp size={20} className="text-purple-600" />
                   <span>Resumen de la semana</span>
                 </h3>
                 <button
                   onClick={() => updateSection('summary')}
                   disabled={loadingSection === 'summary'}
-                  className="flex items-center space-x-2 px-4 py-2 bg-purple-100 hover:bg-purple-200 rounded-xl transition-colors disabled:opacity-50"
-                  title="Actualizar resumen"
+                  className="flex items-center justify-center w-10 h-10 bg-purple-100 hover:bg-purple-200 rounded-xl transition-colors disabled:opacity-50"
+                  title={loadingSection === 'summary' ? 'Actualizando...' : 'Actualizar resumen'}
                 >
                   <FiRefreshCw size={16} className={`text-purple-600 ${loadingSection === 'summary' ? 'animate-spin' : ''}`} />
-                  <span className="text-purple-600 font-medium">
-                    {loadingSection === 'summary' ? 'Actualizando...' : 'Actualizar'}
-                  </span>
                 </button>
               </div>
             </div>
@@ -253,19 +257,16 @@ export default function Statistics(props: StatisticsProps) {
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 border-b border-blue-100">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
-                    <FiHeart className="text-blue-600" />
+                    <FiHeart size={20} className="text-blue-600" />
                     <span>Cita personal</span>
                   </h3>
                   <button
                     onClick={() => updateSection('quote')}
                     disabled={loadingSection === 'quote'}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors disabled:opacity-50"
-                    title="Actualizar cita"
+                    className="flex items-center justify-center w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors disabled:opacity-50"
+                    title={loadingSection === 'quote' ? 'Actualizando...' : 'Actualizar cita'}
                   >
                     <FiRefreshCw size={16} className={`text-blue-600 ${loadingSection === 'quote' ? 'animate-spin' : ''}`} />
-                    <span className="text-blue-600 font-medium">
-                      {loadingSection === 'quote' ? 'Actualizando...' : 'Actualizar'}
-                    </span>
                   </button>
                 </div>
               </div>
@@ -281,19 +282,16 @@ export default function Statistics(props: StatisticsProps) {
               <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 border-b border-green-100">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
-                    <FiUsers className="text-green-600" />
+                    <FiUsers size={20} className="text-green-600" />
                     <span>Personas más mencionadas</span>
                   </h3>
                   <button
                     onClick={() => updateSection('people')}
                     disabled={loadingSection === 'people'}
-                    className="flex items-center space-x-2 px-4 py-2 bg-green-100 hover:bg-green-200 rounded-xl transition-colors disabled:opacity-50"
-                    title="Actualizar ranking"
+                    className="flex items-center justify-center w-10 h-10 bg-green-100 hover:bg-green-200 rounded-xl transition-colors disabled:opacity-50"
+                    title={loadingSection === 'people' ? 'Actualizando...' : 'Actualizar ranking'}
                   >
                     <FiRefreshCw size={16} className={`text-green-600 ${loadingSection === 'people' ? 'animate-spin' : ''}`} />
-                    <span className="text-green-600 font-medium">
-                      {loadingSection === 'people' ? 'Actualizando...' : 'Actualizar'}
-                    </span>
                   </button>
                 </div>
               </div>
@@ -335,34 +333,34 @@ export default function Statistics(props: StatisticsProps) {
           {/* Gráfico de estado de ánimo */}
           <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
             <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 border-b border-orange-100">
-              <div className="flex items-center justify-between">
+              {/* Header con título e ícono */}
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
-                  <FiCalendar className="text-orange-600" />
+                  <FiCalendar size={20} className="text-orange-600" />
                   <span>Estado de ánimo - {formatPeriodText()}</span>
                 </h3>
-                <div className="flex items-center space-x-2">
-                  <select
-                    value={moodPeriod}
-                    onChange={(e) => setMoodPeriod(e.target.value as 'week' | 'month' | 'year')}
-                    className="px-3 py-1 bg-white rounded-lg border border-orange-200 text-sm"
-                    aria-label="Seleccionar período"
-                  >
-                    <option value="week">Semana</option>
-                    <option value="month">Mes</option>
-                    <option value="year">Año</option>
-                  </select>
-                  <button
-                    onClick={() => updateSection('mood')}
-                    disabled={loadingSection === 'mood'}
-                    className="flex items-center space-x-2 px-4 py-2 bg-orange-100 hover:bg-orange-200 rounded-xl transition-colors disabled:opacity-50"
-                    title="Actualizar datos"
-                  >
-                    <FiRefreshCw size={16} className={`text-orange-600 ${loadingSection === 'mood' ? 'animate-spin' : ''}`} />
-                    <span className="text-orange-600 font-medium">
-                      {loadingSection === 'mood' ? 'Actualizando...' : 'Actualizar'}
-                    </span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => updateSection('mood')}
+                  disabled={loadingSection === 'mood'}
+                  className="flex items-center justify-center w-10 h-10 bg-orange-100 hover:bg-orange-200 rounded-xl transition-colors disabled:opacity-50"
+                  title={loadingSection === 'mood' ? 'Actualizando...' : 'Actualizar datos'}
+                >
+                  <FiRefreshCw size={16} className={`text-orange-600 ${loadingSection === 'mood' ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              
+              {/* Selector de período centrado */}
+              <div className="flex justify-center">
+                <select
+                  value={moodPeriod}
+                  onChange={(e) => setMoodPeriod(e.target.value as 'week' | 'month' | 'year')}
+                  className="px-3 py-1 bg-white rounded-lg border border-orange-200 text-sm"
+                  aria-label="Seleccionar período"
+                >
+                  <option value="week">Semana</option>
+                  <option value="month">Mes</option>
+                  <option value="year">Año</option>
+                </select>
               </div>
             </div>
 
