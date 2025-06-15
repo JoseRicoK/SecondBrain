@@ -67,11 +67,25 @@ export interface PersonDetailCategory {
 
 export interface Person {
   id: string;
-  user_id: string;
   name: string;
-  details: {
-    [key: string]: PersonDetailCategory | unknown;
-  };
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  relationship?: string;
+  category?: string;
+  description?: string;
+  mention_count?: number;
+  details?: Record<string, PersonDetailCategory>;
+}
+
+export interface MoodData {
+  id: string;
+  user_id: string;
+  date: string; // formato YYYY-MM-DD
+  stress_level: number; // 0-10
+  happiness_level: number; // 0-10
+  neutral_level: number; // 0-10
+  analysis_summary?: string;
   created_at: string;
   updated_at: string;
 }
@@ -294,6 +308,42 @@ export async function getEntriesByMonth(year: number, month: number, userId: str
     return entries;
   } catch (error) {
     console.error('❌ [Firebase] Error al obtener entradas del mes:', error);
+    return [];
+  }
+}
+
+export async function getEntriesByDateRange(userId: string, startDate: string, endDate: string): Promise<DiaryEntry[]> {
+  try {
+    console.log(`✅ [Firebase] Obteniendo entradas entre ${startDate} y ${endDate} para usuario ${userId}`);
+    
+    const entriesRef = collection(db, 'diary_entries');
+    const q = query(
+      entriesRef,
+      where('user_id', '==', userId),
+      where('date', '>=', startDate),
+      where('date', '<=', endDate),
+      orderBy('date', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    const entries: DiaryEntry[] = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        date: data.date,
+        content: data.content || '',
+        created_at: timestampToISOString(data.created_at),
+        updated_at: timestampToISOString(data.updated_at),
+        user_id: data.user_id,
+        mentioned_people: data.mentioned_people || []
+      };
+    });
+    
+    console.log(`✅ [Firebase] Se encontraron ${entries.length} entradas en el rango`);
+    return entries;
+  } catch (error) {
+    console.error('❌ [Firebase] Error al obtener entradas por rango de fechas:', error);
     return [];
   }
 }
@@ -934,6 +984,10 @@ export async function addPersonDetail(
     
     const entryDate = date || new Date().toISOString().split('T')[0];
     
+    if (!person.details) {
+      person.details = {};
+    }
+    
     if (!person.details[category]) {
       person.details[category] = { entries: [] };
     }
@@ -1053,6 +1107,122 @@ export async function getTranscriptionsByEntryId(entryId: string): Promise<Audio
   } catch (error) {
     console.error('❌ [Firebase] Error al obtener transcripciones:', error);
     return [];
+  }
+}
+
+export async function saveMoodData(moodData: Partial<MoodData>): Promise<MoodData | null> {
+  try {
+    if (!moodData.user_id || !moodData.date) {
+      console.error('❌ [Firebase] user_id y date son requeridos para guardar mood data');
+      return null;
+    }
+
+    // Crear ID único basado en usuario y fecha
+    const moodId = generateUUID(`mood-${moodData.user_id}-${moodData.date}`);
+    const moodRef = doc(db, 'mood_data', moodId);
+    
+    const now = serverTimestamp();
+    const moodToSave = {
+      id: moodId,
+      user_id: moodData.user_id,
+      date: moodData.date,
+      stress_level: moodData.stress_level || 0,
+      happiness_level: moodData.happiness_level || 0,
+      neutral_level: moodData.neutral_level || 0,
+      analysis_summary: moodData.analysis_summary || '',
+      created_at: now,
+      updated_at: now
+    };
+    
+    await setDoc(moodRef, moodToSave, { merge: true });
+    
+    const savedDoc = await getDoc(moodRef);
+    if (savedDoc.exists()) {
+      const data = savedDoc.data();
+      return {
+        id: data.id,
+        user_id: data.user_id,
+        date: data.date,
+        stress_level: data.stress_level,
+        happiness_level: data.happiness_level,
+        neutral_level: data.neutral_level,
+        analysis_summary: data.analysis_summary,
+        created_at: timestampToISOString(data.created_at),
+        updated_at: timestampToISOString(data.updated_at)
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('❌ [Firebase] Error al guardar mood data:', error);
+    return null;
+  }
+}
+
+export async function getMoodDataByPeriod(userId: string, startDate: string, endDate: string): Promise<MoodData[]> {
+  try {
+    console.log(`✅ [Firebase] Obteniendo mood data entre ${startDate} y ${endDate} para usuario ${userId}`);
+    
+    const moodRef = collection(db, 'mood_data');
+    const q = query(
+      moodRef,
+      where('user_id', '==', userId),
+      where('date', '>=', startDate),
+      where('date', '<=', endDate),
+      orderBy('date', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    const moodData: MoodData[] = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        user_id: data.user_id,
+        date: data.date,
+        stress_level: data.stress_level || 0,
+        happiness_level: data.happiness_level || 0,
+        neutral_level: data.neutral_level || 0,
+        analysis_summary: data.analysis_summary || '',
+        created_at: timestampToISOString(data.created_at),
+        updated_at: timestampToISOString(data.updated_at)
+      };
+    });
+    
+    console.log(`✅ [Firebase] Se encontraron ${moodData.length} registros de mood data`);
+    return moodData;
+  } catch (error) {
+    console.error('❌ [Firebase] Error al obtener mood data:', error);
+    return [];
+  }
+}
+
+export async function incrementPersonMentionCount(userId: string, personName: string): Promise<void> {
+  try {
+    // Buscar la persona por nombre y usuario
+    const peopleRef = collection(db, 'people');
+    const q = query(
+      peopleRef,
+      where('user_id', '==', userId),
+      where('name', '==', personName)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const personDoc = querySnapshot.docs[0];
+      const personData = personDoc.data();
+      const currentCount = personData.mention_count || 0;
+      
+      await updateDoc(personDoc.ref, {
+        mention_count: currentCount + 1,
+        updated_at: serverTimestamp()
+      });
+      
+      console.log(`✅ [Firebase] Incrementado mention_count para ${personName}: ${currentCount + 1}`);
+    }
+  } catch (error) {
+    console.error('❌ [Firebase] Error al incrementar mention_count:', error);
   }
 }
 

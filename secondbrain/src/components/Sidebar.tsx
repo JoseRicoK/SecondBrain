@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Calendar, { OnArgs } from 'react-calendar';
 import type { CalendarProps } from 'react-calendar';
 import { format } from 'date-fns';
-import { FiX, FiSettings, FiCalendar, FiChevronLeft, FiChevronRight, FiBookOpen } from 'react-icons/fi';
+import { FiX, FiSettings, FiCalendar, FiChevronLeft, FiChevronRight, FiBookOpen, FiBarChart } from 'react-icons/fi';
 import { es } from 'date-fns/locale';
 import { useDiaryStore } from '@/lib/store';
 import { getEntriesByMonth } from '@/lib/firebase-operations';
@@ -26,10 +26,11 @@ interface SidebarProps {
   userId: string;
   onClose?: () => void; // Prop para manejar el cierre en móviles
   onSettingsClick?: () => void; // Prop para manejar la navegación a configuración
+  onStatisticsClick?: () => void; // Prop para manejar la navegación a estadísticas
   onDateChange?: () => void; // Prop para manejar el cambio de fecha (cerrar configuración)
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onDateChange }) => {
+const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onStatisticsClick, onDateChange }) => {
   // Obtenemos la fecha actual del sistema cada vez que se carga el componente
   const today = new Date();
   const todayString = formatDateToString(today);
@@ -196,6 +197,17 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onD
           >
             <FiBookOpen className="group-hover:scale-110 transition-transform duration-200" />
             <span className="font-medium">Ir al Diario de Hoy</span>
+          </button>
+        </div>
+        
+        {/* Botón de Estadísticas */}
+        <div className="mt-3">
+          <button
+            onClick={onStatisticsClick}
+            className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-xl py-3 px-4 transition-all duration-200 flex items-center justify-center space-x-2 border border-purple-400/30 hover:border-purple-300/50 group shadow-lg hover:shadow-xl"
+          >
+            <FiBarChart className="group-hover:scale-110 transition-transform duration-200" />
+            <span className="font-medium">Estadísticas</span>
           </button>
         </div>
       </div>

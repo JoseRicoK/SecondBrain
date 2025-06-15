@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { isValidUUID, getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo } from '@/lib/firebase-operations';
+import { isValidUUID, getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo, incrementPersonMentionCount } from '@/lib/firebase-operations';
 import { v5 as uuidv5 } from 'uuid';
 
 // Namespace para generar UUIDs determinísticos (este es un UUID arbitrario)
@@ -378,6 +378,9 @@ export async function POST(request: Request) {
               validUUID,
               validEntryDate // Usar la fecha validada
             );
+            
+            // Incrementar el contador de menciones para esta persona
+            await incrementPersonMentionCount(validUUID, personData.name);
           }));
         } catch (saveError) {
           console.error('Error al guardar personas:', saveError);

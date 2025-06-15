@@ -7,6 +7,7 @@ import PersonalChatButton from '@/components/PersonalChatButton';
 import Auth from '@/components/Auth';
 import Loading from '@/components/Loading';
 import Settings from '@/components/Settings';
+import Statistics from '@/components/Statistics';
 import PeopleManager from '@/components/PeopleManager';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiaryStore } from '@/lib/store';
@@ -33,6 +34,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isChatMinimized, setIsChatMinimized] = useState(false);
   
@@ -499,6 +501,11 @@ export default function Home() {
               // Auto-cerrar sidebar en móvil al abrir configuración
               setIsSidebarOpen(false);
             }}
+            onStatisticsClick={() => {
+              setShowStatistics(true);
+              // Auto-cerrar sidebar en móvil al abrir estadísticas
+              setIsSidebarOpen(false);
+            }}
             onDateChange={() => {
               setShowSettings(false);
               // Auto-cerrar sidebar en móvil al seleccionar fecha
@@ -547,6 +554,25 @@ export default function Home() {
                 <Settings userId={user.uid} />
               </div>
             </div>
+          ) : showStatistics ? (
+            /* Vista de Estadísticas */
+            <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden mx-4 md:mx-8 my-4 md:my-8">
+              <div className="flex items-center justify-between border-b border-slate-200/60 p-6 bg-gradient-to-r from-purple-50 to-blue-50 sticky top-0 z-10">
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <span className="text-slate-800 text-xl font-semibold">Estadísticas</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button 
+                    onClick={() => setShowStatistics(false)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-white/80 text-slate-700 rounded-xl hover:bg-white transition-all duration-200 shadow-sm border border-white/40"
+                  >
+                    <span>Volver al diario</span>
+                  </button>
+                </div>
+              </div>
+              <Statistics userId={user.uid} />
+            </div>
           ) : (
             /* Vista principal del diario */
             <div className="max-w-7xl mx-auto h-full">
@@ -583,10 +609,10 @@ export default function Home() {
                             onClick={handleExtractPeople}
                             disabled={isStylizing || !content}
                             className={`flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 rounded-xl transition-all duration-200 ${isStylizing ? 'bg-purple-400' : 'bg-purple-500'} text-white hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
-                            title="Extraer personas mencionadas"
+                            title="Analizar con IA"
                           >
-                            <FiUserPlus size={18} />
-                            <span className="font-medium hidden sm:inline">Extraer personas</span>
+                            <FiZap size={18} />
+                            <span className="font-medium hidden sm:inline">IA</span>
                           </button>
 
                           <button
