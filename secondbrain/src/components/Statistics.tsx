@@ -43,6 +43,55 @@ export default function Statistics(props: StatisticsProps) {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [loadingSection, setLoadingSection] = useState<string | null>(null);
 
+  // Cache keys para localStorage
+  const getCacheKey = (userId: string, section: string, period?: string) => {
+    const key = `statistics_${userId}_${section}`;
+    return period ? `${key}_${period}` : key;
+  };
+
+  // Función para verificar si el cache es válido (30 minutos para resumen/cita, 5 minutos para people/mood)
+  const isCacheValid = (cacheTime: number, section: string) => {
+    const maxAge = ['summary', 'quote'].includes(section) ? 30 * 60 * 1000 : 5 * 60 * 1000; // 30min vs 5min
+    return Date.now() - cacheTime < maxAge;
+  };
+
+  // Función para obtener datos del cache
+  const getCachedData = (section: string, period?: string) => {
+    try {
+      const cacheKey = getCacheKey(user?.uid || '', section, period);
+      const cached = localStorage.getItem(cacheKey);
+      if (!cached) return null;
+
+      const { data: cachedData, timestamp } = JSON.parse(cached);
+      if (isCacheValid(timestamp, section)) {
+        console.log(`📦 [Statistics] Cache hit para ${section}${period ? ` (${period})` : ''}`);
+        return cachedData;
+      } else {
+        console.log(`⏰ [Statistics] Cache expirado para ${section}${period ? ` (${period})` : ''}`);
+        localStorage.removeItem(cacheKey);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error al leer cache:', error);
+      return null;
+    }
+  };
+
+  // Función para guardar datos en cache
+  const setCachedData = (section: string, data: any, period?: string) => {
+    try {
+      const cacheKey = getCacheKey(user?.uid || '', section, period);
+      const cacheData = {
+        data,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+      console.log(`💾 [Statistics] Datos guardados en cache para ${section}${period ? ` (${period})` : ''}`);
+    } catch (error) {
+      console.error('Error al guardar cache:', error);
+    }
+  };
+
   const loadStatistics = useCallback(async () => {
     if (!user?.uid) return;
     
@@ -52,32 +101,92 @@ export default function Statistics(props: StatisticsProps) {
     try {
       const token = await user.getIdToken();
       
-      // Cargar todas las secciones en paralelo
-      const [summaryResponse, quoteResponse, peopleResponse, moodResponse] = await Promise.all([
-        fetch('/api/statistics/summary', {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch('/api/statistics/quote', {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch('/api/statistics/people', {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`/api/statistics/mood?moodPeriod=${moodPeriod}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-      ]);
+      // Intentar cargar desde cache primero
+      const cachedSummary = getCachedData('summary');
+      const cachedQuote = getCachedData('quote');
+      const cachedPeople = getCachedData('people');
+      const cachedMood = getCachedData('mood', moodPeriod);
 
-      if (!summaryResponse.ok || !quoteResponse.ok || !peopleResponse.ok || !moodResponse.ok) {
-        throw new Error('Error al cargar estadísticas');
+      // Si tenemos todos los datos en cache, usarlos
+      if (cachedSummary && cachedQuote && cachedPeople && cachedMood) {
+        console.log('🚀 [Statistics] Cargando todas las secciones desde cache');
+        setData({
+          weekSummary: cachedSummary.weekSummary,
+          instagramQuote: cachedQuote.instagramQuote,
+          topPeople: cachedPeople.topPeople,
+          moodData: cachedMood.moodData
+        });
+        setLastUpdate(new Date());
+        setIsLoading(false);
+        return;
       }
 
-      const [summaryData, quoteData, peopleData, moodData] = await Promise.all([
-        summaryResponse.json(),
-        quoteResponse.json(),
-        peopleResponse.json(),
-        moodResponse.json()
-      ]);
+      // Si no tenemos todo en cache, cargar lo que falte
+      console.log('🌐 [Statistics] Cargando datos desde API...');
+      const requests = [];
+      
+      if (!cachedSummary) {
+        requests.push(fetch('/api/statistics/summary', {
+          headers: { Authorization: `Bearer ${token}` }
+        }));
+      }
+      
+      if (!cachedQuote) {
+        requests.push(fetch('/api/statistics/quote', {
+          headers: { Authorization: `Bearer ${token}` }
+        }));
+      }
+      
+      if (!cachedPeople) {
+        requests.push(fetch('/api/statistics/people', {
+          headers: { Authorization: `Bearer ${token}` }
+        }));
+      }
+      
+      if (!cachedMood) {
+        requests.push(fetch(`/api/statistics/mood?moodPeriod=${moodPeriod}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }));
+      }
+
+      const responses = await Promise.all(requests);
+      
+      // Verificar que todas las respuestas sean exitosas
+      for (const response of responses) {
+        if (!response.ok) {
+          throw new Error('Error al cargar estadísticas');
+        }
+      }
+
+      const responseData = await Promise.all(responses.map(r => r.json()));
+      
+      // Procesar respuestas y actualizar cache
+      let summaryData = cachedSummary;
+      let quoteData = cachedQuote;
+      let peopleData = cachedPeople;
+      let moodData = cachedMood;
+      
+      let responseIndex = 0;
+      
+      if (!cachedSummary) {
+        summaryData = responseData[responseIndex++];
+        setCachedData('summary', summaryData);
+      }
+      
+      if (!cachedQuote) {
+        quoteData = responseData[responseIndex++];
+        setCachedData('quote', quoteData);
+      }
+      
+      if (!cachedPeople) {
+        peopleData = responseData[responseIndex++];
+        setCachedData('people', peopleData);
+      }
+      
+      if (!cachedMood) {
+        moodData = responseData[responseIndex++];
+        setCachedData('mood', moodData, moodPeriod);
+      }
 
       setData({
         weekSummary: summaryData.weekSummary,
@@ -93,7 +202,7 @@ export default function Statistics(props: StatisticsProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, moodPeriod]);
+  }, [user, moodPeriod, getCachedData, setCachedData]);
 
   const updateSection = useCallback(async (section: 'summary' | 'quote' | 'people' | 'mood') => {
     if (!user?.uid) return;
@@ -103,6 +212,11 @@ export default function Statistics(props: StatisticsProps) {
     
     try {
       const token = await user.getIdToken();
+      
+      // Invalidar cache de la sección específica
+      const cacheKey = getCacheKey(user.uid, section, section === 'mood' ? moodPeriod : undefined);
+      localStorage.removeItem(cacheKey);
+      console.log(`🗑️ [Statistics] Cache invalidado para ${section}`);
       
       let url = '';
       switch (section) {
@@ -134,6 +248,9 @@ export default function Statistics(props: StatisticsProps) {
 
       const newData = await response.json();
       
+      // Guardar en cache
+      setCachedData(section, newData, section === 'mood' ? moodPeriod : undefined);
+      
       // Actualizar solo la sección específica en el estado
       setData(prevData => {
         if (!prevData) return newData;
@@ -154,7 +271,7 @@ export default function Statistics(props: StatisticsProps) {
     } finally {
       setLoadingSection(null);
     }
-  }, [user, moodPeriod]);
+  }, [user, moodPeriod, getCacheKey, setCachedData]);
 
   useEffect(() => {
     if (user?.uid) {
@@ -181,6 +298,33 @@ export default function Statistics(props: StatisticsProps) {
         return format(now, "yyyy", { locale: es });
     }
   };
+
+  // Función para limpiar cache manualmente (útil para llamar desde otros componentes)
+  const clearCache = useCallback(() => {
+    if (!user?.uid) return;
+    
+    const sections = ['summary', 'quote', 'people'];
+    const periods = ['week', 'month', 'year'];
+    
+    sections.forEach(section => {
+      const key = getCacheKey(user.uid, section);
+      localStorage.removeItem(key);
+    });
+    
+    periods.forEach(period => {
+      const key = getCacheKey(user.uid, 'mood', period);
+      localStorage.removeItem(key);
+    });
+    
+    console.log('🧹 [Statistics] Cache completamente limpiado');
+  }, [user?.uid, getCacheKey]);
+
+  // Hacer disponible la función clearCache globalmente si es necesario
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).clearStatisticsCache = clearCache;
+    }
+  }, [clearCache]);
 
   const displayedPeople = showAllPeople ? data?.topPeople || [] : (data?.topPeople || []).slice(0, 5);
 
