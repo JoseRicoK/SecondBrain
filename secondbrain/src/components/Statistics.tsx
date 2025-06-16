@@ -44,19 +44,19 @@ export default function Statistics(props: StatisticsProps) {
   const [loadingSection, setLoadingSection] = useState<string | null>(null);
 
   // Cache keys para localStorage
-  const getCacheKey = (userId: string, section: string, period?: string) => {
+  const getCacheKey = useCallback((userId: string, section: string, period?: string) => {
     const key = `statistics_${userId}_${section}`;
     return period ? `${key}_${period}` : key;
-  };
+  }, []);
 
   // Función para verificar si el cache es válido (30 minutos para resumen/cita, 5 minutos para people/mood)
-  const isCacheValid = (cacheTime: number, section: string) => {
+  const isCacheValid = useCallback((cacheTime: number, section: string) => {
     const maxAge = ['summary', 'quote'].includes(section) ? 30 * 60 * 1000 : 5 * 60 * 1000; // 30min vs 5min
     return Date.now() - cacheTime < maxAge;
-  };
+  }, []);
 
   // Función para obtener datos del cache
-  const getCachedData = (section: string, period?: string) => {
+  const getCachedData = useCallback((section: string, period?: string) => {
     try {
       const cacheKey = getCacheKey(user?.uid || '', section, period);
       const cached = localStorage.getItem(cacheKey);
@@ -75,10 +75,10 @@ export default function Statistics(props: StatisticsProps) {
       console.error('Error al leer cache:', error);
       return null;
     }
-  };
+  }, [user?.uid, getCacheKey, isCacheValid]);
 
   // Función para guardar datos en cache
-  const setCachedData = (section: string, data: any, period?: string) => {
+  const setCachedData = useCallback((section: string, data: StatisticsData | Partial<StatisticsData>, period?: string) => {
     try {
       const cacheKey = getCacheKey(user?.uid || '', section, period);
       const cacheData = {
@@ -90,7 +90,7 @@ export default function Statistics(props: StatisticsProps) {
     } catch (error) {
       console.error('Error al guardar cache:', error);
     }
-  };
+  }, [user?.uid, getCacheKey]);
 
   const loadStatistics = useCallback(async () => {
     if (!user?.uid) return;
@@ -322,7 +322,7 @@ export default function Statistics(props: StatisticsProps) {
   // Hacer disponible la función clearCache globalmente si es necesario
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as any).clearStatisticsCache = clearCache;
+      (window as Window & typeof globalThis & { clearStatisticsCache?: () => void }).clearStatisticsCache = clearCache;
     }
   }, [clearCache]);
 
