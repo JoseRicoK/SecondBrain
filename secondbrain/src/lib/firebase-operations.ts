@@ -15,6 +15,8 @@ import {
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword as firebaseSignIn,
+  signInWithPopup,
+  GoogleAuthProvider,
   signOut as firebaseSignOut,
   updatePassword,
   updateProfile,
@@ -544,6 +546,70 @@ export async function signInUser(email: string, password: string): Promise<Fireb
   } catch (error) {
     console.error('❌ [Firebase] Error en login:', error);
     throw error;
+  }
+}
+
+export async function signInWithGoogle(): Promise<FirebaseUser | null> {
+  try {
+    const provider = new GoogleAuthProvider();
+    
+    // Configurar el proveedor para que siempre muestre el selector de cuenta
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    
+    console.log('✅ [Firebase] Usuario autenticado con Google:', user.uid);
+    
+    // Crear o actualizar el perfil del usuario en Firestore si es necesario
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+      
+      if (!userDoc.exists()) {
+        // Si es la primera vez que se registra con Google, crear el perfil
+        await setDoc(userRef, {
+          name: user.displayName || 'Usuario',
+          email: user.email,
+          profile_image: user.photoURL || '',
+          created_at: serverTimestamp(),
+          updated_at: serverTimestamp(),
+          provider: 'google'
+        });
+        console.log('✅ [Firebase] Perfil de usuario creado para registro con Google');
+      } else {
+        // Actualizar la información si ya existe
+        await updateDoc(userRef, {
+          name: user.displayName || userDoc.data().name,
+          profile_image: user.photoURL || userDoc.data().profile_image,
+          updated_at: serverTimestamp(),
+          last_login: serverTimestamp()
+        });
+        console.log('✅ [Firebase] Perfil de usuario actualizado tras login con Google');
+      }
+    } catch (firestoreError) {
+      console.error('⚠️ [Firebase] Error al gestionar perfil en Firestore:', firestoreError);
+      // No lanzar error aquí porque la autenticación fue exitosa
+    }
+    
+    return user;
+  } catch (error) {
+    console.error('❌ [Firebase] Error en login con Google:', error);
+    
+    // Manejar errores específicos de Google Auth
+    const firebaseError = error as { code?: string; message?: string };
+    
+    if (firebaseError.code === 'auth/popup-closed-by-user') {
+      throw new Error('Login cancelado. Inténtalo de nuevo.');
+    } else if (firebaseError.code === 'auth/popup-blocked') {
+      throw new Error('El popup fue bloqueado por el navegador. Permite popups e inténtalo de nuevo.');
+    } else if (firebaseError.code === 'auth/account-exists-with-different-credential') {
+      throw new Error('Ya existe una cuenta con este email usando un método de login diferente.');
+    } else {
+      throw new Error(firebaseError.message || 'Error al iniciar sesión con Google');
+    }
   }
 }
 

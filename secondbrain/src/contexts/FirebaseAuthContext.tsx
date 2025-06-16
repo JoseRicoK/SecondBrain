@@ -7,6 +7,7 @@ import { auth } from '@/lib/firebase';
 interface FirebaseAuthContextType {
   user: FirebaseUser | null;
   loading: boolean;
+  isGoogleUser: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -23,6 +24,7 @@ export function useFirebaseAuthContext() {
 export function FirebaseAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGoogleUser, setIsGoogleUser] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -37,8 +39,15 @@ export function FirebaseAuthProvider({ children }: { children: React.ReactNode }
         firebaseUser ? `Usuario: ${firebaseUser.email}` : 'Sin usuario'
       );
 
-      // Ignorar usuarios que aún no verificaron su email para evitar redirecciones
-      if (firebaseUser && !firebaseUser.emailVerified) {
+      // Verificar si el usuario es de Google
+      const isGoogle = firebaseUser?.providerData.some(
+        provider => provider.providerId === 'google.com'
+      ) || false;
+      
+      setIsGoogleUser(isGoogle);
+
+      // Ignorar usuarios que aún no verificaron su email SOLO si no son de Google
+      if (firebaseUser && !firebaseUser.emailVerified && !isGoogle) {
         console.log('⚠️ [Firebase] Email no verificado, cerrando sesión...');
         await auth.signOut();
         setUser(null);
@@ -53,7 +62,8 @@ export function FirebaseAuthProvider({ children }: { children: React.ReactNode }
         console.log('✅ [Firebase] Usuario autenticado:', {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          displayName: firebaseUser.displayName
+          displayName: firebaseUser.displayName,
+          isGoogleUser: isGoogle
         });
       } else {
         console.log('👋 [Firebase] Usuario no autenticado');
@@ -86,6 +96,7 @@ export function FirebaseAuthProvider({ children }: { children: React.ReactNode }
   const value = {
     user,
     loading,
+    isGoogleUser,
     signOut,
   };
 
