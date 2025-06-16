@@ -87,96 +87,101 @@ export default function TestimonialsCarousel() {
         </motion.div>
 
         <div 
-          className="relative"
+          className="flex items-center gap-2 sm:gap-4 lg:gap-8"
           onMouseEnter={() => setIsAutoPlay(false)}
           onMouseLeave={() => setIsAutoPlay(true)}
         >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, x: 300 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -300 }}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
-              className="liquid-card p-8 md:p-12 relative overflow-hidden"
-            >
-              {/* Background Pattern */}
-              <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
-                <Quote className="w-full h-full text-purple-400" />
-              </div>
-
-              <div className="relative z-10">
-                {/* Stars */}
-                <div className="flex justify-center mb-6">
-                  {[...Array(testimonials[currentIndex].stars)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, scale: 0 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: i * 0.1 }}
-                    >
-                      <Star className="w-6 h-6 text-yellow-400 fill-current mx-1" />
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Testimonial Text */}
-                <blockquote className="text-xl md:text-2xl text-gray-200 text-center mb-8 italic leading-relaxed">
-                  &ldquo;{testimonials[currentIndex].text}&rdquo;
-                </blockquote>
-
-                {/* Author Info */}
-                <div className="flex items-center justify-center space-x-4">
-                  <motion.div
-                    className={`w-16 h-16 bg-gradient-to-r ${testimonials[currentIndex].color} rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg`}
-                    whileHover={{ scale: 1.1 }}
-                  >
-                    {testimonials[currentIndex].avatar}
-                  </motion.div>
-                  <div>
-                    <h4 className="text-xl font-bold text-white">
-                      {testimonials[currentIndex].name}
-                    </h4>
-                    <p className="text-gray-400">
-                      {testimonials[currentIndex].role}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Navigation Buttons */}
+          {/* Left Navigation Button */}
           <button
             onClick={prevTestimonial}
-            className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 w-12 h-12 carousel-nav-button rounded-full flex items-center justify-center transition-all duration-300 z-10"
+            className="hidden sm:flex flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 carousel-nav-button rounded-full items-center justify-center transition-all duration-300 hover:scale-105"
             title="Testimonio anterior"
           >
-            <ChevronLeft className="w-6 h-6 text-white relative z-10" />
-          </button>
-          
-          <button
-            onClick={nextTestimonial}
-            className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 w-12 h-12 carousel-nav-button rounded-full flex items-center justify-center transition-all duration-300 z-10"
-            title="Siguiente testimonio"
-          >
-            <ChevronRight className="w-6 h-6 text-white relative z-10" />
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </button>
 
-          {/* Dots Indicator */}
-          <div className="flex justify-center mt-8 space-x-2">
-            {testimonials.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  index === currentIndex 
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 w-8' 
-                    : 'bg-gray-600 hover:bg-gray-500'
-                }`}
-              />
-            ))}
+          {/* Testimonial Content */}
+          <div className="flex-1 relative">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentIndex}
+                initial={{ opacity: 0, x: 300 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -300 }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className="liquid-card p-8 md:p-12 relative overflow-hidden"
+              >
+                {/* Background Pattern */}
+                <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
+                  <Quote className="w-full h-full text-purple-400" />
+                </div>
+
+                <div className="relative z-10">
+                  {/* Stars */}
+                  <div className="flex justify-center mb-6">
+                    {[...Array(testimonials[currentIndex].stars)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.1 }}
+                      >
+                        <Star className="w-6 h-6 text-yellow-400 fill-current mx-1" />
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Testimonial Text */}
+                  <blockquote className="text-xl md:text-2xl text-gray-200 text-center mb-8 italic leading-relaxed">
+                    &ldquo;{testimonials[currentIndex].text}&rdquo;
+                  </blockquote>
+
+                  {/* Author Info */}
+                  <div className="flex items-center justify-center space-x-4">
+                    <motion.div
+                      className={`w-16 h-16 bg-gradient-to-r ${testimonials[currentIndex].color} rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg`}
+                      whileHover={{ scale: 1.1 }}
+                    >
+                      {testimonials[currentIndex].avatar}
+                    </motion.div>
+                    <div>
+                      <h4 className="text-xl font-bold text-white">
+                        {testimonials[currentIndex].name}
+                      </h4>
+                      <p className="text-gray-400">
+                        {testimonials[currentIndex].role}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
+
+          {/* Right Navigation Button */}
+          <button
+            onClick={nextTestimonial}
+            className="hidden sm:flex flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 carousel-nav-button rounded-full items-center justify-center transition-all duration-300 hover:scale-105"
+            title="Siguiente testimonio"
+          >
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </button>
+        </div>
+
+        {/* Dots Indicator */}
+        <div className="flex justify-center mt-8 space-x-2">
+          {testimonials.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              aria-label={`Ir al testimonio ${index + 1}`}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                index === currentIndex 
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 w-8' 
+                  : 'bg-gray-600 hover:bg-gray-500'
+              }`}
+            />
+          ))}
         </div>
       </div>
     </section>

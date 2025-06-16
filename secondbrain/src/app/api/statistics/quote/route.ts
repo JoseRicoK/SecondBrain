@@ -33,22 +33,22 @@ export async function GET(request: Request) {
       const entryText = latestEntry.content.slice(0, 1000);
 
       const quotePrompt = `
-        Basándote en esta entrada de diario más reciente, crea un texto breve y atractivo para compartir en redes sociales.
-        
-        INSTRUCCIONES:
-        - Debe ser una reflexión, pensamiento o consejo inspirado en esta experiencia personal
-        - Máximo 200 caracteres (perfecto para Twitter/X)
-        - Lenguaje positivo, motivador y universal
-        - No incluyas detalles personales específicos (nombres, lugares, etc.)
-        - Debe sonar natural y humano, no forzado
-        - Puede incluir emojis apropiados al final
-        - Sin comillas ni formato de cita tradicional
-        - Hazlo inspiracional pero conectado con el contenido de la entrada
-        
-        Entrada del diario:
-        ${entryText}
-        
-        Texto para redes sociales (máximo 200 caracteres):
+      Eres un experto en redes sociales y bienestar personal. Basándote en los siguientes textos de diario, crea una frase inspiradora y única para compartir en Instagram.
+
+      🧠 INSTRUCCIONES:
+      - Usa un tono natural, empático y motivador.
+      - No repitas clichés ni frases genéricas.
+      - No incluyas datos personales (lugares, nombres, etc.)
+      - Que parezca escrita por una persona real, no IA.
+      - Máximo 200 caracteres.
+      - Puedes usar emojis sutiles si lo ves natural.
+      - Inspira reflexión o conexión, no frases vacías.
+      - El objetivo es que alguien diga: “Wow, esto me representa”.
+
+      📝 Textos de diario recientes:
+      ${entryText}
+
+      Tu frase:
       `;
 
       try {

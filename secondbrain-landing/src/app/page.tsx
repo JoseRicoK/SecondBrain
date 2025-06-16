@@ -14,7 +14,13 @@ import {
   Zap,
   Heart,
   Lock,
-  Play
+  Play,
+  BarChart3,
+  TrendingUp,
+  Award,
+  Quote,
+  PieChart,
+  Activity
 } from 'lucide-react';
 import Link from 'next/link';
 import Header from '../components/Header';
@@ -86,8 +92,8 @@ export default function Home() {
                   transition={{ duration: 0.8, delay: 0.6 }}
                 >
                   El diario personal más avanzado del mundo. Con <strong className="text-white">IA conversacional</strong>, 
-                  <strong className="text-white"> grabación de voz inteligente</strong> y <strong className="text-white">análisis de relaciones personales</strong>. 
-                  Transforma cómo documentas y reflexionas sobre tu vida.
+                  <strong className="text-white"> grabación de voz inteligente</strong>, <strong className="text-white">análisis emocional avanzado</strong> y <strong className="text-white">estadísticas de relaciones personales</strong>. 
+                  Transforma cómo documentas, analizas y reflexionas sobre tu vida.
                 </motion.p>
               </div>
             </motion.div>
@@ -383,6 +389,143 @@ export default function Home() {
               </div>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* Advanced Analytics Section */}
+      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+        {/* Background Animation */}
+        <div className="absolute inset-0">
+          <div className="absolute top-10 left-10 w-20 h-20 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse"></div>
+          <div className="absolute bottom-10 right-10 w-32 h-32 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse delay-2s"></div>
+          <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse delay-4s"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-12 lg:mb-16"
+          >
+            <div className="inline-flex items-center bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-purple-500/30 rounded-full px-4 py-2 mb-6">
+              <BarChart3 className="w-4 h-4 text-purple-400 mr-2" />
+              <span className="text-purple-300 text-sm font-medium">Análisis Inteligente</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
+              Descubre Patrones en tu
+              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"> Vida</span>
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              SecondBrain no solo guarda tus pensamientos, los analiza para ofrecerte insights únicos sobre tu bienestar emocional, relaciones y crecimiento personal.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-8">
+            {/* Análisis de Emociones */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.1 }}
+              className="glass rounded-2xl p-6 lg:p-8 hover:scale-105 transition-all duration-300 group"
+            >
+              <div className="bg-gradient-to-r from-rose-500 to-pink-500 w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <PieChart className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">Análisis Emocional</h3>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                Visualiza tu estado emocional a través del tiempo con gráficos interactivos que muestran tus niveles de felicidad, neutralidad y estrés.
+              </p>
+              <div className="flex items-center text-rose-400 text-sm font-medium">
+                <Activity className="w-4 h-4 mr-2" />
+                Seguimiento en tiempo real
+              </div>
+            </motion.div>
+
+            {/* Resumen Semanal */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="glass rounded-2xl p-6 lg:p-8 hover:scale-105 transition-all duration-300 group"
+            >
+              <div className="bg-gradient-to-r from-orange-500 to-red-500 w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <TrendingUp className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">Resumen Semanal</h3>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                Recibe automáticamente insights sobre tu semana: patrones de comportamiento, tendencias emocionales y momentos destacados.
+              </p>
+              <div className="flex items-center text-orange-400 text-sm font-medium">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Powered by IA
+              </div>
+            </motion.div>
+
+            {/* Ranking de Relaciones */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="glass rounded-2xl p-6 lg:p-8 hover:scale-105 transition-all duration-300 group"
+            >
+              <div className="bg-gradient-to-r from-yellow-500 to-amber-500 w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Award className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">Ranking de Personas</h3>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                Descubre quiénes son las personas más importantes en tu vida basado en la frecuencia de menciones en tus entradas.
+              </p>
+              <div className="flex items-center text-yellow-400 text-sm font-medium">
+                <Users className="w-4 h-4 mr-2" />
+                Análisis de relaciones
+              </div>
+            </motion.div>
+
+            {/* Citas Inspiracionales */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="glass rounded-2xl p-6 lg:p-8 hover:scale-105 transition-all duration-300 group"
+            >
+              <div className="bg-gradient-to-r from-teal-500 to-cyan-500 w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Quote className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">Citas Personalizadas</h3>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                Recibe frases inspiracionales y motivacionales generadas específicamente para tu estado de ánimo y experiencias del día.
+              </p>
+              <div className="flex items-center text-teal-400 text-sm font-medium">
+                <Heart className="w-4 h-4 mr-2" />
+                Motivación diaria
+              </div>
+            </motion.div>
+          </div>
+
+          {/* CTA Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="text-center mt-12 lg:mt-16"
+          >
+            <div className="glass rounded-3xl p-8 lg:p-12 max-w-4xl mx-auto">
+              <h3 className="text-2xl lg:text-3xl font-bold text-white mb-4">
+                Conoce tu mente como nunca antes
+              </h3>
+              <p className="text-gray-300 text-lg mb-8 max-w-2xl mx-auto">
+                Combina la potencia de la inteligencia artificial con tus experiencias personales para obtener insights únicos sobre tu bienestar y crecimiento.
+              </p>
+              <Link
+                href="https://app.secondbrain.com/signup"
+                className="inline-flex items-center liquid-button text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 group"
+              >
+                Explorar mis Estadísticas
+                <BarChart3 className="w-5 h-5 ml-2 group-hover:scale-110 transition-transform" />
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </section>
 

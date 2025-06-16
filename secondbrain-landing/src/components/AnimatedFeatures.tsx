@@ -2,36 +2,64 @@
 
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { MessageCircle, Users, Mic, Calendar, Brain, Sparkles, Star } from 'lucide-react';
+import { MessageCircle, Users, Mic, Calendar, Brain, Sparkles, Star, BarChart3, TrendingUp, Award, Quote } from 'lucide-react';
 
 const features = [
 	{
 		icon: MessageCircle,
 		title: 'Chat Personal con IA',
-		description: 'Conversa sobre tus pensamientos y obtén insights personalizados',
+		description: 'Conversa sobre tus pensamientos y obtén insights personalizados basados en tu historial',
 		color: 'from-purple-500 to-pink-500',
 		accentColor: 'text-purple-400',
 	},
 	{
 		icon: Users,
 		title: 'Chat por Persona',
-		description: 'Análisis individual de cada relación importante en tu vida',
+		description: 'Análisis individual de cada relación importante en tu vida con contexto completo',
 		color: 'from-blue-500 to-cyan-500',
 		accentColor: 'text-blue-400',
 	},
 	{
 		icon: Mic,
 		title: 'Grabación de Voz',
-		description: 'Transcripción automática con IA que convierte voz en texto',
+		description: 'Transcripción automática con IA que convierte voz en texto al instante',
 		color: 'from-green-500 to-emerald-500',
 		accentColor: 'text-green-400',
 	},
 	{
 		icon: Calendar,
 		title: 'Navegación Temporal',
-		description: 'Viaja a cualquier día de tu vida y revive tus memorias',
+		description: 'Viaja a cualquier día de tu vida y revive tus memorias con detalle',
 		color: 'from-indigo-500 to-purple-500',
 		accentColor: 'text-indigo-400',
+	},
+	{
+		icon: BarChart3,
+		title: 'Análisis de Emociones',
+		description: 'Visualiza tu estado emocional a través del tiempo: felicidad, neutralidad y estrés',
+		color: 'from-rose-500 to-pink-500',
+		accentColor: 'text-rose-400',
+	},
+	{
+		icon: TrendingUp,
+		title: 'Resumen Semanal',
+		description: 'Obtén insights automáticos de tu semana: patrones, tendencias y momentos clave',
+		color: 'from-orange-500 to-red-500',
+		accentColor: 'text-orange-400',
+	},
+	{
+		icon: Award,
+		title: 'Ranking de Relaciones',
+		description: 'Descubre quiénes son las personas más importantes en tu vida según tus menciones',
+		color: 'from-yellow-500 to-amber-500',
+		accentColor: 'text-yellow-400',
+	},
+	{
+		icon: Quote,
+		title: 'Citas Inspiracionales',
+		description: 'Recibe frases motivacionales personalizadas basadas en tu día y estado de ánimo',
+		color: 'from-teal-500 to-cyan-500',
+		accentColor: 'text-teal-400',
 	},
 ];
 
@@ -41,7 +69,7 @@ export default function AnimatedFeatures() {
 	useEffect(() => {
 		const interval = setInterval(() => {
 			setActiveFeature((prev) => (prev + 1) % features.length);
-		}, 5000);
+		}, 4000);
 		return () => clearInterval(interval);
 	}, []);
 
@@ -108,7 +136,7 @@ export default function AnimatedFeatures() {
 					</motion.div>
 
 					{/* Feature Cards in Circle */}
-					<div className="relative w-96 h-96 mx-auto">
+					<div className="relative w-[480px] h-[480px] mx-auto">
 						{features.map((feature, index) => {
 							const angle = (index * 360) / features.length;
 							const isActive = index === activeFeature;
@@ -120,7 +148,7 @@ export default function AnimatedFeatures() {
 									style={{
 										left: '50%',
 										top: '50%',
-										transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-160px) rotate(-${angle}deg)`,
+										transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-200px) rotate(-${angle}deg)`,
 									}}
 									animate={{
 										scale: isActive ? 1.1 : 1,
@@ -147,16 +175,16 @@ export default function AnimatedFeatures() {
 						})}
 					</div>
 
-					{/* Connecting Lines - cover animationZone */}
+					{/* Connecting Lines */}
 					<svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
 						{features.map((_, index) => {
 							const angle = (index * 360) / features.length;
 							const isActive = index === activeFeature;
 							const x1 = 50; // %
 							const y1 = 50; // %
-							// Icons orbit at a radius of 160px. The animationZone (w-96) is 384px wide/high.
-							// The line radius needs to be this 160px, expressed as a percentage of the SVG dimensions (384px).
-							const lineRadiusPercentage = (160 / 384) * 100; // Approx 41.67%
+							// Icons orbit at a radius of 200px. The container is 480px wide/high.
+							// The line radius needs to be this 200px, expressed as a percentage of the SVG dimensions (480px).
+							const lineRadiusPercentage = (200 / 480) * 100; // Approx 41.67%
 							const x2 = 50 + lineRadiusPercentage * Math.sin((angle * Math.PI) / 180); // %
 							const y2 = 50 - lineRadiusPercentage * Math.cos((angle * Math.PI) / 180); // %
 
