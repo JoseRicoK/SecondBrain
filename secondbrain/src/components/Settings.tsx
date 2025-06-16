@@ -100,10 +100,20 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
 
     try {
       await deleteUserAccount();
-      alert('Tu cuenta y todos tus datos han sido eliminados exitosamente.');
+      // Si llegamos aquí, la eliminación fue exitosa
+      alert('Tu cuenta y todos tus datos han sido eliminados exitosamente. Serás redirigido al login.');
+      // Recargar la página para que se muestre el login
+      window.location.reload();
     } catch (error: unknown) {
       console.error('Error deleting account:', error);
-      setUpdateError(error instanceof Error ? error.message : 'Error al eliminar la cuenta');
+      const errorMessage = error instanceof Error ? error.message : 'Error al eliminar la cuenta';
+      
+      // Si es el error de reautenticación, dar instrucciones más claras
+      if (errorMessage.includes('volver a introducir tu contraseña')) {
+        setUpdateError('Para mayor seguridad, necesitas cerrar sesión, volver a entrar con tu contraseña y luego intentar eliminar la cuenta de nuevo.');
+      } else {
+        setUpdateError(errorMessage);
+      }
     } finally {
       setDeleteLoading(false);
     }

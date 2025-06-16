@@ -10,7 +10,9 @@ import {
   orderBy, 
   limit,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  QueryDocumentSnapshot,
+  DocumentData
 } from 'firebase/firestore';
 import {
   createUserWithEmailAndPassword,
@@ -23,6 +25,9 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   deleteUser,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  reauthenticateWithPopup,
   User as FirebaseUser
 } from 'firebase/auth';
 import { v5 as uuidv5 } from 'uuid';
@@ -363,14 +368,10 @@ export async function getPeopleByUserId(userId: string): Promise<Person[]> {
   console.log('⭐ [Firebase] Obteniendo personas para el usuario:', userId);
   
   try {
-    // Convertir el userId a UUID válido si no lo es ya
-    const validUUID = isValidUUID(userId) ? userId : generateUUID(userId);
-    console.log('UUID válido usado para consulta:', validUUID);
-    
     const peopleRef = collection(db, 'people');
     const q = query(
       peopleRef,
-      where('user_id', '==', validUUID),
+      where('user_id', '==', userId),
       orderBy('name')
     );
     
@@ -712,13 +713,76 @@ export async function deleteUserAccount(): Promise<void> {
       throw new Error('No hay usuario autenticado');
     }
     
-    const userId = auth.currentUser.uid;
+    const user = auth.currentUser;
+    const userId = user.uid;
+    
+    console.log(`🗑️ [Firebase] Iniciando eliminación de cuenta para usuario: ${userId}`);
+    
+    // Verificar si el usuario se autenticó con Google
+    const isGoogleUser = user.providerData.some(
+      provider => provider.providerId === 'google.com'
+    );
+    
+    try {
+      // Primero intentar eliminar la cuenta de Auth
+      await deleteUser(user);
+      console.log('✅ [Firebase] Cuenta de Auth eliminada correctamente');
+    } catch (error: unknown) {
+      if ((error as { code?: string }).code === 'auth/requires-recent-login') {
+        console.log('🔐 [Firebase] Reautenticación requerida');
+        // El usuario necesita reautenticarse
+        if (isGoogleUser) {
+          // Reautenticar con Google
+          console.log('🔐 [Firebase] Reautenticando con Google...');
+          const provider = new GoogleAuthProvider();
+          await reauthenticateWithPopup(user, provider);
+        } else {
+          // Para usuarios de email/password, necesitamos pedirles su contraseña
+          throw new Error('Para eliminar tu cuenta, necesitas volver a introducir tu contraseña. Por favor, cierra sesión, vuelve a entrar y intenta eliminar la cuenta de nuevo.');
+        }
+        
+        // Intentar eliminar de nuevo después de la reautenticación
+        await deleteUser(user);
+        console.log('✅ [Firebase] Cuenta de Auth eliminada correctamente tras reautenticación');
+      } else {
+        console.error('❌ [Firebase] Error inesperado al eliminar cuenta de Auth:', error);
+        throw error;
+      }
+    }
+    
+    // Solo eliminar datos de Firestore si la eliminación de Auth fue exitosa
+    await deleteAllUserData(userId);
+    
+  } catch (error) {
+    console.error('❌ [Firebase] Error al eliminar cuenta:', error);
+    throw error;
+  }
+}
+
+// Función alternativa que permite eliminar con reautenticación manual
+export async function deleteUserAccountWithPassword(password: string): Promise<void> {
+  try {
+    if (!auth.currentUser) {
+      throw new Error('No hay usuario autenticado');
+    }
+    
+    const user = auth.currentUser;
+    const userId = user.uid;
+    const email = user.email;
+    
+    if (!email) {
+      throw new Error('Usuario no tiene email configurado');
+    }
+    
+    // Reautenticar con email y contraseña
+    const credential = EmailAuthProvider.credential(email, password);
+    await reauthenticateWithCredential(user, credential);
     
     // Eliminar todos los datos del usuario
     await deleteAllUserData(userId);
     
     // Eliminar la cuenta del usuario
-    await deleteUser(auth.currentUser);
+    await deleteUser(user);
     
     console.log('✅ [Firebase] Cuenta eliminada correctamente');
   } catch (error) {
@@ -730,23 +794,33 @@ export async function deleteUserAccount(): Promise<void> {
 // Función auxiliar para eliminar todos los datos del usuario
 async function deleteAllUserData(userId: string): Promise<void> {
   try {
+    console.log(`🗑️ [Firebase] Eliminando todos los datos para usuario: ${userId}`);
     const batch = writeBatch(db);
+    
+    // Eliminar el perfil del usuario
+    const userRef = doc(db, 'users', userId);
+    batch.delete(userRef);
+    console.log(`🗑️ [Firebase] Marcado para eliminar perfil de usuario: ${userId}`);
     
     // Eliminar entradas del diario
     const diaryEntriesRef = collection(db, 'diary_entries');
     const diaryQuery = query(diaryEntriesRef, where('user_id', '==', userId));
     const diarySnapshot = await getDocs(diaryQuery);
     
-    diarySnapshot.docs.forEach(doc => {
+    console.log(`🗑️ [Firebase] Encontradas ${diarySnapshot.docs.length} entradas de diario para eliminar`);
+    diarySnapshot.docs.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
       batch.delete(doc.ref);
     });
     
-    // Eliminar personas
+    // Eliminar personas mencionadas
     const peopleRef = collection(db, 'people');
     const peopleQuery = query(peopleRef, where('user_id', '==', userId));
     const peopleSnapshot = await getDocs(peopleQuery);
     
-    peopleSnapshot.docs.forEach(doc => {
+    console.log(`🗑️ [Firebase] Encontradas ${peopleSnapshot.docs.length} personas para eliminar`);
+    peopleSnapshot.docs.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
+      const data = doc.data();
+      console.log(`🗑️ [Firebase] Eliminando persona: ${data.name} (user_id: ${data.user_id})`);
       batch.delete(doc.ref);
     });
     
@@ -755,14 +829,41 @@ async function deleteAllUserData(userId: string): Promise<void> {
     const transcriptionsQuery = query(transcriptionsRef, where('user_id', '==', userId));
     const transcriptionsSnapshot = await getDocs(transcriptionsQuery);
     
-    transcriptionsSnapshot.docs.forEach(doc => {
+    console.log(`🗑️ [Firebase] Encontradas ${transcriptionsSnapshot.docs.length} transcripciones para eliminar`);
+    transcriptionsSnapshot.docs.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
+      batch.delete(doc.ref);
+    });
+    
+    // Eliminar conversaciones de chat personal (si existen)
+    const personalChatRef = collection(db, 'personal_chat_history');
+    const personalChatQuery = query(personalChatRef, where('user_id', '==', userId));
+    const personalChatSnapshot = await getDocs(personalChatQuery);
+    
+    console.log(`🗑️ [Firebase] Encontradas ${personalChatSnapshot.docs.length} conversaciones personales para eliminar`);
+    personalChatSnapshot.docs.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
+      batch.delete(doc.ref);
+    });
+    
+    // Eliminar conversaciones con personas (si existen)
+    const peopleChatsRef = collection(db, 'people_chat_history');
+    const peopleChatsQuery = query(peopleChatsRef, where('user_id', '==', userId));
+    const peopleChatsSnapshot = await getDocs(peopleChatsQuery);
+    
+    console.log(`🗑️ [Firebase] Encontradas ${peopleChatsSnapshot.docs.length} conversaciones con personas para eliminar`);
+    peopleChatsSnapshot.docs.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
       batch.delete(doc.ref);
     });
     
     // Ejecutar todas las eliminaciones
     await batch.commit();
     
-    console.log('✅ [Firebase] Todos los datos del usuario eliminados');
+    console.log('✅ [Firebase] Todos los datos del usuario eliminados de Firestore');
+    console.log(`📊 [Firebase] Resumen de eliminación para usuario ${userId}:`);
+    console.log(`- Entradas de diario: ${diarySnapshot.docs.length}`);
+    console.log(`- Personas: ${peopleSnapshot.docs.length}`);
+    console.log(`- Transcripciones: ${transcriptionsSnapshot.docs.length}`);
+    console.log(`- Chats personales: ${personalChatSnapshot.docs.length}`);
+    console.log(`- Chats con personas: ${peopleChatsSnapshot.docs.length}`);
   } catch (error) {
     console.error('❌ [Firebase] Error al eliminar datos del usuario:', error);
     throw error;
@@ -852,7 +953,6 @@ export async function saveExtractedPersonInfo(
   entryDate?: string
 ): Promise<Person | null> {
   try {
-    const validUUID = isValidUUID(userId) ? userId : generateUUID(userId);
     const date = entryDate || new Date().toISOString().split('T')[0];
     
     console.log(`🔍 [saveExtractedPersonInfo] Procesando: ${personName}`, information);
@@ -870,7 +970,7 @@ export async function saveExtractedPersonInfo(
     const peopleRef = collection(db, 'people');
     const q = query(
       peopleRef,
-      where('user_id', '==', validUUID),
+      where('user_id', '==', userId),
       where('name', '==', personName)
     );
     
@@ -1015,7 +1115,7 @@ export async function saveExtractedPersonInfo(
       }
       
       const newPerson: Partial<Person> = {
-        user_id: validUUID,
+        user_id: userId,
         name: personName,
         details: newDetails
       };
