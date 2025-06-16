@@ -499,16 +499,19 @@ export default function Home() {
             onClose={() => setIsSidebarOpen(false)} 
             onSettingsClick={() => {
               setShowSettings(true);
+              setShowStatistics(false);
               // Auto-cerrar sidebar en móvil al abrir configuración
               setIsSidebarOpen(false);
             }}
             onStatisticsClick={() => {
               setShowStatistics(true);
+              setShowSettings(false);
               // Auto-cerrar sidebar en móvil al abrir estadísticas
               setIsSidebarOpen(false);
             }}
             onDateChange={() => {
               setShowSettings(false);
+              setShowStatistics(false);
               // Auto-cerrar sidebar en móvil al seleccionar fecha
               setIsSidebarOpen(false);
             }}
@@ -545,7 +548,10 @@ export default function Home() {
                   </div>
                   <div className="flex items-center space-x-3">
                     <button 
-                      onClick={() => setShowSettings(false)}
+                      onClick={() => {
+                        setShowSettings(false);
+                        setShowStatistics(false);
+                      }}
                       className="flex items-center space-x-2 px-4 py-2 bg-white/80 text-slate-700 rounded-xl hover:bg-white transition-all duration-200 shadow-sm border border-white/40"
                     >
                       <span>Volver al diario</span>
@@ -565,7 +571,10 @@ export default function Home() {
                 </div>
                 <div className="flex items-center space-x-3">
                   <button 
-                    onClick={() => setShowStatistics(false)}
+                    onClick={() => {
+                      setShowStatistics(false);
+                      setShowSettings(false);
+                    }}
                     className="flex items-center space-x-2 px-4 py-2 bg-white/80 text-slate-700 rounded-xl hover:bg-white transition-all duration-200 shadow-sm border border-white/40"
                   >
                     <span>Volver al diario</span>
