@@ -1,5 +1,15 @@
 import type { NextConfig } from "next";
 
+const securityHeaders = [
+  {
+    key: 'Content-Security-Policy',
+    value: "default-src 'self'; img-src 'self' data: blob: https://lh3.googleusercontent.com; media-src 'self' data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.googleapis.com https://*.firebase.com https://*.firebaseapp.com https://*.cloudfunctions.net wss://*.firebaseio.com; frame-src 'self' https://*.firebaseapp.com https://*.googleapis.com https://accounts.google.com"
+  },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'Referrer-Policy', value: 'same-origin' },
+];
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -11,67 +21,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Deshabilitar TODAS las optimizaciones problemáticas
-  swcMinify: false,
-  experimental: {
-    esmExternals: false,
-  },
-  // Configuración webpack para deshabilitar chunk splitting problemático
-  webpack: (config, { dev, isServer }) => {
-    console.log('🔧 [Webpack] Configurando webpack...');
-    
-    // Deshabilitar source maps completamente
-    config.devtool = false;
-    
-    // Deshabilitar chunk splitting en desarrollo
-    if (dev && !isServer) {
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          chunks: 'all',
-          cacheGroups: {
-            default: false,
-            vendors: false,
-            // Un solo chunk para todo
-            bundle: {
-              name: 'bundle',
-              chunks: 'all',
-              enforce: true,
-            },
-          },
-        },
-      };
-    }
-    
-    // Configurar resolución de módulos
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      net: false,
-      tls: false,
-      crypto: false,
-      stream: false,
-      url: false,
-      zlib: false,
-      http: false,
-      https: false,
-      assert: false,
-      os: false,
-      path: false,
-    };
-    
-    console.log('✅ [Webpack] Configuración aplicada');
-    return config;
-  },
-  // Headers de seguridad simplificados
   async headers() {
     return [
       {
         source: '/(.*)',
-        headers: [
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-        ],
+        headers: securityHeaders,
       },
     ];
   },
