@@ -23,7 +23,7 @@ export default function PricingSection() {
         { text: "Análisis avanzado", included: false }
       ],
       cta: "Comenzar Básico",
-      href: "https://app.secondbrain.com/signup",
+      href: "http://localhost:3001/signup?plan=basic",
       popular: false
     },
     {
@@ -43,7 +43,7 @@ export default function PricingSection() {
         { text: "Análisis avanzado", included: false }
       ],
       cta: "Comenzar Pro",
-      href: "https://app.secondbrain.com/signup?plan=pro",
+      href: "http://localhost:3001/signup?plan=pro",
       popular: true
     },
     {
@@ -63,7 +63,7 @@ export default function PricingSection() {
         { text: "Personalización avanzada", included: true }
       ],
       cta: "Comenzar Elite",
-      href: "https://app.secondbrain.com/signup?plan=elite",
+      href: "http://localhost:3001/signup?plan=elite",
       popular: false
     }
   ];

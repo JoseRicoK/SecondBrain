@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { FirebaseAuthProvider } from "@/contexts/FirebaseAuthContext";
+import { AuthWrapper } from "@/components/AuthWrapper";
+import WelcomeManager from "@/components/WelcomeManager";
+import UserDebugInfo from "@/components/UserDebugInfo";
+import ChunkErrorHandler from "@/components/ChunkErrorHandler";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: 'swap',
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: 'swap',
 });
 
 export const viewport = {
@@ -23,7 +28,10 @@ export const viewport = {
 
 export const metadata: Metadata = {
   title: "SecondBrain",
-  description: "Tu diario personal con IA"
+  description: "Tu diario personal con IA",
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
@@ -36,9 +44,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
       >
-        <FirebaseAuthProvider>
+        <ChunkErrorHandler />
+        <AuthWrapper>
           {children}
-        </FirebaseAuthProvider>
+          <WelcomeManager />
+          <UserDebugInfo />
+        </AuthWrapper>
       </body>
     </html>
   );

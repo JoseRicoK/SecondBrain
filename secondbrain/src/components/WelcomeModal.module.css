@@ -1,0 +1,46 @@
+.confettiParticle {
+  width: 8px;
+  height: 8px;
+  animation: confetti-fall 3s linear infinite;
+}
+
+.confettiParticle:nth-child(odd) {
+  background-color: #ff6b6b;
+  left: 10%;
+  animation-delay: 0.5s;
+}
+
+.confettiParticle:nth-child(even) {
+  background-color: #4ecdc4;
+  left: 90%;
+  animation-delay: 1s;
+}
+
+.confettiParticle:nth-child(3n) {
+  background-color: #45b7d1;
+  left: 30%;
+  animation-delay: 0.2s;
+}
+
+.confettiParticle:nth-child(4n) {
+  background-color: #96ceb4;
+  left: 70%;
+  animation-delay: 1.5s;
+}
+
+.confettiParticle:nth-child(5n) {
+  background-color: #ffeaa7;
+  left: 50%;
+  animation-delay: 0.8s;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}

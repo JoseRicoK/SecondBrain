@@ -14,7 +14,7 @@ export default function CtaSection() {
     // Aquí iría la lógica para guardar el email
     setEmailSubmitted(true);
     setTimeout(() => {
-      window.location.href = 'https://app.secondbrain.com/signup';
+      window.location.href = 'http://localhost:3001/signup?plan=pro';
     }, 2000);
   };
 

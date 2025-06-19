@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiMail, FiLock, FiUser, FiEye, FiEyeOff, FiWifi } from 'react-icons/fi';
 import { 
   signInUser, 
@@ -14,7 +14,7 @@ import { testFirebaseConnection } from '@/lib/firebase-test';
 import Image from 'next/image';
 
 interface AuthProps {
-  onAuthSuccess: (user: FirebaseUser) => void;
+  onAuthSuccess: (user: FirebaseUser, selectedPlan?: string) => void;
 }
 
 export default function Auth({ onAuthSuccess }: AuthProps) {
@@ -26,6 +26,20 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  // Capturar el parámetro del plan de la URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const plan = urlParams.get('plan');
+      if (plan && ['basic', 'pro', 'elite'].includes(plan)) {
+        setSelectedPlan(plan);
+        // Si viene con un plan, por defecto mostrar registro
+        setIsLogin(false);
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +57,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
       const user = await signInUser(email, password);
       if (user) {
         console.log('✅ Login exitoso:', user.uid);
-        onAuthSuccess(user);
+        onAuthSuccess(user, selectedPlan || undefined);
       }
     } catch (error: unknown) {
       console.error('❌ Error en login:', error);
@@ -68,9 +82,9 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
     try {
       await signUpUser(email, password, name);
-      setMessage('Registro exitoso. Revisa tu email para verificar la cuenta.');
+      setMessage('Registro exitoso. Revisa tu email para verificar la cuenta y luego inicia sesión.');
       setIsLogin(true);
-      setEmail('');
+      // Mantener el email para facilitar el login posterior
       setPassword('');
       setName('');
     } catch (error: unknown) {
@@ -121,7 +135,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
       const user = await signInWithGoogle();
       if (user) {
         console.log('✅ Login con Google exitoso:', user.uid);
-        onAuthSuccess(user);
+        onAuthSuccess(user, selectedPlan || undefined);
       }
     } catch (error: unknown) {
       console.error('❌ Error en login con Google:', error);
@@ -147,6 +161,13 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           <p className="text-gray-600 mt-2">
             {isLogin ? 'Inicia sesión en tu cuenta' : 'Crea una cuenta nueva'}
           </p>
+          {selectedPlan && (
+            <div className="mt-3 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg">
+              <p className="text-sm text-purple-700">
+                Plan seleccionado: <span className="font-semibold capitalize">{selectedPlan}</span>
+              </p>
+            </div>
+          )}
         </div>
 
         {error && (

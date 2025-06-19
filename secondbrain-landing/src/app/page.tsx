@@ -106,7 +106,7 @@ export default function Home() {
               className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center"
             >
               <Link
-                href="https://app.secondbrain.com/signup"
+                href="http://localhost:3001/signup?plan=pro"
                 className="w-full sm:w-auto max-w-xs liquid-button text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center group"
               >
                 Comenzar Gratis
@@ -518,7 +518,7 @@ export default function Home() {
                 Combina la potencia de la inteligencia artificial con tus experiencias personales para obtener insights únicos sobre tu bienestar y crecimiento.
               </p>
               <Link
-                href="https://app.secondbrain.com/signup"
+                href="http://localhost:3001/signup?plan=pro"
                 className="inline-flex items-center liquid-button text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 group"
               >
                 Explorar mis Estadísticas

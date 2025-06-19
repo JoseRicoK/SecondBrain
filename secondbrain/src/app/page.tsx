@@ -417,9 +417,16 @@ export default function Home() {
     setIsChatMinimized(!isChatMinimized);
   };
 
-  const handleAuthSuccess = (authenticatedUser: FirebaseUser) => {
+  const handleAuthSuccess = (authenticatedUser: FirebaseUser, selectedPlan?: string) => {
     // El hook useAuth se encargará de actualizar el estado
     console.log('Usuario autenticado:', authenticatedUser.uid);
+    
+    // Si hay un plan seleccionado, redirigir a la página de suscripción
+    if (selectedPlan) {
+      console.log('Plan seleccionado:', selectedPlan);
+      // Redirigir a la página de suscripción con el plan pre-seleccionado
+      window.location.href = `/subscription?plan=${selectedPlan}`;
+    }
   };
   
   // Obtener los datos de la entrada actual cuando cambia la fecha o el usuario

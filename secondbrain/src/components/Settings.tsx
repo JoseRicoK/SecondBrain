@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { FiCalendar, FiCheck, FiLink, FiUser, FiTrash2, FiMessageSquare, FiMail, FiAlertTriangle, FiSave, FiEye, FiEyeOff, FiLogOut } from 'react-icons/fi';
+import { FiCalendar, FiCheck, FiLink, FiUser, FiTrash2, FiMessageSquare, FiMail, FiAlertTriangle, FiSave, FiEye, FiEyeOff, FiLogOut, FiCreditCard, FiArrowUp, FiX } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/hooks/useSubscription';
 import { updateUserProfile, updateUserPassword, deleteUserAccount } from '@/lib/firebase-operations';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 interface SettingsProps {
   userId: string;
@@ -11,6 +13,8 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ userId }) => {
   console.log('Settings component loaded for user:', userId);
   const { user, signOut, isGoogleUser } = useAuth();
+  const { userProfile, currentPlan, planLimits } = useSubscription();
+  const router = useRouter();
   
   // Estados para cambio de datos personales
   const [newDisplayName, setNewDisplayName] = useState(
@@ -378,6 +382,212 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
                 <span>Cerrar sesión</span>
               </button>
             </div>
+          </div>
+
+          {/* Sección Suscripción */}
+          <div className="lg:col-span-2 bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+            <div className="flex items-center mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mr-4">
+                <FiCreditCard className="text-white text-xl" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-slate-800">Mi Suscripción</h2>
+                <p className="text-slate-600 text-sm">Gestiona tu plan y funcionalidades</p>
+              </div>
+            </div>
+            
+            {/* Plan actual - Card destacada */}
+            <div className="mb-6">
+              <div className={`rounded-2xl p-6 border-2 ${
+                currentPlan === 'free' ? 'bg-gray-50 border-gray-200' :
+                currentPlan === 'basic' ? 'bg-green-50 border-green-200' :
+                currentPlan === 'pro' ? 'bg-purple-50 border-purple-200' :
+                'bg-yellow-50 border-yellow-200'
+              }`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-800">
+                      Plan {currentPlan === 'free' ? 'Gratuito' :
+                           currentPlan === 'basic' ? 'Básico' :
+                           currentPlan === 'pro' ? 'Pro' : 'Elite'}
+                    </h3>
+                    <p className={`text-sm font-medium ${
+                      userProfile?.subscription.status === 'active' ? 'text-green-600' :
+                      userProfile?.subscription.status === 'past_due' ? 'text-yellow-600' :
+                      'text-gray-600'
+                    }`}>
+                      {userProfile?.subscription.status === 'active' ? '✅ Activo' :
+                       userProfile?.subscription.status === 'past_due' ? '⚠️ Pago pendiente' :
+                       userProfile?.subscription.status === 'canceled' ? '❌ Cancelado' :
+                       '⏸️ Inactivo'}
+                    </p>
+                  </div>
+                  <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                    currentPlan === 'free' ? 'bg-gray-200 text-gray-800' :
+                    currentPlan === 'basic' ? 'bg-green-200 text-green-800' :
+                    currentPlan === 'pro' ? 'bg-purple-200 text-purple-800' :
+                    'bg-yellow-200 text-yellow-800'
+                  }`}>
+                    {currentPlan.toUpperCase()}
+                  </span>
+                </div>
+                
+                {userProfile?.subscription.currentPeriodEnd && (
+                  <p className="text-sm text-slate-600 mb-4">
+                    <strong>Próxima renovación:</strong> {new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString('es-ES')}
+                  </p>
+                )}
+                
+                {/* Características del plan actual */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="text-sm">
+                    <span className="text-slate-600">Transcripciones: </span>
+                    <span className="font-semibold text-slate-800">
+                      {planLimits.maxTranscriptions === -1 ? 'Ilimitadas' : planLimits.maxTranscriptions}
+                    </span>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-slate-600">Personas: </span>
+                    <span className="font-semibold text-slate-800">
+                      {planLimits.maxPeopleManagement === -1 ? 'Ilimitadas' : planLimits.maxPeopleManagement}
+                    </span>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-slate-600">Chat personal: </span>
+                    <span className="font-semibold text-slate-800">
+                      {planLimits.hasPersonalChat ? '✅' : '❌'}
+                    </span>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-slate-600">Estadísticas: </span>
+                    <span className="font-semibold text-slate-800">
+                      {planLimits.hasStatistics ? '✅' : '❌'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Acciones */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {currentPlan === 'free' ? (
+                <>
+                  <button
+                    onClick={() => router.push('/subscription')}
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2"
+                  >
+                    <FiArrowUp className="w-4 h-4" />
+                    Mejorar Plan
+                  </button>
+                  
+                  {/* Botón temporal de corrección */}
+                  <div className="flex-1">
+                    <details className="bg-orange-50 border border-orange-200 rounded-xl">
+                      <summary className="p-3 cursor-pointer text-orange-800 font-medium text-sm">
+                        ¿Ya pagaste? Corregir plan
+                      </summary>
+                      <div className="p-3 pt-0 flex gap-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/subscription/update-manual', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: user?.uid, planType: 'basic' })
+                              });
+                              if (response.ok) {
+                                alert('Plan actualizado a Básico');
+                                window.location.reload();
+                              }
+                            } catch (error) {
+                              alert('Error actualizando plan');
+                            }
+                          }}
+                          className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                        >
+                          Básico
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/subscription/update-manual', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: user?.uid, planType: 'pro' })
+                              });
+                              if (response.ok) {
+                                alert('Plan actualizado a Pro');
+                                window.location.reload();
+                              }
+                            } catch (error) {
+                              alert('Error actualizando plan');
+                            }
+                          }}
+                          className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600"
+                        >
+                          Pro
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/subscription/update-manual', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: user?.uid, planType: 'elite' })
+                              });
+                              if (response.ok) {
+                                alert('Plan actualizado a Elite');
+                                window.location.reload();
+                              }
+                            } catch (error) {
+                              alert('Error actualizando plan');
+                            }
+                          }}
+                          className="px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
+                        >
+                          Elite
+                        </button>
+                      </div>
+                    </details>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => router.push('/subscription')}
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    <FiArrowUp className="w-4 h-4" />
+                    Cambiar Plan
+                  </button>
+                  
+                  {userProfile?.subscription.status === 'active' && !userProfile.subscription.cancelAtPeriodEnd && (
+                    <button
+                      onClick={() => {
+                        if (confirm('¿Estás seguro de que quieres cancelar tu suscripción? Perderás acceso a las funciones premium al final del período actual.')) {
+                          alert('Función de cancelación en desarrollo. Contacta soporte para cancelar.');
+                        }
+                      }}
+                      className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+                    >
+                      <FiX className="w-4 h-4" />
+                      Cancelar
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+            
+            {userProfile?.subscription.cancelAtPeriodEnd && (
+              <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                <p className="text-yellow-800 text-sm text-center">
+                  <strong>⚠️ Suscripción cancelada:</strong> Tu plan actual estará activo hasta el{' '}
+                  {userProfile.subscription.currentPeriodEnd && 
+                    new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString('es-ES')
+                  }
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Sección Calendario */}
