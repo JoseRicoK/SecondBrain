@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFirebaseAuthContext } from '@/contexts/FirebaseAuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
-import { FaCrown, FaHeart, FaCheck, FaArrowLeft } from 'react-icons/fa';
+import { FaCrown, FaHeart, FaCheck, FaArrowLeft, FaTimes } from 'react-icons/fa';
 import { FiZap } from 'react-icons/fi';
 import { IconType } from 'react-icons';
 import CheckoutForm from '@/components/CheckoutForm';
@@ -16,7 +16,10 @@ interface PlanData {
   description: string;
   icon: IconType;
   color: string;
-  features: string[];
+  features: Array<{
+    text: string;
+    included: boolean;
+  }>;
 }
 
 // Datos de los planes (sin priceId, que se obtendrá desde la API)
@@ -24,14 +27,18 @@ const basePlans = {
   free: {
     name: "Gratuito",
     price: 0,
-    description: "Perfecto para empezar tu viaje",
+    description: "Perfecto para empezar tu viaje personal",
     icon: FaHeart,
     color: "from-gray-500 to-slate-500",
     features: [
-      "Hasta 5 transcripciones por mes",
-      "Funcionalidades básicas",
-      "Navegación por fechas",
-      "Soporte comunitario"
+      { text: "🎙️ Transcripciones ilimitadas", included: true },
+      { text: "💬 5 mensajes de chat personal por mes", included: true },
+      { text: "👥 10 mensajes con personas por mes", included: true },
+      { text: "📅 Navegación por fechas", included: true },
+      { text: "🎨 Estilización básica de texto", included: true },
+      { text: "👥 Extracción de personas", included: true },
+      { text: "📊 Estadísticas avanzadas", included: false },
+      { text: "🎨 Estilización con IA avanzada", included: false }
     ]
   },
   pro: {
@@ -41,30 +48,31 @@ const basePlans = {
     icon: FiZap,
     color: "from-purple-500 to-pink-500",
     features: [
-      "Entradas ilimitadas",
-      "Grabación de voz avanzada",
-      "Chat personal ilimitado",
-      "Navegación por fechas",
-      "Chats individuales por persona",
-      "Transcripción ilimitada",
-      "Estilización con IA"
+      { text: "✨ Todo del plan Gratuito", included: true },
+      { text: "💬 30 mensajes de chat personal por mes", included: true },
+      { text: "👥 100 mensajes con personas por mes", included: true },
+      { text: "🎨 Estilización avanzada con IA", included: true },
+      { text: "📊 10 estadísticas avanzadas por mes", included: true },
+      { text: "🔍 Análisis inteligente mejorado", included: true },
+      { text: "💬 100 mensajes de chat personal por mes", included: false },
+      { text: "👥 500 mensajes con personas por mes", included: false },
+      { text: "📊 Estadísticas ilimitadas", included: false }
     ]
   },
   elite: {
     name: "Elite",
     price: 19.99,
-    description: "Para profesionales y equipos",
+    description: "Para profesionales que buscan lo mejor",
     icon: FaCrown,
     color: "from-orange-500 to-red-500",
     features: [
-      "Todo del plan Pro",
-      "Análisis avanzado con IA",
-      "Reportes personalizados",
-      "Integraciones API",
-      "Soporte prioritario",
-      "Backup automático",
-      "Colaboración en equipo",
-      "Personalización avanzada"
+      { text: "⭐ Todo del plan Pro", included: true },
+      { text: "💬 100 mensajes de chat personal por mes", included: true },
+      { text: "👥 500 mensajes con personas por mes", included: true },
+      { text: "📊 Estadísticas avanzadas ilimitadas", included: true },
+      { text: "🧠 Análisis profundo con IA", included: true },
+      { text: "🏆 Soporte prioritario", included: true },
+      { text: "🚀 Funciones experimentales", included: true }
     ]
   }
 };
@@ -181,7 +189,12 @@ function SubscriptionContent() {
           </button>
           
           <CheckoutForm 
-            plan={currentPlan}
+            plan={{
+              ...currentPlan,
+              features: currentPlan.features
+                .filter(f => f.included)
+                .map(f => f.text)
+            }}
             userId={user.uid}
             userEmail={user.email || ''}
             displayName={user.displayName || undefined}
@@ -239,10 +252,20 @@ function SubscriptionContent() {
                   </p>
                   
                   <ul className="text-left space-y-2">
-                    {plan.features.map((feature: string, index: number) => (
+                    {plan.features.map((feature, index: number) => (
                       <li key={index} className="flex items-center gap-2">
-                        <FaCheck className="w-5 h-5 text-green-500 flex-shrink-0" />
-                        <span className="text-sm text-gray-700">{feature}</span>
+                        {feature.included ? (
+                          <FaCheck className="w-5 h-5 text-green-500 flex-shrink-0" />
+                        ) : (
+                          <FaTimes className="w-5 h-5 text-red-400 flex-shrink-0" />
+                        )}
+                        <span className={`text-sm ${
+                          feature.included 
+                            ? 'text-gray-700' 
+                            : 'text-gray-400 line-through'
+                        }`}>
+                          {feature.text}
+                        </span>
                       </li>
                     ))}
                   </ul>
