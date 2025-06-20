@@ -7,23 +7,23 @@ import Link from 'next/link';
 export default function PricingSection() {
   const plans = [
     {
-      name: "Básico",
-      price: "4.99",
+      name: "Gratuito",
+      price: "0",
       description: "Perfecto para empezar tu viaje",
       icon: Heart,
-      color: "from-green-500 to-emerald-500",
+      color: "from-gray-500 to-slate-500",
       features: [
-        { text: "Hasta 100 entradas por mes", included: true },
-        { text: "Grabación de voz básica", included: true },
-        { text: "Chat personal básico", included: true },
+        { text: "Hasta 5 transcripciones por mes", included: true },
+        { text: "Funcionalidades básicas", included: true },
         { text: "Navegación por fechas", included: true },
-        { text: "Chats individuales por persona", included: false },
+        { text: "Soporte comunitario", included: true },
+        { text: "Chat personal", included: false },
         { text: "Transcripción ilimitada", included: false },
         { text: "Estilización con IA", included: false },
         { text: "Análisis avanzado", included: false }
       ],
-      cta: "Comenzar Básico",
-      href: "http://localhost:3001/signup?plan=basic",
+      cta: "Comenzar Gratis",
+      href: "http://localhost:3001/signup?plan=free",
       popular: false
     },
     {

@@ -417,15 +417,51 @@ export default function Home() {
     setIsChatMinimized(!isChatMinimized);
   };
 
-  const handleAuthSuccess = (authenticatedUser: FirebaseUser, selectedPlan?: string) => {
+  const handleAuthSuccess = async (authenticatedUser: FirebaseUser, selectedPlan?: string) => {
     // El hook useAuth se encargará de actualizar el estado
     console.log('Usuario autenticado:', authenticatedUser.uid);
     
-    // Si hay un plan seleccionado, redirigir a la página de suscripción
+    // Si hay un plan seleccionado, verificar si es apropiado redirigir
     if (selectedPlan) {
-      console.log('Plan seleccionado:', selectedPlan);
-      // Redirigir a la página de suscripción con el plan pre-seleccionado
-      window.location.href = `/subscription?plan=${selectedPlan}`;
+      console.log('Plan seleccionado desde URL:', selectedPlan);
+      
+      try {
+        // Obtener el perfil del usuario para verificar su plan actual
+        const response = await fetch('/api/subscription/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: authenticatedUser.uid })
+        });
+        
+        if (response.ok) {
+          const { subscription } = await response.json();
+          const currentPlan = subscription?.plan || 'free';
+          
+          // Solo redirigir si:
+          // 1. El usuario tiene plan gratuito y selecciona un plan de pago, O
+          // 2. El usuario quiere cambiar a un plan diferente del que ya tiene
+          const shouldRedirect = (
+            (currentPlan === 'free' && ['pro', 'elite'].includes(selectedPlan)) ||
+            (currentPlan !== selectedPlan && ['pro', 'elite'].includes(selectedPlan))
+          );
+          
+          if (shouldRedirect) {
+            console.log('Redirigiendo a suscripción - plan actual:', currentPlan, '-> plan solicitado:', selectedPlan);
+            window.location.href = `/subscription?plan=${selectedPlan}`;
+            return;
+          } else {
+            console.log('No redirigiendo - usuario ya tiene plan adecuado:', currentPlan);
+            // Si selecciona "free" pero ya tiene un plan de pago, no hacer nada
+            // Si ya tiene el plan que seleccionó, no hacer nada
+          }
+        } else {
+          // Si hay error obteniendo el estado, mejor no redirigir
+          console.warn('Error obteniendo estado de suscripción, no redirigiendo');
+        }
+      } catch (error) {
+        console.error('Error verificando estado de suscripción:', error);
+        // En caso de error, no redirigir para evitar cambios no deseados
+      }
     }
   };
   

@@ -1,6 +1,6 @@
 import { getUserProfile } from '@/lib/subscription-operations';
 
-export type PlanType = 'free' | 'basic' | 'pro' | 'elite';
+export type PlanType = 'free' | 'pro' | 'elite';
 
 export interface PlanLimits {
   maxTranscriptions: number;
@@ -8,30 +8,33 @@ export interface PlanLimits {
   hasAdvancedFeatures: boolean;
   hasPersonalChat: boolean;
   hasStatistics: boolean;
+  // Nuevos límites de chat
+  personalChatMessages: number;
+  personChatMessages: number;
+  statisticsAccess: number; // Número de veces que puede acceder a estadísticas por mes
 }
 
-// Límites por plan
+// Límites por plan - ¡Muy generoso! 😄
 export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
   free: {
-    maxTranscriptions: 5,
-    maxPeopleManagement: 0,
-    hasAdvancedFeatures: false,
-    hasPersonalChat: false,
-    hasStatistics: false,
-  },
-  basic: {
-    maxTranscriptions: 50,
-    maxPeopleManagement: 10,
+    maxTranscriptions: -1, // ¡Ilimitado! (Muy generoso)
+    maxPeopleManagement: -1, // ¡Ilimitado! (Muy generoso)
     hasAdvancedFeatures: false,
     hasPersonalChat: true,
-    hasStatistics: true,
+    hasStatistics: false,
+    personalChatMessages: 5, // 5 mensajes de chat personal por mes
+    personChatMessages: 20, // 20 mensajes de chat con personas por mes
+    statisticsAccess: 0, // No puede acceder a estadísticas
   },
   pro: {
-    maxTranscriptions: 200,
-    maxPeopleManagement: 50,
+    maxTranscriptions: -1, // ¡Ilimitado! (Muy generoso)
+    maxPeopleManagement: -1, // ¡Ilimitado! (Muy generoso)
     hasAdvancedFeatures: true,
     hasPersonalChat: true,
     hasStatistics: true,
+    personalChatMessages: 50, // 50 mensajes de chat personal por mes
+    personChatMessages: 200, // 200 mensajes de chat con personas por mes
+    statisticsAccess: 10, // 10 accesos a estadísticas por mes
   },
   elite: {
     maxTranscriptions: -1, // Ilimitado
@@ -39,6 +42,9 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     hasAdvancedFeatures: true,
     hasPersonalChat: true,
     hasStatistics: true,
+    personalChatMessages: 200, // 200 mensajes de chat personal por mes
+    personChatMessages: 500, // 500 mensajes de chat con personas por mes
+    statisticsAccess: -1, // Acceso ilimitado a estadísticas
   },
 };
 
@@ -161,5 +167,95 @@ export async function needsSubscriptionUpgrade(uid: string): Promise<boolean> {
   } catch (error) {
     console.error('❌ [Subscription] Error verificando necesidad de upgrade:', error);
     return true;
+  }
+}
+
+// Verificar si el usuario puede enviar mensajes de chat personal
+export async function canSendPersonalChatMessage(
+  uid: string, 
+  currentMonthUsage: number
+): Promise<boolean> {
+  try {
+    const profile = await getUserProfile(uid);
+    if (!profile) return false;
+
+    const { plan, status } = profile.subscription;
+    
+    // Si el plan no es gratuito pero no está activo, aplicar límites gratuitos
+    let activePlan = plan;
+    if (plan !== 'free' && status !== 'active') {
+      activePlan = 'free';
+    }
+
+    const limits = PLAN_LIMITS[activePlan];
+    
+    // -1 significa ilimitado
+    if (limits.personalChatMessages === -1) return true;
+    
+    return currentMonthUsage < limits.personalChatMessages;
+  } catch (error) {
+    console.error('❌ [Subscription] Error verificando límite de chat personal:', error);
+    return false;
+  }
+}
+
+// Verificar si el usuario puede enviar mensajes de chat con personas
+export async function canSendPersonChatMessage(
+  uid: string, 
+  currentMonthUsage: number
+): Promise<boolean> {
+  try {
+    const profile = await getUserProfile(uid);
+    if (!profile) return false;
+
+    const { plan, status } = profile.subscription;
+    
+    // Si el plan no es gratuito pero no está activo, aplicar límites gratuitos
+    let activePlan = plan;
+    if (plan !== 'free' && status !== 'active') {
+      activePlan = 'free';
+    }
+
+    const limits = PLAN_LIMITS[activePlan];
+    
+    // -1 significa ilimitado
+    if (limits.personChatMessages === -1) return true;
+    
+    return currentMonthUsage < limits.personChatMessages;
+  } catch (error) {
+    console.error('❌ [Subscription] Error verificando límite de chat con personas:', error);
+    return false;
+  }
+}
+
+// Verificar si el usuario puede acceder a estadísticas
+export async function canAccessStatistics(
+  uid: string, 
+  currentMonthAccess: number
+): Promise<boolean> {
+  try {
+    const profile = await getUserProfile(uid);
+    if (!profile) return false;
+
+    const { plan, status } = profile.subscription;
+    
+    // Si el plan no es gratuito pero no está activo, aplicar límites gratuitos
+    let activePlan = plan;
+    if (plan !== 'free' && status !== 'active') {
+      activePlan = 'free';
+    }
+
+    const limits = PLAN_LIMITS[activePlan];
+    
+    // -1 significa ilimitado
+    if (limits.statisticsAccess === -1) return true;
+    
+    // 0 significa sin acceso
+    if (limits.statisticsAccess === 0) return false;
+    
+    return currentMonthAccess < limits.statisticsAccess;
+  } catch (error) {
+    console.error('❌ [Subscription] Error verificando acceso a estadísticas:', error);
+    return false;
   }
 }

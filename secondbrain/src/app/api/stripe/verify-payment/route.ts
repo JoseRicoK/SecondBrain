@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     // Obtener el tipo de plan de los metadatos
     const planType = session.metadata?.plan_type;
-    if (!planType || !['basic', 'pro', 'elite'].includes(planType)) {
+    if (!planType || !['pro', 'elite'].includes(planType)) {
       console.error('❌ [Stripe Verify] Plan type inválido:', planType);
       return NextResponse.json(
         { error: 'Invalid plan type in session metadata' },
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     // Actualizar la suscripción en Firebase
     const subscriptionData: Partial<UserSubscription> = {
-      plan: planType as 'basic' | 'pro' | 'elite',
+      plan: planType as 'pro' | 'elite',
       status: 'active',
       stripeCustomerId: session.customer as string,
     };

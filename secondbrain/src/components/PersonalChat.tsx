@@ -3,6 +3,7 @@ import { FiSend, FiX, FiLoader, FiMessageCircle, FiMinimize2, FiMaximize2 } from
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/hooks/useSubscription';
 import styles from './PersonalChat.module.css';
 import { auth } from '@/lib/firebase';
 
@@ -28,6 +29,14 @@ export const PersonalChat: React.FC<PersonalChatProps> = ({
   onToggleMinimize 
 }) => {
   const { user } = useAuth();
+  const { 
+    currentPlan, 
+    planLimits, 
+    monthlyUsage, 
+    checkCanSendPersonalChatMessage,
+    refreshMonthlyUsage 
+  } = useSubscription();
+  
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -110,6 +119,13 @@ Puedo ayudarte a:
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
+    // Verificar límites antes de enviar
+    const canSend = await checkCanSendPersonalChatMessage();
+    if (!canSend) {
+      setError(`Has alcanzado el límite de ${planLimits.personalChatMessages} mensajes de chat personal para este mes. Actualiza tu plan para enviar más mensajes.`);
+      return;
+    }
+
     const userMessage = inputMessage.trim();
     setInputMessage('');
     setError(null);
@@ -162,10 +178,20 @@ Puedo ayudarte a:
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Manejar errores de límite específicamente
+        if (response.status === 429 && errorData.code === 'LIMIT_EXCEEDED') {
+          setError(`Has alcanzado el límite de ${planLimits.personalChatMessages} mensajes de chat personal para este mes. Actualiza tu plan para enviar más mensajes.`);
+          return;
+        }
+        
         throw new Error(errorData.error || 'Error en la respuesta del servidor');
       }
 
       const data = await response.json();
+
+      // Refrescar uso mensual después de una respuesta exitosa
+      await refreshMonthlyUsage();
 
       // Actualizar número de entradas analizadas y nombre de usuario
       if (data.entriesAnalyzed !== undefined) {
@@ -240,9 +266,16 @@ Puedo ayudarte a:
           <div className="min-w-0 flex-1">
             <h3 className="font-medium text-slate-900 text-sm md:text-base truncate">Chat Personal</h3>
             {!isMinimized && (
-              <p className="text-xs text-slate-500 truncate">
-                {entriesAnalyzed > 0 ? `${entriesAnalyzed} entradas analizadas` : 'Asistente inteligente'}
-              </p>
+              <div className="flex items-center space-x-2 text-xs text-slate-500">
+                <span className="truncate">
+                  {entriesAnalyzed > 0 ? `${entriesAnalyzed} entradas analizadas` : 'Asistente inteligente'}
+                </span>
+                {monthlyUsage && (
+                  <span className="bg-slate-100 px-2 py-0.5 rounded-full text-[10px] whitespace-nowrap">
+                    {monthlyUsage.personalChatMessages}/{planLimits.personalChatMessages === -1 ? '∞' : planLimits.personalChatMessages}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>

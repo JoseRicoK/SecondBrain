@@ -33,7 +33,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const plan = urlParams.get('plan');
-      if (plan && ['basic', 'pro', 'elite'].includes(plan)) {
+      if (plan && ['free', 'pro', 'elite'].includes(plan)) {
         setSelectedPlan(plan);
         // Si viene con un plan, por defecto mostrar registro
         setIsLogin(false);

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { useSubscription } from '@/hooks/useSubscription';
+import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiChevronUp, FiLock } from 'react-icons/fi';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import styles from './Statistics.module.css';
@@ -35,6 +36,14 @@ export default function Statistics(props: StatisticsProps) {
   // userId no se usa actualmente pero se mantiene para compatibilidad futura
   const { } = props;
   const { user } = useAuth();
+  const { 
+    currentPlan, 
+    planLimits, 
+    monthlyUsage, 
+    checkCanAccessStatistics,
+    refreshMonthlyUsage 
+  } = useSubscription();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<StatisticsData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +51,7 @@ export default function Statistics(props: StatisticsProps) {
   const [moodPeriod, setMoodPeriod] = useState<'week' | 'month' | 'year'>('week');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [loadingSection, setLoadingSection] = useState<string | null>(null);
+  const [accessBlocked, setAccessBlocked] = useState(false);
 
   // Cache keys para localStorage
   const getCacheKey = useCallback((userId: string, section: string, period?: string) => {
@@ -287,6 +297,46 @@ export default function Statistics(props: StatisticsProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moodPeriod]);
 
+  // Verificar acceso a estadísticas al montar el componente
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!user) return;
+      
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch('/api/statistics/access', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ userId: user.uid }),
+        });
+        
+        if (response.status === 429) {
+          const errorData = await response.json();
+          if (errorData.code === 'STATISTICS_LIMIT_EXCEEDED') {
+            setAccessBlocked(true);
+            return;
+          }
+        }
+        
+        if (response.ok) {
+          setAccessBlocked(false);
+          // Refrescar uso mensual después del acceso
+          await refreshMonthlyUsage();
+          // Cargar estadísticas si el acceso fue exitoso
+          await loadStatistics();
+        }
+      } catch (error) {
+        console.error('Error verificando acceso a estadísticas:', error);
+        setAccessBlocked(true);
+      }
+    };
+    
+    checkAccess();
+  }, [user, refreshMonthlyUsage]);
+
   const formatPeriodText = () => {
     const now = new Date();
     switch (moodPeriod) {
@@ -335,20 +385,70 @@ export default function Statistics(props: StatisticsProps) {
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-2">
-          <div className="p-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl text-white">
-            <FiBarChart size={24} />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-800">Estadísticas</h1>
-            <p className="text-slate-600">
-              {lastUpdate ? `Última actualización: ${format(lastUpdate, "HH:mm", { locale: es })}` : 'Análisis de tu progreso personal'}
-            </p>
+      {/* Verificar si el acceso está bloqueado */}
+      {accessBlocked ? (
+        <div className="max-w-md mx-auto">
+          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiLock size={24} className="text-red-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">
+                Límite de estadísticas alcanzado
+              </h2>
+              <p className="text-slate-600 mb-4">
+                {currentPlan === 'free' 
+                  ? 'Las estadísticas no están disponibles en el plan gratuito.'
+                  : `Has alcanzado el límite de ${planLimits.statisticsAccess} accesos a estadísticas para este mes.`
+                }
+              </p>
+              {monthlyUsage && (
+                <p className="text-sm text-slate-500 mb-6">
+                  Accesos utilizados: {monthlyUsage.statisticsAccess}/{planLimits.statisticsAccess === -1 ? '∞' : planLimits.statisticsAccess}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                // Navegar a settings - esto se puede mejorar con un router si tienes uno
+                const settingsButton = document.querySelector('[data-settings-button]') as HTMLButtonElement;
+                if (settingsButton) {
+                  settingsButton.click();
+                } else {
+                  // Fallback: recargar página y mostrar mensaje
+                  alert('Ve a Configuración para actualizar tu plan');
+                }
+              }}
+              className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-200 font-medium"
+            >
+              Actualizar Plan
+            </button>
           </div>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center space-x-3 mb-2">
+              <div className="p-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl text-white">
+                <FiBarChart size={24} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-800">Estadísticas</h1>
+                <p className="text-slate-600">
+                  {lastUpdate ? `Última actualización: ${format(lastUpdate, "HH:mm", { locale: es })}` : 'Análisis de tu progreso personal'}
+                </p>
+              </div>
+            </div>
+            {/* Mostrar contador de accesos */}
+            {monthlyUsage && (
+              <div className="mt-3">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Accesos este mes: {monthlyUsage.statisticsAccess}/{planLimits.statisticsAccess === -1 ? '∞' : planLimits.statisticsAccess}
+                </span>
+              </div>
+            )}
+          </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -366,6 +466,21 @@ export default function Statistics(props: StatisticsProps) {
           >
             Reintentar
           </button>
+        </div>
+      ) : accessBlocked ? (
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">
+            Has alcanzado el límite de estadísticas disponibles para tu plan. 
+            {currentPlan === 'free' ? ' Actualiza a un plan premium para acceder a más estadísticas.' : ' Intenta más tarde.'}
+          </p>
+          {currentPlan === 'free' && (
+            <a
+              href="/pricing"
+              className="inline-block px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
+            >
+              Actualizar a Premium
+            </a>
+          )}
         </div>
       ) : (
         <div className="space-y-8">
@@ -581,6 +696,8 @@ export default function Statistics(props: StatisticsProps) {
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

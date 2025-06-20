@@ -37,7 +37,6 @@ export async function POST(req: NextRequest) {
 
     // Mapear tipos de plan a Price IDs
     const priceIdMap = {
-      basic: process.env.STRIPE_BASIC_PRICE_ID,
       pro: process.env.STRIPE_PRO_PRICE_ID,
       elite: process.env.STRIPE_ELITE_PRICE_ID,
     };
@@ -47,7 +46,6 @@ export async function POST(req: NextRequest) {
     if (!priceId) {
       console.error('Price ID no encontrado para plan:', planType);
       console.error('Variables de entorno disponibles:', {
-        basic: process.env.STRIPE_BASIC_PRICE_ID,
         pro: process.env.STRIPE_PRO_PRICE_ID,
         elite: process.env.STRIPE_ELITE_PRICE_ID,
       });

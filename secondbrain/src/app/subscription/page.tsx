@@ -20,17 +20,17 @@ interface PlanData {
 
 // Datos de los planes (sin priceId, que se obtendrá desde la API)
 const basePlans = {
-  basic: {
-    name: "Básico",
-    price: 4.99,
+  free: {
+    name: "Gratuito",
+    price: 0,
     description: "Perfecto para empezar tu viaje",
     icon: FaHeart,
-    color: "from-green-500 to-emerald-500",
+    color: "from-gray-500 to-slate-500",
     features: [
-      "Hasta 100 entradas por mes",
-      "Grabación de voz básica",
-      "Chat personal básico",
-      "Navegación por fechas"
+      "Hasta 5 transcripciones por mes",
+      "Funcionalidades básicas",
+      "Navegación por fechas",
+      "Soporte comunitario"
     ]
   },
   pro: {
@@ -96,7 +96,7 @@ function SubscriptionContent() {
         Object.entries(basePlans).forEach(([key, basePlan]) => {
           fullPlans[key] = {
             ...basePlan,
-            priceId: planIds[key] || `price_${key}_monthly` // fallback
+            priceId: planIds[key] || `price_${key}_monthly` // El plan free tendrá null como priceId
           };
         });
         
@@ -251,16 +251,48 @@ function SubscriptionContent() {
         </div>
 
         <div className="text-center">
-          <button
-            onClick={() => setShowCheckout(true)}
-            className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-xl hover:scale-105 transform`}
-          >
-            <IconComponent className="w-6 h-6" />
-            Continuar con {currentPlan.name} - €{currentPlan.price}/mes
-          </button>
+          {selectedPlan === 'free' ? (
+            <button
+              onClick={async () => {
+                // Para plan gratuito, actualizar directamente en Firebase
+                try {
+                  const response = await fetch('/api/subscription/update-manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.uid, planType: 'free' })
+                  });
+                  
+                  if (response.ok) {
+                    alert('¡Plan gratuito activado! Redirigiendo al dashboard...');
+                    window.location.href = '/dashboard';
+                  } else {
+                    alert('Error al activar el plan gratuito');
+                  }
+                } catch (error) {
+                  alert('Error de conexión');
+                  console.error('Error:', error);
+                }
+              }}
+              className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-xl hover:scale-105 transform`}
+            >
+              <IconComponent className="w-6 h-6" />
+              Comenzar con {currentPlan.name} - ¡Gratis!
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowCheckout(true)}
+              className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-xl hover:scale-105 transform`}
+            >
+              <IconComponent className="w-6 h-6" />
+              Continuar con {currentPlan.name} - €{currentPlan.price}/mes
+            </button>
+          )}
           
           <p className="text-sm text-gray-500 mt-4">
-            Cancela en cualquier momento. Sin compromisos a largo plazo.
+            {selectedPlan === 'free' 
+              ? '¡Comienza gratis! Actualiza en cualquier momento para más funciones.'
+              : 'Cancela en cualquier momento. Sin compromisos a largo plazo.'
+            }
           </p>
         </div>
       </div>

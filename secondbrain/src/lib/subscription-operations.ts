@@ -1,8 +1,16 @@
 import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
 
+export interface MonthlyUsage {
+  personalChatMessages: number;
+  personChatMessages: number;
+  statisticsAccess: number;
+  month: string; // Formato 'YYYY-MM'
+  lastUpdated: Date;
+}
+
 export interface UserSubscription {
-  plan: 'free' | 'basic' | 'pro' | 'elite';
+  plan: 'free' | 'pro' | 'elite';
   status: 'active' | 'inactive' | 'canceled' | 'past_due';
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
@@ -10,6 +18,8 @@ export interface UserSubscription {
   cancelAtPeriodEnd?: boolean;
   createdAt: Date;
   updatedAt: Date;
+  // Nuevo campo para uso mensual
+  monthlyUsage?: MonthlyUsage;
 }
 
 export interface UserProfile {
@@ -132,11 +142,17 @@ export async function updateUserSubscription(
       updatedAt: new Date()
     };
     
+    // Asegurar que las fechas se guarden como Timestamp de Firebase
+    if (updateData.currentPeriodEnd && updateData.currentPeriodEnd instanceof Date) {
+      // Mantener la fecha como Date object - Firebase la convertirá automáticamente
+      console.log('🕐 [Subscription] Guardando fecha de expiración:', updateData.currentPeriodEnd);
+    }
+    
     await updateDoc(userRef, {
       subscription: updateData
     });
     
-    console.log('✅ [Subscription] Suscripción actualizada:', subscriptionData.plan);
+    console.log('✅ [Subscription] Suscripción actualizada:', subscriptionData.plan, subscriptionData);
   } catch (error) {
     console.error('❌ [Subscription] Error al actualizar suscripción:', error);
     throw error;
@@ -221,5 +237,111 @@ export async function findUserByStripeCustomerId(customerId: string): Promise<st
   } catch (error) {
     console.error('❌ [Subscription] Error buscando usuario por Stripe Customer ID:', error);
     return null;
+  }
+}
+
+// Funciones para manejo de uso mensual
+
+// Obtener el mes actual en formato YYYY-MM
+function getCurrentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Inicializar uso mensual si no existe o es de un mes diferente
+function initializeMonthlyUsage(existingUsage?: MonthlyUsage): MonthlyUsage {
+  const currentMonth = getCurrentMonth();
+  
+  if (!existingUsage || existingUsage.month !== currentMonth) {
+    return {
+      personalChatMessages: 0,
+      personChatMessages: 0,
+      statisticsAccess: 0,
+      month: currentMonth,
+      lastUpdated: new Date()
+    };
+  }
+  
+  return existingUsage;
+}
+
+// Obtener uso mensual actual del usuario
+export async function getUserMonthlyUsage(uid: string): Promise<MonthlyUsage> {
+  try {
+    const userProfile = await getUserProfile(uid);
+    if (!userProfile) {
+      return initializeMonthlyUsage();
+    }
+    
+    return initializeMonthlyUsage(userProfile.subscription.monthlyUsage);
+  } catch (error) {
+    console.error('❌ [Subscription] Error obteniendo uso mensual:', error);
+    return initializeMonthlyUsage();
+  }
+}
+
+// Incrementar contador de mensajes de chat personal
+export async function incrementPersonalChatUsage(uid: string): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', uid);
+    const currentUsage = await getUserMonthlyUsage(uid);
+    
+    const updatedUsage: MonthlyUsage = {
+      ...currentUsage,
+      personalChatMessages: currentUsage.personalChatMessages + 1,
+      lastUpdated: new Date()
+    };
+    
+    await updateDoc(userRef, {
+      'subscription.monthlyUsage': updatedUsage
+    });
+    
+    console.log('✅ [Subscription] Uso de chat personal incrementado:', updatedUsage.personalChatMessages);
+  } catch (error) {
+    console.error('❌ [Subscription] Error incrementando uso de chat personal:', error);
+  }
+}
+
+// Incrementar contador de mensajes de chat con personas
+export async function incrementPersonChatUsage(uid: string): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', uid);
+    const currentUsage = await getUserMonthlyUsage(uid);
+    
+    const updatedUsage: MonthlyUsage = {
+      ...currentUsage,
+      personChatMessages: currentUsage.personChatMessages + 1,
+      lastUpdated: new Date()
+    };
+    
+    await updateDoc(userRef, {
+      'subscription.monthlyUsage': updatedUsage
+    });
+    
+    console.log('✅ [Subscription] Uso de chat con personas incrementado:', updatedUsage.personChatMessages);
+  } catch (error) {
+    console.error('❌ [Subscription] Error incrementando uso de chat con personas:', error);
+  }
+}
+
+// Incrementar contador de acceso a estadísticas
+export async function incrementStatisticsAccess(uid: string): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', uid);
+    const currentUsage = await getUserMonthlyUsage(uid);
+    
+    const updatedUsage: MonthlyUsage = {
+      ...currentUsage,
+      statisticsAccess: currentUsage.statisticsAccess + 1,
+      lastUpdated: new Date()
+    };
+    
+    await updateDoc(userRef, {
+      'subscription.monthlyUsage': updatedUsage
+    });
+    
+    console.log('✅ [Subscription] Acceso a estadísticas incrementado:', updatedUsage.statisticsAccess);
+  } catch (error) {
+    console.error('❌ [Subscription] Error incrementando acceso a estadísticas:', error);
   }
 }

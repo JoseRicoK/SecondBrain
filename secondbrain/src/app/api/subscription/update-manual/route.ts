@@ -3,7 +3,7 @@ import { updateUserSubscription } from '@/lib/subscription-operations';
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, planType } = await req.json();
+    const { userId, planType, clearCancellation } = await req.json();
 
     if (!userId || !planType) {
       return NextResponse.json(
@@ -12,20 +12,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!['basic', 'pro', 'elite'].includes(planType)) {
+    if (!['free', 'pro', 'elite'].includes(planType)) {
       return NextResponse.json(
         { error: 'Invalid plan type' },
         { status: 400 }
       );
     }
 
-    console.log('🔧 [Manual Update] Actualizando suscripción manualmente:', { userId, planType });
+    console.log('🔧 [Manual Update] Actualizando suscripción manualmente:', { userId, planType, clearCancellation });
 
-    await updateUserSubscription(userId, {
-      plan: planType as 'basic' | 'pro' | 'elite',
-      status: 'active',
-      // No incluimos datos de Stripe ya que es una actualización manual
-    });
+    const updateData: any = {
+      plan: planType as 'free' | 'pro' | 'elite',
+      status: planType === 'free' ? 'inactive' : 'active',
+    };
+
+    // Si se solicita limpiar la cancelación (para suscripciones expiradas)
+    if (clearCancellation) {
+      updateData.cancelAtPeriodEnd = false;
+      updateData.currentPeriodEnd = null;
+      updateData.stripeCustomerId = null;
+      updateData.stripeSubscriptionId = null;
+    }
+
+    await updateUserSubscription(userId, updateData);
 
     console.log('✅ [Manual Update] Suscripción actualizada manualmente');
 

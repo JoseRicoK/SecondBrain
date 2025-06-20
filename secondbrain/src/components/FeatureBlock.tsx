@@ -13,14 +13,12 @@ interface FeatureBlockProps {
 
 const planNames = {
   free: 'Gratuito',
-  basic: 'Básico',
   pro: 'Pro',
   elite: 'Elite'
 };
 
 const planColors = {
   free: 'from-gray-400 to-gray-500',
-  basic: 'from-green-400 to-emerald-500',
   pro: 'from-purple-400 to-pink-500',
   elite: 'from-yellow-400 to-orange-500'
 };

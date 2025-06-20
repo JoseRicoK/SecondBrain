@@ -13,7 +13,7 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ userId }) => {
   console.log('Settings component loaded for user:', userId);
   const { user, signOut, isGoogleUser } = useAuth();
-  const { userProfile, currentPlan, planLimits } = useSubscription();
+  const { userProfile, currentPlan, planLimits, monthlyUsage } = useSubscription();
   const router = useRouter();
   
   // Estados para cambio de datos personales
@@ -40,6 +40,12 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
   const [contactEmail, setContactEmail] = useState(user?.email || '');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState('');
+  
+  // Estados para cancelación de suscripción
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState('');
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelSuccess, setCancelSuccess] = useState<{message: string, cancelDate: Date} | null>(null);
 
   const handleUpdateProfile = async () => {
     setUpdateLoading(true);
@@ -165,6 +171,54 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
       setUpdateError(error instanceof Error ? error.message : 'Error al enviar el mensaje');
     } finally {
       setFeedbackLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!user?.uid) {
+      setCancelError('Error: Usuario no identificado');
+      return;
+    }
+
+    setCancelLoading(true);
+    setCancelError('');
+    setCancelSuccess(null);
+
+    try {
+      const response = await fetch('/api/stripe/cancel-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cancelar la suscripción');
+      }
+
+      // Mostrar modal de éxito
+      setCancelSuccess({
+        message: data.message,
+        cancelDate: new Date(data.cancelAt)
+      });
+      
+      setShowCancelModal(false);
+      
+      // Recargar después de un momento para actualizar el estado
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
+      
+    } catch (error: unknown) {
+      console.error('Error canceling subscription:', error);
+      setCancelError(error instanceof Error ? error.message : 'Error al cancelar la suscripción');
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -400,7 +454,6 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
             <div className="mb-6">
               <div className={`rounded-2xl p-6 border-2 ${
                 currentPlan === 'free' ? 'bg-gray-50 border-gray-200' :
-                currentPlan === 'basic' ? 'bg-green-50 border-green-200' :
                 currentPlan === 'pro' ? 'bg-purple-50 border-purple-200' :
                 'bg-yellow-50 border-yellow-200'
               }`}>
@@ -408,7 +461,6 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
                   <div>
                     <h3 className="text-xl font-bold text-slate-800">
                       Plan {currentPlan === 'free' ? 'Gratuito' :
-                           currentPlan === 'basic' ? 'Básico' :
                            currentPlan === 'pro' ? 'Pro' : 'Elite'}
                     </h3>
                     <p className={`text-sm font-medium ${
@@ -424,7 +476,6 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
                   </div>
                   <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
                     currentPlan === 'free' ? 'bg-gray-200 text-gray-800' :
-                    currentPlan === 'basic' ? 'bg-green-200 text-green-800' :
                     currentPlan === 'pro' ? 'bg-purple-200 text-purple-800' :
                     'bg-yellow-200 text-yellow-800'
                   }`}>
@@ -465,6 +516,83 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
                     </span>
                   </div>
                 </div>
+
+                {/* Uso mensual actual */}
+                {monthlyUsage && (
+                  <div className="border-t border-slate-200 pt-4 mb-4">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3">Uso este mes:</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="bg-white/50 rounded-lg p-3">
+                        <div className="text-xs text-slate-500 mb-1">Chat Personal</div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-slate-800">
+                            {monthlyUsage.personalChatMessages}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            /{planLimits.personalChatMessages === -1 ? '∞' : planLimits.personalChatMessages}
+                          </span>
+                        </div>
+                        {planLimits.personalChatMessages !== -1 && (
+                          <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2">
+                            <div 
+                              className="bg-purple-500 h-1.5 rounded-full transition-all duration-300"
+                              style={{ 
+                                width: `${Math.min(100, (monthlyUsage.personalChatMessages / planLimits.personalChatMessages) * 100)}%` 
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="bg-white/50 rounded-lg p-3">
+                        <div className="text-xs text-slate-500 mb-1">Chat Personas</div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-slate-800">
+                            {monthlyUsage.personChatMessages}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            /{planLimits.personChatMessages === -1 ? '∞' : planLimits.personChatMessages}
+                          </span>
+                        </div>
+                        {planLimits.personChatMessages !== -1 && (
+                          <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2">
+                            <div 
+                              className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                              style={{ 
+                                width: `${Math.min(100, (monthlyUsage.personChatMessages / planLimits.personChatMessages) * 100)}%` 
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="bg-white/50 rounded-lg p-3">
+                        <div className="text-xs text-slate-500 mb-1">Estadísticas</div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-slate-800">
+                            {monthlyUsage.statisticsAccess}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            /{planLimits.statisticsAccess === -1 ? '∞' : planLimits.statisticsAccess === 0 ? '0' : planLimits.statisticsAccess}
+                          </span>
+                        </div>
+                        {planLimits.statisticsAccess > 0 && planLimits.statisticsAccess !== -1 && (
+                          <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2">
+                            <div 
+                              className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
+                              style={{ 
+                                width: `${Math.min(100, (monthlyUsage.statisticsAccess / planLimits.statisticsAccess) * 100)}%` 
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Los límites se reinician el día 1 de cada mes
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -487,26 +615,6 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
                         ¿Ya pagaste? Corregir plan
                       </summary>
                       <div className="p-3 pt-0 flex gap-2">
-                        <button
-                          onClick={async () => {
-                            try {
-                              const response = await fetch('/api/subscription/update-manual', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ userId: user?.uid, planType: 'basic' })
-                              });
-                              if (response.ok) {
-                                alert('Plan actualizado a Básico');
-                                window.location.reload();
-                              }
-                            } catch (error) {
-                              alert('Error actualizando plan');
-                            }
-                          }}
-                          className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-                        >
-                          Básico
-                        </button>
                         <button
                           onClick={async () => {
                             try {
@@ -563,12 +671,13 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
                   
                   {userProfile?.subscription.status === 'active' && !userProfile.subscription.cancelAtPeriodEnd && (
                     <button
-                      onClick={() => {
-                        if (confirm('¿Estás seguro de que quieres cancelar tu suscripción? Perderás acceso a las funciones premium al final del período actual.')) {
-                          alert('Función de cancelación en desarrollo. Contacta soporte para cancelar.');
-                        }
-                      }}
-                      className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+                      onClick={() => setShowCancelModal(true)}
+                      disabled={cancelLoading}
+                      className={`flex-1 font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+                        cancelLoading 
+                          ? 'bg-gray-400 cursor-not-allowed text-white' 
+                          : 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700'
+                      }`}
                     >
                       <FiX className="w-4 h-4" />
                       Cancelar
@@ -582,9 +691,60 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
               <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                 <p className="text-yellow-800 text-sm text-center">
                   <strong>⚠️ Suscripción cancelada:</strong> Tu plan actual estará activo hasta el{' '}
-                  {userProfile.subscription.currentPeriodEnd && 
-                    new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString('es-ES')
-                  }
+                  {userProfile.subscription.currentPeriodEnd ? (
+                    (() => {
+                      const date = userProfile.subscription.currentPeriodEnd;
+                      console.log('🕐 [Settings] Fecha raw de Firebase:', date, typeof date);
+                      
+                      let dateObj: Date;
+                      
+                      // Manejar Firebase Timestamp
+                      if (date && typeof date === 'object' && 'toDate' in date) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        dateObj = (date as any).toDate();
+                        console.log('🕐 [Settings] Convertido desde Timestamp:', dateObj);
+                      } 
+                      // Manejar Date object
+                      else if (date instanceof Date) {
+                        dateObj = date;
+                        console.log('🕐 [Settings] Ya es Date object:', dateObj);
+                      } 
+                      // Manejar string/number
+                      else if (date) {
+                        dateObj = new Date(date);
+                        console.log('🕐 [Settings] Convertido desde string/number:', dateObj);
+                      } 
+                      else {
+                        console.log('🕐 [Settings] Fecha es null/undefined');
+                        return 'fecha pendiente de confirmación';
+                      }
+                      
+                      // Verificar si la fecha es válida
+                      if (!isNaN(dateObj.getTime())) {
+                        const formattedDate = dateObj.toLocaleDateString('es-ES', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        });
+                        console.log('🕐 [Settings] Fecha formateada:', formattedDate);
+                        return formattedDate;
+                      } else {
+                        console.log('🕐 [Settings] Fecha inválida:', dateObj);
+                        return 'fecha pendiente de confirmación';
+                      }
+                    })()
+                  ) : (
+                    'fecha pendiente de confirmación'
+                  )}
+                </p>
+              </div>
+            )}
+            
+            {cancelError && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4">
+                <p className="text-red-800 text-sm text-center">
+                  <strong>❌ Error:</strong> {cancelError}
                 </p>
               </div>
             )}
@@ -835,6 +995,111 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
           </p>
         </div>
       </div>
+
+      {/* Modal de confirmación de cancelación */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiX className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                ¿Cancelar suscripción?
+              </h3>
+              <p className="text-gray-600 text-sm">
+                Esta acción no se puede deshacer
+              </p>
+            </div>
+
+            <div className="space-y-3 mb-6 text-sm text-gray-700">
+              <div className="flex items-start gap-2">
+                <span className="text-red-500 mt-0.5">•</span>
+                <span>Perderás acceso a las funciones premium al final del período actual</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-red-500 mt-0.5">•</span>
+                <span>Tu plan se cambiará automáticamente al plan gratuito</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-red-500 mt-0.5">•</span>
+                <span>Podrás reactivar tu suscripción en cualquier momento</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              >
+                Mantener suscripción
+              </button>
+              <button
+                onClick={handleCancelSubscription}
+                disabled={cancelLoading}
+                className={`flex-1 px-4 py-3 rounded-xl font-medium transition-colors ${
+                  cancelLoading
+                    ? 'bg-gray-400 text-white cursor-not-allowed'
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                }`}
+              >
+                {cancelLoading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Cancelando...
+                  </div>
+                ) : (
+                  'Sí, cancelar'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de éxito de cancelación */}
+      {cancelSuccess && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiCheck className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                ¡Suscripción cancelada!
+              </h3>
+              <p className="text-gray-600 text-sm mb-4">
+                {cancelSuccess.message}
+              </p>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+              <p className="text-yellow-800 text-sm text-center">
+                <strong>Tu plan actual seguirá activo hasta:</strong><br />
+                <span className="text-lg font-semibold">
+                  {cancelSuccess.cancelDate.toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </span>
+              </p>
+            </div>
+
+            <div className="text-center text-sm text-gray-600 mb-6">
+              Después de esa fecha, tu cuenta se cambiará automáticamente al plan gratuito.
+            </div>
+
+            <button
+              onClick={() => setCancelSuccess(null)}
+              className="w-full px-4 py-3 bg-gray-800 text-white rounded-xl font-medium hover:bg-gray-900 transition-colors"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

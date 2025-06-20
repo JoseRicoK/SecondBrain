@@ -13,26 +13,63 @@ function SignupContent() {
   const plan = searchParams.get('plan');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleAuthSuccess = (authenticatedUser: any, selectedPlan?: string) => {
-    console.log('Usuario autenticado:', authenticatedUser.uid);
+  const handleAuthSuccess = async (authenticatedUser: any, selectedPlan?: string) => {
+    console.log('Usuario autenticado en signup:', authenticatedUser.uid);
     
-    // Si hay un plan seleccionado (del parámetro URL o del auth), redirigir a suscripción
+    // En signup, normalmente queremos redirigir al plan seleccionado
+    // pero primero verificamos si ya tiene un plan de pago activo
     const planToUse = selectedPlan || plan;
+    
     if (planToUse) {
-      console.log('Plan seleccionado:', planToUse);
-      router.push(`/subscription?plan=${planToUse}`);
-    } else {
-      // Si no hay plan, ir a la app principal
-      router.push('/');
+      try {
+        // Verificar el plan actual del usuario
+        const response = await fetch('/api/subscription/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: authenticatedUser.uid })
+        });
+        
+        if (response.ok) {
+          const { subscription } = await response.json();
+          const currentPlan = subscription?.plan || 'free';
+          
+          // Solo redirigir a suscripción si:
+          // 1. El plan solicitado es de pago (pro/elite) Y
+          // 2. El usuario no tiene ya ese plan
+          if (['pro', 'elite'].includes(planToUse) && currentPlan !== planToUse) {
+            console.log('Nuevo usuario o upgrade - redirigiendo a suscripción:', planToUse);
+            router.push(`/subscription?plan=${planToUse}`);
+            return;
+          } else if (planToUse === 'free' || currentPlan === planToUse) {
+            console.log('Usuario ya tiene el plan adecuado, ir a app principal');
+            router.push('/');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error verificando estado de suscripción:', error);
+        // En caso de error en signup, ser conservador y redirigir al plan
+        if (['pro', 'elite'].includes(planToUse)) {
+          router.push(`/subscription?plan=${planToUse}`);
+          return;
+        }
+      }
     }
+    
+    // Si no hay plan específico, ir a la app principal
+    router.push('/');
   };
 
   // Si ya está autenticado, redirigir según corresponda
   useEffect(() => {
     if (!loading && user) {
-      if (plan) {
+      // Usuario ya autenticado - verificar si necesita ir a suscripción
+      if (plan && ['pro', 'elite'].includes(plan)) {
+        // Solo redirigir a suscripción si es un plan de pago
+        // El usuario podría ya tener ese plan o uno superior
         router.push(`/subscription?plan=${plan}`);
       } else {
+        // Si no hay plan específico de pago, ir a la app principal
         router.push('/');
       }
     }

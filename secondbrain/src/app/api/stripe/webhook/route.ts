@@ -66,7 +66,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 
   const uid = session.metadata.uid;
-  const planType = session.metadata.plan_type as 'basic' | 'pro' | 'elite';
+  const planType = session.metadata.plan_type as 'pro' | 'elite';
 
   if (!planType) {
     console.error('❌ [Stripe Webhook] No se encontró plan_type en metadata');
@@ -190,12 +190,11 @@ async function findUserByCustomerId(customerId: string): Promise<string | null> 
   return await findUserByStripeCustomerId(customerId);
 }
 
-async function getPlanTypeFromSubscription(subscription: Stripe.Subscription): Promise<'basic' | 'pro' | 'elite' | null> {
+async function getPlanTypeFromSubscription(subscription: Stripe.Subscription): Promise<'pro' | 'elite' | null> {
   const priceId = subscription.items.data[0]?.price.id;
   
-  if (priceId === process.env.STRIPE_PRICE_ID_BASIC) return 'basic';
-  if (priceId === process.env.STRIPE_PRICE_ID_PRO) return 'pro';
-  if (priceId === process.env.STRIPE_PRICE_ID_ELITE) return 'elite';
+  if (priceId === process.env.STRIPE_PRO_PRICE_ID) return 'pro';
+  if (priceId === process.env.STRIPE_ELITE_PRICE_ID) return 'elite';
   
   return null;
 }

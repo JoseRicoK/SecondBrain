@@ -8,7 +8,7 @@ import styles from './WelcomeModal.module.css';
 interface WelcomeModalProps {
   userId: string;
   userName: string;
-  planName?: 'free' | 'basic' | 'pro' | 'elite';
+  planName?: 'free' | 'pro' | 'elite';
   onClose: () => void;
 }
 

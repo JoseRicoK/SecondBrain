@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { Person } from '@/lib/firebase-operations';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { canSendPersonChatMessage } from '@/middleware/subscription';
+import { getUserMonthlyUsage, incrementPersonChatUsage } from '@/lib/subscription-operations';
 
 // Configurar OpenAI con GPT-4.1 mini
 const openai = new OpenAI({
@@ -23,6 +25,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Se requiere la información de la persona y el mensaje' },
         { status: 400 }
+      );
+    }
+
+    // Verificar límites de chat con personas
+    const monthlyUsage = await getUserMonthlyUsage(user.uid);
+    const canSendMessage = await canSendPersonChatMessage(user.uid, monthlyUsage.personChatMessages);
+    
+    if (!canSendMessage) {
+      return NextResponse.json(
+        { 
+          error: 'Límite de mensajes de chat con personas alcanzado para este mes',
+          code: 'LIMIT_EXCEEDED',
+          currentUsage: monthlyUsage.personChatMessages
+        },
+        { status: 429 }
       );
     }
 
@@ -82,6 +99,9 @@ INSTRUCCIONES:
     if (!response) {
       throw new Error('No se recibió respuesta del modelo');
     }
+
+    // Incrementar contador de uso solo si fue exitoso
+    await incrementPersonChatUsage(user.uid);
 
     return NextResponse.json({
       response,

@@ -216,6 +216,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onS
       <div className="relative z-10 p-6 space-y-3">
         <button
           onClick={onSettingsClick}
+          data-settings-button
           className="w-full bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white rounded-xl py-3 px-4 transition-all duration-200 flex items-center justify-center space-x-2 border border-white/10 hover:border-white/20 group"
         >
           <FiSettings className="group-hover:rotate-45 transition-transform duration-300" />

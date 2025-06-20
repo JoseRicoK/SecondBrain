@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiSend, FiX, FiUser, FiLoader } from 'react-icons/fi';
 import { Person } from '@/lib/firebase-operations';
+import { useSubscription } from '@/hooks/useSubscription';
 import { auth } from '@/lib/firebase';
 
 interface ChatMessage {
@@ -16,6 +17,13 @@ interface PersonChatProps {
 }
 
 export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose }) => {
+  const { 
+    planLimits, 
+    monthlyUsage, 
+    checkCanSendPersonChatMessage,
+    refreshMonthlyUsage 
+  } = useSubscription();
+  
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -48,6 +56,13 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
+
+    // Verificar límites antes de enviar
+    const canSend = await checkCanSendPersonChatMessage();
+    if (!canSend) {
+      setError(`Has alcanzado el límite de ${planLimits.personChatMessages} mensajes de chat con personas para este mes. Actualiza tu plan para enviar más mensajes.`);
+      return;
+    }
 
     const userMessage = inputMessage.trim();
     setInputMessage('');
@@ -99,10 +114,20 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Manejar errores de límite específicamente
+        if (response.status === 429 && errorData.code === 'LIMIT_EXCEEDED') {
+          setError(`Has alcanzado el límite de ${planLimits.personChatMessages} mensajes de chat con personas para este mes. Actualiza tu plan para enviar más mensajes.`);
+          return;
+        }
+        
         throw new Error(errorData.error || 'Error en la respuesta del servidor');
       }
 
       const data = await response.json();
+
+      // Refrescar uso mensual después de una respuesta exitosa
+      await refreshMonthlyUsage();
 
       // Añadir respuesta del asistente
       const assistantMessage: ChatMessage = {
@@ -165,7 +190,14 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
             </div>
             <div>
               <h3 className="font-medium text-slate-900">Chat con {person.name}</h3>
-              <p className="text-sm text-slate-600">Asistente inteligente</p>
+              <div className="flex items-center space-x-2 text-sm text-slate-600">
+                <span>Asistente inteligente</span>
+                {monthlyUsage && (
+                  <span className="bg-slate-100 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
+                    {monthlyUsage.personChatMessages}/{planLimits.personChatMessages === -1 ? '∞' : planLimits.personChatMessages}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button

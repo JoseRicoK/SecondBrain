@@ -31,7 +31,6 @@ export default function CheckoutForm({ plan, userId, userEmail, displayName }: C
 
       // Determinar el tipo de plan basado en el nombre
       const planTypeMap: Record<string, string> = {
-        'Básico': 'basic',
         'Pro': 'pro', 
         'Elite': 'elite'
       };
