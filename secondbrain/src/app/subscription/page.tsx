@@ -5,18 +5,24 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useFirebaseAuthContext } from '@/contexts/FirebaseAuthContext';
 import { FaCrown, FaHeart, FaCheck, FaArrowLeft } from 'react-icons/fa';
 import { FiZap } from 'react-icons/fi';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements } from '@stripe/react-stripe-js';
+import { IconType } from 'react-icons';
 import CheckoutForm from '@/components/CheckoutForm';
 
-// Configurar Stripe (necesitarás tu publishable key)
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+interface PlanData {
+  name: string;
+  price: number;
+  priceId: string;
+  description: string;
+  icon: IconType;
+  color: string;
+  features: string[];
+}
 
-const plans = {
+// Datos de los planes (sin priceId, que se obtendrá desde la API)
+const basePlans = {
   basic: {
     name: "Básico",
     price: 4.99,
-    priceId: process.env.STRIPE_BASIC_PRICE_ID || "price_basic_monthly",
     description: "Perfecto para empezar tu viaje",
     icon: FaHeart,
     color: "from-green-500 to-emerald-500",
@@ -30,7 +36,6 @@ const plans = {
   pro: {
     name: "Pro",
     price: 9.99,
-    priceId: process.env.STRIPE_PRO_PRICE_ID || "price_pro_monthly",
     description: "Para usuarios serios sobre su crecimiento",
     icon: FiZap,
     color: "from-purple-500 to-pink-500",
@@ -47,7 +52,6 @@ const plans = {
   elite: {
     name: "Elite",
     price: 19.99,
-    priceId: process.env.STRIPE_ELITE_PRICE_ID || "price_elite_monthly",
     description: "Para profesionales y equipos",
     icon: FaCrown,
     color: "from-orange-500 to-red-500",
@@ -68,26 +72,56 @@ function SubscriptionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useFirebaseAuthContext();
-  const [selectedPlan, setSelectedPlan] = useState<keyof typeof plans>('pro');
+  const [selectedPlan, setSelectedPlan] = useState<keyof typeof basePlans>('pro');
   const [showCheckout, setShowCheckout] = useState(false);
+  const [plans, setPlans] = useState<Record<string, PlanData> | null>(null);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [plansError, setPlansError] = useState<string | null>(null);
 
-  // Debug: verificar variables de entorno
+  // Cargar los plan IDs desde la API
   useEffect(() => {
-    console.log('🔍 Variables de entorno Stripe:', {
-      publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'Configurada' : 'NO configurada',
-      basicPriceId: process.env.STRIPE_BASIC_PRICE_ID || 'NO configurada',
-      proPriceId: process.env.STRIPE_PRO_PRICE_ID || 'NO configurada',
-      elitePriceId: process.env.STRIPE_ELITE_PRICE_ID || 'NO configurada'
-    });
+    const fetchPlanIds = async () => {
+      try {
+        setPlansLoading(true);
+        const response = await fetch('/api/subscription/plans');
+        
+        if (!response.ok) {
+          throw new Error('Error al cargar los planes');
+        }
+        
+        const planIds = await response.json();
+        
+        // Combinar los datos base con los priceId obtenidos de la API
+        const fullPlans: Record<string, PlanData> = {};
+        Object.entries(basePlans).forEach(([key, basePlan]) => {
+          fullPlans[key] = {
+            ...basePlan,
+            priceId: planIds[key] || `price_${key}_monthly` // fallback
+          };
+        });
+        
+        setPlans(fullPlans);
+        setPlansError(null);
+      } catch (error) {
+        console.error('Error cargando planes:', error);
+        setPlansError('Error al cargar los planes');
+      } finally {
+        setPlansLoading(false);
+      }
+    };
+
+    fetchPlanIds();
   }, []);
 
   useEffect(() => {
-    // Obtener el plan de la URL
-    const planFromUrl = searchParams.get('plan') as keyof typeof plans;
-    if (planFromUrl && plans[planFromUrl]) {
-      setSelectedPlan(planFromUrl);
+    // Obtener el plan de la URL solo cuando los planes estén cargados
+    if (plans) {
+      const planFromUrl = searchParams.get('plan') as keyof typeof basePlans;
+      if (planFromUrl && plans[planFromUrl]) {
+        setSelectedPlan(planFromUrl);
+      }
     }
-  }, [searchParams]);
+  }, [searchParams, plans]);
 
   // Redirigir si no está autenticado
   useEffect(() => {
@@ -96,10 +130,31 @@ function SubscriptionContent() {
     }
   }, [user, loading, router]);
 
-  if (loading) {
+  if (loading || plansLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando planes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (plansError || !plans) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center p-6">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Error al cargar los planes</h2>
+          <p className="text-gray-600 mb-4">{plansError || 'No se pudieron cargar los planes de suscripción'}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
       </div>
     );
   }
@@ -154,7 +209,7 @@ function SubscriptionContent() {
             return (
               <div
                 key={key}
-                onClick={() => setSelectedPlan(key as keyof typeof plans)}
+                onClick={() => setSelectedPlan(key as keyof typeof basePlans)}
                 className={`cursor-pointer transition-all duration-300 rounded-2xl p-6 border-2 ${
                   isSelected 
                     ? 'border-purple-500 bg-white shadow-xl scale-105' 
@@ -182,7 +237,7 @@ function SubscriptionContent() {
                   </p>
                   
                   <ul className="text-left space-y-2">
-                    {plan.features.map((feature, index) => (
+                    {plan.features.map((feature: string, index: number) => (
                       <li key={index} className="flex items-center gap-2">
                         <FaCheck className="w-5 h-5 text-green-500 flex-shrink-0" />
                         <span className="text-sm text-gray-700">{feature}</span>
