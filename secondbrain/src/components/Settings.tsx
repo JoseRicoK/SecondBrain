@@ -11,7 +11,6 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ userId }) => {
-  console.log('Settings component loaded for user:', userId);
   const { user, signOut, isGoogleUser } = useAuth();
   const { userProfile, currentPlan, planLimits, monthlyUsage } = useSubscription();
   const router = useRouter();
@@ -599,74 +598,28 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
             {/* Acciones */}
             <div className="flex flex-col sm:flex-row gap-3">
               {currentPlan === 'free' ? (
-                <>
-                  <button
-                    onClick={() => router.push('/subscription')}
-                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2"
-                  >
-                    <FiArrowUp className="w-4 h-4" />
-                    Mejorar Plan
-                  </button>
-                  
-                  {/* Botón temporal de corrección */}
-                  <div className="flex-1">
-                    <details className="bg-orange-50 border border-orange-200 rounded-xl">
-                      <summary className="p-3 cursor-pointer text-orange-800 font-medium text-sm">
-                        ¿Ya pagaste? Corregir plan
-                      </summary>
-                      <div className="p-3 pt-0 flex gap-2">
-                        <button
-                          onClick={async () => {
-                            try {
-                              const response = await fetch('/api/subscription/update-manual', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ userId: user?.uid, planType: 'pro' })
-                              });
-                              if (response.ok) {
-                                alert('Plan actualizado a Pro');
-                                window.location.reload();
-                              }
-                            } catch (error) {
-                              alert('Error actualizando plan');
-                            }
-                          }}
-                          className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600"
-                        >
-                          Pro
-                        </button>
-                        <button
-                          onClick={async () => {
-                            try {
-                              const response = await fetch('/api/subscription/update-manual', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ userId: user?.uid, planType: 'elite' })
-                              });
-                              if (response.ok) {
-                                alert('Plan actualizado a Elite');
-                                window.location.reload();
-                              }
-                            } catch (error) {
-                              alert('Error actualizando plan');
-                            }
-                          }}
-                          className="px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
-                        >
-                          Elite
-                        </button>
-                      </div>
-                    </details>
-                  </div>
-                </>
+                <button
+                  onClick={() => router.push('/subscription')}
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2"
+                >
+                  <FiArrowUp className="w-4 h-4" />
+                  Mejorar Plan
+                </button>
               ) : (
                 <>
                   <button
-                    onClick={() => router.push('/subscription')}
+                    onClick={() => {
+                      // Navegar a la página de suscripción sugiriendo el upgrade apropiado
+                      if (currentPlan === 'pro') {
+                        router.push('/subscription?plan=elite');
+                      } else {
+                        router.push('/subscription');
+                      }
+                    }}
                     className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
                   >
                     <FiArrowUp className="w-4 h-4" />
-                    Cambiar Plan
+                    {currentPlan === 'pro' ? 'Mejorar a Elite' : 'Cambiar Plan'}
                   </button>
                   
                   {userProfile?.subscription.status === 'active' && !userProfile.subscription.cancelAtPeriodEnd && (
@@ -687,6 +640,27 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
               )}
             </div>
             
+            {/* Información sobre cambio a plan gratuito */}
+            {currentPlan !== 'free' && (
+              <div className="mt-4">
+                <details className="bg-gray-50 border border-gray-200 rounded-lg">
+                  <summary className="p-3 cursor-pointer text-gray-700 font-medium text-sm hover:bg-gray-100 transition-colors">
+                    ¿Quieres cambiar al plan gratuito?
+                  </summary>
+                  <div className="p-3 pt-0 text-sm text-gray-600">
+                    <p className="mb-2">
+                      Para cambiar al plan gratuito, debes <strong>cancelar tu suscripción actual</strong>. 
+                      Tu plan pagado permanecerá activo hasta el final del período facturado.
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Al cancelar, conservarás todas las funciones hasta la fecha de expiración, 
+                      después automáticamente pasarás al plan gratuito.
+                    </p>
+                  </div>
+                </details>
+              </div>
+            )}
+            
             {userProfile?.subscription.cancelAtPeriodEnd && (
               <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                 <p className="text-yellow-800 text-sm text-center">
@@ -694,7 +668,6 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
                   {userProfile.subscription.currentPeriodEnd ? (
                     (() => {
                       const date = userProfile.subscription.currentPeriodEnd;
-                      console.log('🕐 [Settings] Fecha raw de Firebase:', date, typeof date);
                       
                       let dateObj: Date;
                       
@@ -702,20 +675,16 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
                       if (date && typeof date === 'object' && 'toDate' in date) {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         dateObj = (date as any).toDate();
-                        console.log('🕐 [Settings] Convertido desde Timestamp:', dateObj);
                       } 
                       // Manejar Date object
                       else if (date instanceof Date) {
                         dateObj = date;
-                        console.log('🕐 [Settings] Ya es Date object:', dateObj);
                       } 
                       // Manejar string/number
                       else if (date) {
                         dateObj = new Date(date);
-                        console.log('🕐 [Settings] Convertido desde string/number:', dateObj);
                       } 
                       else {
-                        console.log('🕐 [Settings] Fecha es null/undefined');
                         return 'fecha pendiente de confirmación';
                       }
                       
@@ -727,10 +696,8 @@ const Settings: React.FC<SettingsProps> = ({ userId }) => {
                           month: 'long',
                           day: 'numeric'
                         });
-                        console.log('🕐 [Settings] Fecha formateada:', formattedDate);
                         return formattedDate;
                       } else {
-                        console.log('🕐 [Settings] Fecha inválida:', dateObj);
                         return 'fecha pendiente de confirmación';
                       }
                     })()

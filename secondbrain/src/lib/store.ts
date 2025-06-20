@@ -37,7 +37,6 @@ const getTodayFormatted = (): string => {
 
 export const useDiaryStore = create<DiaryState>((set, get) => {
   const initialDate = getTodayFormatted();
-  console.log('🏪 Store: Inicializando con fecha:', initialDate);
   
   return {
     // Estado inicial - siempre usamos la fecha actual

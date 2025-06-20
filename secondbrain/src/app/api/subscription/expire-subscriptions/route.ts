@@ -4,6 +4,31 @@ import { db } from '@/lib/firebase';
 
 export async function POST(req: NextRequest) {
   try {
+    // Verificar que la petición venga de una fuente autorizada
+    const authHeader = req.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
+    
+    // Si hay un secreto configurado, verificarlo
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      // En producción, solo permitir desde Vercel Cron o GitHub Actions
+      const allowedOrigins = [
+        'vercel.com', 
+        'github.com',
+        process.env.VERCEL_URL,
+        process.env.NEXT_PUBLIC_VERCEL_URL
+      ].filter(Boolean);
+      
+      const origin = req.headers.get('origin') || req.headers.get('referer') || '';
+      const isAuthorized = allowedOrigins.some(allowed => allowed && origin.includes(allowed));
+      
+      if (!isAuthorized) {
+        return NextResponse.json(
+          { error: 'No autorizado' },
+          { status: 401 }
+        );
+      }
+    }
+
     console.log('🔄 [Expire Subscriptions] Iniciando verificación de suscripciones expiradas');
 
     const now = new Date();

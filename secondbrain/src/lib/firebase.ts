@@ -27,11 +27,6 @@ if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.proj
     'NEXT_PUBLIC_FIREBASE_APP_ID=tu_app_id\n' +
     'NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=tu_measurement_id'
   );
-} else {
-  console.log('✅ Variables de entorno Firebase configuradas:');
-  console.log('- Project ID:', firebaseConfig.projectId);
-  console.log('- Auth Domain:', firebaseConfig.authDomain);
-  console.log('- API Key configurado:', !!firebaseConfig.apiKey);
 }
 
 // Inicializar Firebase

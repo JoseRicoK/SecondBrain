@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFirebaseAuthContext } from '@/contexts/FirebaseAuthContext';
+import { useSubscription } from '@/hooks/useSubscription';
 import { FaCrown, FaHeart, FaCheck, FaArrowLeft } from 'react-icons/fa';
 import { FiZap } from 'react-icons/fi';
 import { IconType } from 'react-icons';
@@ -72,7 +73,8 @@ function SubscriptionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useFirebaseAuthContext();
-  const [selectedPlan, setSelectedPlan] = useState<keyof typeof basePlans>('pro');
+  const { currentPlan: userCurrentPlan, userProfile } = useSubscription();
+  const [selectedPlan, setSelectedPlan] = useState<keyof typeof basePlans | 'free'>('pro');
   const [showCheckout, setShowCheckout] = useState(false);
   const [plans, setPlans] = useState<Record<string, PlanData> | null>(null);
   const [plansLoading, setPlansLoading] = useState(true);
@@ -252,45 +254,174 @@ function SubscriptionContent() {
 
         <div className="text-center">
           {selectedPlan === 'free' ? (
-            <button
-              onClick={async () => {
-                // Para plan gratuito, actualizar directamente en Firebase
-                try {
-                  const response = await fetch('/api/subscription/update-manual', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.uid, planType: 'free' })
-                  });
-                  
-                  if (response.ok) {
-                    alert('¡Plan gratuito activado! Redirigiendo al dashboard...');
-                    window.location.href = '/dashboard';
-                  } else {
-                    alert('Error al activar el plan gratuito');
+            userCurrentPlan !== 'free' && userProfile?.subscription.status === 'active' ? (
+              // Usuario tiene plan pagado y quiere cancelar para ir a gratuito
+              <div className="max-w-md mx-auto">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-6">
+                  <div className="text-amber-600 text-4xl mb-3">⚠️</div>
+                  <h3 className="text-lg font-semibold text-amber-800 mb-2">
+                    Cancelar Suscripción
+                  </h3>
+                  <p className="text-amber-700 text-sm mb-4">
+                    Actualmente tienes el plan <strong>{userCurrentPlan.toUpperCase()}</strong>. 
+                    Para cambiar al plan gratuito necesitas cancelar tu suscripción actual.
+                  </p>
+                  <div className="bg-amber-100 rounded-lg p-3 mb-4">
+                    <p className="text-amber-800 text-xs">
+                      📅 <strong>Importante:</strong> Conservarás todas las funciones de tu plan actual hasta 
+                      {userProfile.subscription.currentPeriodEnd ? 
+                        ` el ${new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString('es-ES')}` : 
+                        ' el final del período facturado'}. Después cambiarás automáticamente al plan gratuito.
+                    </p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={async () => {
+                    const confirmCancel = confirm(
+                      `¿Estás seguro de que quieres cancelar tu suscripción ${userCurrentPlan.toUpperCase()}?\n\n` +
+                      `• Conservarás el acceso completo hasta ${userProfile.subscription.currentPeriodEnd ? 
+                        new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString('es-ES') : 
+                        'el final del período facturado'}\n` +
+                      `• Después cambiarás automáticamente al plan gratuito\n` +
+                      `• No se realizarán más cobros\n\n` +
+                      `Esta acción no se puede deshacer.`
+                    );
+                    
+                    if (!confirmCancel) return;
+                    
+                    try {
+                      const response = await fetch('/api/stripe/cancel-subscription', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user.uid })
+                      });
+                      
+                      if (response.ok) {
+                        const data = await response.json();
+                        alert(
+                          `✅ Suscripción cancelada correctamente.\n\n` +
+                          `Tu plan ${userCurrentPlan.toUpperCase()} permanecerá activo hasta: ${new Date(data.cancelAt).toLocaleDateString('es-ES')}\n\n` +
+                          `Después cambiarás automáticamente al plan gratuito.`
+                        );
+                        router.push('/dashboard');
+                      } else {
+                        const errorData = await response.json();
+                        alert(`❌ Error al cancelar suscripción: ${errorData.error}`);
+                      }
+                    } catch (error) {
+                      alert('❌ Error de conexión al cancelar suscripción');
+                      console.error('Error:', error);
+                    }
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 text-white font-semibold text-lg transition-all duration-300 hover:shadow-xl hover:scale-105 transform"
+                >
+                  <IconComponent className="w-6 h-6" />
+                  Cancelar Suscripción y Cambiar a Gratuito
+                </button>
+                
+                <div className="mt-4 flex gap-3 justify-center">
+                  <button
+                    onClick={() => router.push('/dashboard')}
+                    className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                  >
+                    Mantener Plan Actual
+                  </button>
+                  <button
+                    onClick={() => router.push('/dashboard?settings=true')}
+                    className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                  >
+                    Gestionar en Settings
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Usuario ya está en plan gratuito o no tiene plan activo
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/subscription/update-manual', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ userId: user.uid, planType: 'free' })
+                    });
+                    
+                    if (response.ok) {
+                      alert('✅ ¡Plan gratuito activado! Redirigiendo al dashboard...');
+                      window.location.href = '/dashboard';
+                    } else {
+                      alert('❌ Error al activar el plan gratuito');
+                    }
+                  } catch (error) {
+                    alert('❌ Error de conexión');
+                    console.error('Error:', error);
                   }
-                } catch (error) {
-                  alert('Error de conexión');
-                  console.error('Error:', error);
+                }}
+                className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-xl hover:scale-105 transform`}
+              >
+                <IconComponent className="w-6 h-6" />
+                Comenzar con {currentPlan.name} - ¡Gratis!
+              </button>
+            )
+          ) : userCurrentPlan === selectedPlan && userProfile?.subscription.status === 'active' ? (
+            // Usuario ya tiene este plan activo
+            <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-200">
+              <div className="text-blue-600 text-6xl mb-4">✅</div>
+              <h3 className="text-xl font-semibold text-blue-800 mb-2">
+                Ya tienes el plan {currentPlan.name}
+              </h3>
+              <p className="text-blue-600 mb-4">
+                Tu suscripción está activa y funcionando perfectamente.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Ir al Dashboard
+                </button>
+                {selectedPlan === 'pro' && (
+                  <button
+                    onClick={() => setSelectedPlan('elite')}
+                    className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:from-orange-600 hover:to-red-600 transition-all font-medium"
+                  >
+                    Mejorar a Elite
+                  </button>
+                )}
+                <button
+                  onClick={() => router.push('/dashboard?settings=true')}
+                  className="px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors font-medium"
+                >
+                  Cancelar Suscripción
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                // Verificar downgrades no permitidos
+                if (userCurrentPlan === 'elite' && selectedPlan === 'pro') {
+                  alert('No puedes cambiar de Elite a Pro directamente. Primero cancela tu suscripción actual desde Settings.');
+                  return;
                 }
+                setShowCheckout(true);
               }}
               className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-xl hover:scale-105 transform`}
             >
               <IconComponent className="w-6 h-6" />
-              Comenzar con {currentPlan.name} - ¡Gratis!
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowCheckout(true)}
-              className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-xl hover:scale-105 transform`}
-            >
-              <IconComponent className="w-6 h-6" />
-              Continuar con {currentPlan.name} - €{currentPlan.price}/mes
+              {userCurrentPlan === 'free' ? (
+                <>Comenzar con {currentPlan.name} - €{currentPlan.price}/mes</>
+              ) : (
+                <>Cambiar a {currentPlan.name} - €{currentPlan.price}/mes</>
+              )}
             </button>
           )}
           
           <p className="text-sm text-gray-500 mt-4">
             {selectedPlan === 'free' 
-              ? '¡Comienza gratis! Actualiza en cualquier momento para más funciones.'
+              ? (userCurrentPlan !== 'free' && userProfile?.subscription.status === 'active' 
+                ? '⚠️ Cancelar tu suscripción significa que cambiarás al plan gratuito al final de tu período de facturación actual.'
+                : '¡Comienza gratis! Actualiza en cualquier momento para más funciones.')
               : 'Cancela en cualquier momento. Sin compromisos a largo plazo.'
             }
           </p>
