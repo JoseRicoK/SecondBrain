@@ -68,30 +68,32 @@ export default function PricingSection() {
   ];
 
   return (
-    <section id="pricing" className="py-8 sm:py-12 lg:py-16 px-4 sm:px-6 lg:px-8">
+    <section id="pricing" className="py-8 sm:py-12 lg:py-16 px-4 sm:px-6 lg:px-8" itemScope itemType="https://schema.org/PriceSpecification">
       <div className="max-w-7xl mx-auto">
-        <motion.div
+        <motion.header
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           className="text-center mb-12 sm:mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 liquid-gradient-text px-4 leading-tight">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 liquid-gradient-text px-4 leading-tight">
             <span className="block sm:inline">Planes que</span>
             <span className="block sm:inline sm:ml-2">se adaptan a tu ritmo</span>
-          </h2>
-          <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl mx-auto px-4">
-            Planes flexibles que se adaptan a tus necesidades. Todas las funciones esenciales incluidas.
+          </h1>
+          <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl mx-auto px-4" itemProp="description">
+            Elige el <strong>plan perfecto</strong> para tu <strong>diario personal con IA</strong>. 
+            Desde <strong>completamente gratis</strong> hasta funciones <strong>premium avanzadas</strong>. 
+            Todas las características esenciales incluidas para tu <strong>crecimiento personal</strong>.
           </p>
-        </motion.div>
+        </motion.header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
           {plans.map((plan, index) => (
-            <div key={index} className="relative pt-6">
+            <article key={index} className="relative pt-6" itemScope itemType="https://schema.org/Product">
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-20">
                   <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg whitespace-nowrap">
-                    Más Popular
+                    🔥 Más Popular
                   </div>
                 </div>
               )}
@@ -104,16 +106,21 @@ export default function PricingSection() {
                     ? 'ring-2 ring-purple-500 transform scale-105' 
                     : ''
                 }`}
+                itemScope 
+                itemType="https://schema.org/Offer"
               >
 
               <div className="text-center mb-8">
                 <div className={`w-16 h-16 bg-gradient-to-r ${plan.color} rounded-2xl flex items-center justify-center mx-auto mb-4`}>
-                  <plan.icon className="w-8 h-8 text-white" />
+                  <plan.icon className="w-8 h-8 text-white" aria-hidden="true" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-gray-300 mb-4">{plan.description}</p>
-                <div className="flex items-baseline justify-center">
-                  <span className="text-4xl font-bold text-white">${plan.price}</span>
+                <h2 className="text-2xl font-bold text-white mb-2" itemProp="name">{plan.name}</h2>
+                <p className="text-gray-300 mb-4" itemProp="description">{plan.description}</p>
+                <div className="flex items-baseline justify-center" itemProp="priceSpecification" itemScope itemType="https://schema.org/PriceSpecification">
+                  <span className="text-4xl font-bold text-white">
+                    <span itemProp="priceCurrency" content="USD">$</span>
+                    <span itemProp="price" content={plan.price}>{plan.price}</span>
+                  </span>
                   <span className="text-gray-400 ml-2">/mes</span>
                 </div>
               </div>
@@ -146,7 +153,7 @@ export default function PricingSection() {
                 {plan.cta}
               </Link>
             </motion.div>
-            </div>
+            </article>
           ))}
         </div>
 

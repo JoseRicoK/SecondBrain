@@ -40,63 +40,79 @@ export default function Home() {
       <Header />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden min-h-screen flex items-center">
-        {/* Background Effects */}
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-4 w-32 h-32 sm:w-48 sm:h-48 lg:w-72 lg:h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-          <div className="absolute top-40 right-4 w-32 h-32 sm:w-48 sm:h-48 lg:w-72 lg:h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-2s"></div>
-          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 w-32 h-32 sm:w-48 sm:h-48 lg:w-72 lg:h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-4s"></div>
-        </div>
+      <main>
+        <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden min-h-screen flex items-center">
+          {/* Background Effects */}
+          <div className="absolute inset-0" aria-hidden="true">
+            <div className="absolute top-20 left-4 w-32 h-32 sm:w-48 sm:h-48 lg:w-72 lg:h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+            <div className="absolute top-40 right-4 w-32 h-32 sm:w-48 sm:h-48 lg:w-72 lg:h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-2s"></div>
+            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 w-32 h-32 sm:w-48 sm:h-48 lg:w-72 lg:h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-4s"></div>
+          </div>
 
-        <div className="max-w-7xl mx-auto relative z-10 w-full">
-          <div className="text-center space-y-8 lg:space-y-12">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="space-y-6 lg:space-y-8"
-            >
-              {/* Badge */}
+          <div className="max-w-7xl mx-auto relative z-10 w-full">
+            <header className="text-center space-y-8 lg:space-y-12">
               <motion.div
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 1, delay: 0.2 }}
-                className="flex justify-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                className="space-y-6 lg:space-y-8"
               >
-                <div className="inline-flex items-center bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full px-4 py-2 lg:px-6 lg:py-3 backdrop-blur-sm border border-purple-500/30">
-                  <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400 mr-2" />
-                  <span className="text-purple-300 text-sm font-medium">Potenciado por Inteligencia Artificial</span>
-                </div>
-              </motion.div>
+                {/* Badge */}
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 1, delay: 0.2 }}
+                  className="flex justify-center"
+                >
+                  <div className="inline-flex items-center bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full px-4 py-2 lg:px-6 lg:py-3 backdrop-blur-sm border border-purple-500/30">
+                    <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400 mr-2" aria-hidden="true" />
+                    <span className="text-purple-300 text-sm font-medium">Potenciado por Inteligencia Artificial</span>
+                  </div>
+                </motion.div>
 
-              {/* Title */}
-              <div className="text-spacing">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-tight">
-                  Tu{' '}
-                  <span className="liquid-gradient-text">Segundo Cerebro</span>
-                  <br />
-                  <motion.span
+                {/* Title - Optimizado para SEO */}
+                <div className="text-spacing">
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-tight">
+                    <span itemProp="name">SecondBrain:</span> Tu{' '}
+                    <span className="liquid-gradient-text">Diario Personal con IA</span>
+                    <br />
+                    <motion.span
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.8, delay: 0.4 }}
+                    >
+                      Más Inteligente de 2025
+                    </motion.span>
+                  </h1>
+                  
+                  {/* Description - Rica en keywords SEO */}
+                  <motion.p 
+                    className="large-text text-gray-300 max-w-3xl mx-auto mt-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.4 }}
+                    transition={{ duration: 0.8, delay: 0.6 }}
+                    itemProp="description"
                   >
-                    Digital
-                  </motion.span>
-                </h1>
-                
-                {/* Description */}
-                <motion.p 
-                  className="large-text text-gray-300 max-w-3xl mx-auto mt-6"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.6 }}
-                >
-                  El diario personal más avanzado del mundo. Con <strong className="text-white">IA conversacional</strong>, 
-                  <strong className="text-white"> grabación de voz inteligente</strong>, <strong className="text-white">análisis emocional avanzado</strong> y <strong className="text-white">estadísticas de relaciones personales</strong>. 
-                  Transforma cómo documentas, analizas y reflexionas sobre tu vida.
-                </motion.p>
-              </div>
-            </motion.div>
+                    🧠 Revoluciona tu <strong className="text-white">bienestar mental</strong> y <strong className="text-white">crecimiento personal</strong> con el 
+                    <strong className="text-white"> diario personal más avanzado del mundo</strong>. Incluye <strong className="text-white">chat inteligente con IA</strong>, 
+                    <strong className="text-white"> grabación y transcripción de voz automática</strong>, <strong className="text-white">análisis de sentimientos</strong>, 
+                    <strong className="text-white"> estadísticas de relaciones personales</strong> y mucho más. 
+                    <em>Transforma cómo reflexionas sobre tu vida diaria.</em>
+                  </motion.p>
+
+                  {/* Beneficios clave para SEO */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.8 }}
+                    className="mt-8 flex flex-wrap justify-center gap-4 text-sm text-purple-200"
+                  >
+                    <span className="bg-purple-500/20 px-3 py-1 rounded-full">✅ 100% Gratuito para empezar</span>
+                    <span className="bg-purple-500/20 px-3 py-1 rounded-full">🔒 Privacidad total garantizada</span>
+                    <span className="bg-purple-500/20 px-3 py-1 rounded-full">🚀 Sin instalación requerida</span>
+                  </motion.div>
+                </div>
+              </motion.div>
 
             {/* CTA Buttons */}
             <motion.div
@@ -141,9 +157,10 @@ export default function Home() {
                 <span>+10K usuarios felices</span>
               </div>
             </motion.div>
+            </header>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       {/* Key Features Highlight Section */}
       <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-transparent to-slate-900/50">
