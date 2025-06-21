@@ -68,18 +68,19 @@ export default function PricingSection() {
   ];
 
   return (
-    <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8">
+    <section id="pricing" className="py-8 sm:py-12 lg:py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="text-center mb-16"
+          className="text-center mb-12 sm:mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 liquid-gradient-text">
-            Planes que se adaptan a tu ritmo
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 liquid-gradient-text px-4 leading-tight">
+            <span className="block sm:inline">Planes que</span>
+            <span className="block sm:inline sm:ml-2">se adaptan a tu ritmo</span>
           </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+          <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl mx-auto px-4">
             Planes flexibles que se adaptan a tus necesidades. Todas las funciones esenciales incluidas.
           </p>
         </motion.div>

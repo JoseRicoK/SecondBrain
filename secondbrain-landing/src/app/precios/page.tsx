@@ -18,9 +18,9 @@ export default function PreciosPage() {
       <Header />
 
       {/* Hero Section */}
-      <section className="pt-28 sm:pt-32 pb-8 sm:pb-12 lg:pb-16 px-3 sm:px-6 lg:px-8 relative overflow-hidden">
+      <section className="pt-28 sm:pt-32 pb-4 sm:pb-6 px-3 sm:px-6 lg:px-8 relative overflow-hidden">
         <div className="container-spacing relative z-10">
-          <div className="text-center space-y-6 sm:space-y-8">
+          <div className="text-center space-y-4">
             {/* Back Button */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -35,31 +35,6 @@ export default function PreciosPage() {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Volver al inicio
               </Link>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="space-y-4 sm:space-y-6"
-            >
-              {/* Title */}
-              <div className="text-spacing">
-                <h1 className="hero-title liquid-gradient-text px-1 sm:px-2">
-                  Planes que se adaptan a tu ritmo
-                </h1>
-                
-                {/* Description */}
-                <motion.p 
-                  className="large-text text-gray-300 max-w-2xl lg:max-w-4xl mx-auto px-1 sm:px-2 lg:px-4 mt-4 sm:mt-6"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                >
-                  Planes flexibles que se adaptan a tus necesidades. Todas las funciones 
-                  esenciales para comenzar tu viaje de autodescubrimiento.
-                </motion.p>
-              </div>
             </motion.div>
           </div>
         </div>
