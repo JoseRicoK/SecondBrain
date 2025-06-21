@@ -80,13 +80,13 @@ const Header = () => {
             
             <div className="flex items-center space-x-8 header-cta-buttons">
               <Link
-                href="http://localhost:3001/login"
+                href="https://app.secondbrainapp.com/login"
                 className="text-gray-300 hover:text-white transition-colors duration-300 text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/10"
               >
                 Iniciar Sesión
               </Link>
               <Link
-                href="http://localhost:3001/signup"
+                href="https://app.secondbrainapp.com/signup"
                 className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
               >
                 Crear Cuenta
@@ -101,7 +101,7 @@ const Header = () => {
             className="lg:hidden flex items-center space-x-4"
           >
             <Link
-              href="http://localhost:3001/login"
+              href="https://app.secondbrainapp.com/login"
               className="text-gray-300 hover:text-white transition-colors text-sm font-medium hidden sm:block px-3 py-2 rounded-lg hover:bg-white/10"
             >
               Login
@@ -146,15 +146,15 @@ const Header = () => {
                 
                 <div className="flex flex-col space-y-3 pt-4 mt-4 border-t border-white/10">
                   <Link
-                    href="http://localhost:3001/login"
-                    onClick={() => handleLinkClick('http://localhost:3001/login')}
+                    href="https://app.secondbrainapp.com/login"
+                    onClick={() => handleLinkClick('https://app.secondbrainapp.com/login')}
                     className="text-center liquid-glass text-white px-4 py-3 rounded-lg text-base font-medium transition-all duration-300"
                   >
                     Iniciar Sesión
                   </Link>
                   <Link
-                    href="http://localhost:3001/signup"
-                    onClick={() => handleLinkClick('http://localhost:3001/signup')}
+                    href="https://app.secondbrainapp.com/signup"
+                    onClick={() => handleLinkClick('https://app.secondbrainapp.com/signup')}
                     className="text-center liquid-button text-white px-4 py-3 rounded-lg text-base font-semibold transition-all duration-300 shadow-lg"
                   >
                     Crear Cuenta Gratis

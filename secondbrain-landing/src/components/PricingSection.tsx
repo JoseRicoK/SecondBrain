@@ -23,7 +23,7 @@ export default function PricingSection() {
         { text: "🎨 Estilización con IA avanzada", included: false }
       ],
       cta: "Comenzar Gratis",
-      href: "/signup?plan=free",
+      href: "https://app.secondbrainapp.com/signup?plan=free",
       popular: false
     },
     {
@@ -43,7 +43,7 @@ export default function PricingSection() {
         { text: "👥 Chat con personas ilimitado", included: false }
       ],
       cta: "Comenzar Pro",
-      href: "/signup?plan=pro",
+      href: "https://app.secondbrainapp.com/signup?plan=pro",
       popular: true
     },
     {
@@ -62,7 +62,7 @@ export default function PricingSection() {
         { text: "🚀 Funciones experimentales", included: true }
       ],
       cta: "Comenzar Elite",
-      href: "/signup?plan=elite",
+      href: "https://app.secondbrainapp.com/signup?plan=elite",
       popular: false
     }
   ];
@@ -154,16 +154,16 @@ export default function PricingSection() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="text-center mt-12"
+          className="text-center mt-8 sm:mt-12 px-4"
         >
-          <p className="text-gray-400 mb-4">
+          <p className="text-gray-400 mb-4 text-sm sm:text-base">
             ¿Necesitas algo más específico? Hablemos.
           </p>
           <Link
-            href="mailto:support@secondbrain.com"
-            className="text-purple-400 hover:text-purple-300 transition-colors"
+            href="mailto:support@secondbrainapp.com"
+            className="text-purple-400 hover:text-purple-300 transition-colors text-sm sm:text-base"
           >
-            Contactar para plan empresarial →
+            Contactar para más información →
           </Link>
         </motion.div>
       </div>
