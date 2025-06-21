@@ -1,23 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState } from 'react';
-import { ArrowRight, Sparkles, Zap, Heart, CheckCircle } from 'lucide-react';
+import { ArrowRight, Sparkles, Zap, Heart } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CtaSection() {
-  const [emailSubmitted, setEmailSubmitted] = useState(false);
-  const [email, setEmail] = useState('');
-
-  const handleEmailSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Aquí iría la lógica para guardar el email
-    setEmailSubmitted(true);
-    setTimeout(() => {
-      window.location.href = 'https://app.secondbrainapp.com/signup?plan=pro';
-    }, 2000);
-  };
-
   const benefits = [
     { icon: Zap, text: "Configuración en 2 minutos" },
     { icon: Heart, text: "Sin tarjeta de crédito" },
@@ -56,12 +43,13 @@ export default function CtaSection() {
             </motion.div>
 
             <motion.h2 
-              className="text-3xl md:text-5xl font-bold mb-4 liquid-gradient-text"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 liquid-gradient-text leading-tight"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
             >
-              ¿Listo para tener tu Segundo Cerebro?
+              <span className="block sm:inline">¿Listo para tener tu</span>
+              <span className="block sm:inline sm:ml-2">Segundo Cerebro?</span>
             </motion.h2>
 
             <motion.p 
@@ -92,54 +80,21 @@ export default function CtaSection() {
               ))}
             </motion.div>
 
-            {!emailSubmitted ? (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
+            {/* CTA Button */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              className="mb-6"
+            >
+              <Link
+                href="https://app.secondbrainapp.com/signup?plan=free"
+                className="inline-flex items-center liquid-button bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-300 hover:scale-105"
               >
-                <form onSubmit={handleEmailSubmit} className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
-                    className="liquid-glass px-6 py-4 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    required
-                  />
-                  <motion.button
-                    type="submit"
-                    className="liquid-button bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-300 flex items-center justify-center"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Comenzar Gratis
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </motion.button>
-                </form>
-                <p className="text-gray-400 text-sm">
-                  No spam. Solo updates importantes sobre SecondBrain.
-                </p>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="text-center"
-              >
-                <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-                <h3 className="text-2xl font-bold text-white mb-2">¡Perfecto!</h3>
-                <p className="text-gray-300 mb-4">Te estamos redirigiendo a SecondBrain...</p>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <motion.div
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 2 }}
-                  />
-                </div>
-              </motion.div>
-            )}
+                Comenzar Gratis
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Link>
+            </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -148,7 +103,7 @@ export default function CtaSection() {
               className="flex flex-col sm:flex-row gap-4 justify-center mt-6"
             >
               <Link
-                href="mailto:support@secondbrain.com"
+                href="mailto:support@secondbrainapp.com"
                 className="text-gray-400 hover:text-white transition-colors"
               >
                 ¿Preguntas? Contáctanos →

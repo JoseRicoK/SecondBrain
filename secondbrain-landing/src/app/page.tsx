@@ -119,21 +119,14 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.8 }}
-              className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center"
+              className="flex justify-center items-center"
             >
               <Link
-                href="https://app.secondbrainapp.com/signup?plan=pro"
+                href="https://app.secondbrainapp.com/signup?plan=free"
                 className="w-full sm:w-auto max-w-xs liquid-button text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center group"
               >
                 Comenzar Gratis
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
-                href="#demo"
-                className="w-full sm:w-auto max-w-xs liquid-button-secondary text-purple-400 px-8 py-4 rounded-xl font-semibold hover:text-white transition-all duration-300 flex items-center justify-center group"
-              >
-                <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
-                Ver Demo
               </Link>
             </motion.div>
 
@@ -535,7 +528,7 @@ export default function Home() {
                 Combina la potencia de la inteligencia artificial con tus experiencias personales para obtener insights únicos sobre tu bienestar y crecimiento.
               </p>
               <Link
-                href="https://app.secondbrainapp.com/signup?plan=pro"
+                href="https://app.secondbrainapp.com/signup?plan=free"
                 className="inline-flex items-center liquid-button text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 group"
               >
                 Explorar mis Estadísticas

@@ -35,10 +35,6 @@ export default function FAQSection() {
     {
       question: "¿Hay límite en las entradas o grabaciones?",
       answer: "En el plan gratuito hay límites modestos para que pruebes la plataforma. Los planes pagos ofrecen uso ilimitado en todas las funciones. Incluso con límites, la mayoría de usuarios encuentran que el plan gratuito es más que suficiente para empezar."
-    },
-    {
-      question: "¿Puedo exportar mis datos?",
-      answer: "Por supuesto. Tus datos te pertenecen completamente. Puedes exportar todas tus entradas, transcripciones y conversaciones en cualquier momento en formato PDF, TXT o JSON. También ofrecemos herramientas de migración si decides cambiar de plataforma."
     }
   ];
 
@@ -122,7 +118,7 @@ export default function FAQSection() {
             ¿No encuentras la respuesta que buscas?
           </p>
           <a
-            href="mailto:support@secondbrain.com"
+            href="mailto:support@secondbrainapp.com"
             className="text-purple-400 hover:text-purple-300 transition-colors font-medium"
           >
             Contáctanos directamente →
