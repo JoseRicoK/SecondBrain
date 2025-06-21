@@ -9,21 +9,21 @@ export default function PricingSection() {
     {
       name: "Gratuito",
       price: "0",
-      description: "Perfecto para empezar tu viaje",
+      description: "Perfecto para empezar tu viaje personal",
       icon: Heart,
       color: "from-gray-500 to-slate-500",
       features: [
-        { text: "Hasta 5 transcripciones por mes", included: true },
-        { text: "Funcionalidades básicas", included: true },
-        { text: "Navegación por fechas", included: true },
-        { text: "Soporte comunitario", included: true },
-        { text: "Chat personal", included: false },
-        { text: "Transcripción ilimitada", included: false },
-        { text: "Estilización con IA", included: false },
-        { text: "Análisis avanzado", included: false }
+        { text: "🎙️ Transcripciones ilimitadas", included: true },
+        { text: "💬 5 mensajes de chat personal por mes", included: true },
+        { text: "👥 10 mensajes con personas por mes", included: true },
+        { text: "📅 Navegación por fechas", included: true },
+        { text: "🎨 Estilización básica de texto", included: true },
+        { text: "👥 Extracción de personas", included: true },
+        { text: "📊 Estadísticas avanzadas", included: false },
+        { text: "🎨 Estilización con IA avanzada", included: false }
       ],
       cta: "Comenzar Gratis",
-      href: "http://localhost:3001/signup?plan=free",
+      href: "/signup?plan=free",
       popular: false
     },
     {
@@ -33,37 +33,36 @@ export default function PricingSection() {
       icon: Zap,
       color: "from-purple-500 to-pink-500",
       features: [
-        { text: "Entradas ilimitadas", included: true },
-        { text: "Grabación de voz avanzada", included: true },
-        { text: "Chat personal ilimitado", included: true },
-        { text: "Navegación por fechas", included: true },
-        { text: "Chats individuales por persona", included: true },
-        { text: "Transcripción ilimitada", included: true },
-        { text: "Estilización con IA", included: true },
-        { text: "Análisis avanzado", included: false }
+        { text: "✨ Todo del plan Gratuito", included: true },
+        { text: "💬 30 mensajes de chat personal por mes", included: true },
+        { text: "👥 100 mensajes con personas por mes", included: true },
+        { text: "🎨 Estilización avanzada con IA", included: true },
+        { text: "📊 10 estadísticas avanzadas por mes", included: true },
+        { text: "🔍 Análisis inteligente mejorado", included: true },
+        { text: "💬 Chat personal ilimitado", included: false },
+        { text: "👥 Chat con personas ilimitado", included: false }
       ],
       cta: "Comenzar Pro",
-      href: "http://localhost:3001/signup?plan=pro",
+      href: "/signup?plan=pro",
       popular: true
     },
     {
       name: "Elite",
       price: "19.99",
-      description: "Para profesionales y equipos",
+      description: "Para profesionales que buscan lo mejor",
       icon: Crown,
       color: "from-orange-500 to-red-500",
       features: [
-        { text: "Todo del plan Pro", included: true },
-        { text: "Análisis avanzado con IA", included: true },
-        { text: "Reportes personalizados", included: true },
-        { text: "Integraciones API", included: true },
-        { text: "Soporte prioritario", included: true },
-        { text: "Backup automático", included: true },
-        { text: "Colaboración en equipo", included: true },
-        { text: "Personalización avanzada", included: true }
+        { text: "⭐ Todo del plan Pro", included: true },
+        { text: "💬 100 mensajes de chat personal por mes", included: true },
+        { text: "👥 500 mensajes con personas por mes", included: true },
+        { text: "📊 Estadísticas avanzadas ilimitadas", included: true },
+        { text: "🧠 Análisis profundo con IA", included: true },
+        { text: "🏆 Soporte prioritario", included: true },
+        { text: "🚀 Funciones experimentales", included: true }
       ],
       cta: "Comenzar Elite",
-      href: "http://localhost:3001/signup?plan=elite",
+      href: "/signup?plan=elite",
       popular: false
     }
   ];
@@ -85,26 +84,26 @@ export default function PricingSection() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
           {plans.map((plan, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: index * 0.1 }}
-              className={`relative liquid-card liquid-float rounded-3xl p-8 ${
-                plan.popular 
-                  ? 'ring-2 ring-purple-500 transform scale-105' 
-                  : ''
-              }`}
-            >
+            <div key={index} className="relative pt-6">
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-medium">
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-20">
+                  <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg whitespace-nowrap">
                     Más Popular
                   </div>
                 </div>
               )}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: index * 0.1 }}
+                className={`liquid-card liquid-float rounded-3xl p-8 ${
+                  plan.popular 
+                    ? 'ring-2 ring-purple-500 transform scale-105' 
+                    : ''
+                }`}
+              >
 
               <div className="text-center mb-8">
                 <div className={`w-16 h-16 bg-gradient-to-r ${plan.color} rounded-2xl flex items-center justify-center mx-auto mb-4`}>
@@ -146,6 +145,7 @@ export default function PricingSection() {
                 {plan.cta}
               </Link>
             </motion.div>
+            </div>
           ))}
         </div>
 

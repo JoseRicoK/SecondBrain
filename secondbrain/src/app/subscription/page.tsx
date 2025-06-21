@@ -205,92 +205,168 @@ function SubscriptionContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            Completa tu suscripción
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 relative">
+      {/* Subtle background elements */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-10 left-10 w-32 h-32 bg-purple-300 rounded-full blur-3xl"></div>
+        <div className="absolute top-40 right-20 w-24 h-24 bg-pink-300 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-20 left-1/4 w-40 h-40 bg-blue-300 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-40 right-1/3 w-28 h-28 bg-indigo-300 rounded-full blur-2xl"></div>
+      </div>
+      
+      <div className="max-w-6xl mx-auto relative z-10">
+        {/* Header Section */}
+        <div className="text-center mb-16">
+          <div className="inline-block p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl mb-6 shadow-lg">
+            <FaCrown className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6">
+            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Elige tu Plan Perfecto
+            </span>
           </h1>
-          <p className="text-xl text-gray-600">
-            Solo falta un paso para comenzar tu viaje con SecondBrain
+          <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            Descubre todo lo que SecondBrain puede hacer por ti. Comienza gratis o elige un plan premium para desbloquear todo el potencial.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Plans Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           {Object.entries(plans).map(([key, plan]) => {
             const PlanIcon = plan.icon;
             const isSelected = selectedPlan === key;
+            const isPopular = key === 'pro';
             
             return (
               <div
                 key={key}
                 onClick={() => setSelectedPlan(key as keyof typeof basePlans)}
-                className={`cursor-pointer transition-all duration-300 rounded-2xl p-6 border-2 ${
+                className={`relative cursor-pointer transition-all duration-300 rounded-3xl p-8 border-2 hover:-translate-y-2 hover:rotate-1 ${
                   isSelected 
-                    ? 'border-purple-500 bg-white shadow-xl scale-105' 
-                    : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-lg'
-                }`}
+                    ? 'border-purple-500 bg-white shadow-2xl -translate-y-1 rotate-1 ring-4 ring-purple-200' 
+                    : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-xl'
+                } ${isPopular ? 'md:transform md:-translate-y-2' : ''}`}
               >
+                {/* Popular Badge */}
+                {isPopular && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg animate-pulse">
+                      ⭐ Más Popular
+                    </div>
+                  </div>
+                )}
+
+                {/* Free Badge */}
+                {key === 'free' && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">
+                      💚 Gratis
+                    </div>
+                  </div>
+                )}
+
+                {/* Elite Badge */}
+                {key === 'elite' && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">
+                      👑 Elite
+                    </div>
+                  </div>
+                )}
+
                 <div className="text-center">
-                  <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${plan.color} flex items-center justify-center`}>
-                    <PlanIcon className="w-8 h-8 text-white" />
+                  {/* Icon */}
+                  <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-r ${plan.color} flex items-center justify-center shadow-lg transition-transform duration-300 hover:rotate-12`}>
+                    <PlanIcon className="w-10 h-10 text-white" />
                   </div>
                   
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  {/* Plan Name */}
+                  <h3 className="text-2xl font-bold text-gray-800 mb-2">
                     {plan.name}
                   </h3>
                   
-                  <div className="mb-4">
-                    <span className="text-3xl font-bold text-gray-800">
-                      €{plan.price}
-                    </span>
-                    <span className="text-gray-600">/mes</span>
+                  {/* Price */}
+                  <div className="mb-6">
+                    {plan.price === 0 ? (
+                      <div className="text-4xl font-bold text-gray-800">
+                        <span className="bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">
+                          Gratis
+                        </span>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="text-4xl font-bold text-gray-800">
+                          €{plan.price}
+                        </span>
+                        <span className="text-gray-600 text-lg">/mes</span>
+                      </div>
+                    )}
                   </div>
                   
-                  <p className="text-gray-600 mb-4">
+                  {/* Description */}
+                  <p className="text-gray-600 mb-8 text-lg leading-relaxed">
                     {plan.description}
                   </p>
                   
-                  <ul className="text-left space-y-2">
-                    {plan.features.map((feature, index: number) => (
-                      <li key={index} className="flex items-center gap-2">
-                        {feature.included ? (
-                          <FaCheck className="w-5 h-5 text-green-500 flex-shrink-0" />
-                        ) : (
-                          <FaTimes className="w-5 h-5 text-red-400 flex-shrink-0" />
-                        )}
-                        <span className={`text-sm ${
-                          feature.included 
-                            ? 'text-gray-700' 
-                            : 'text-gray-400 line-through'
-                        }`}>
-                          {feature.text}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  {/* Features List */}
+                  <div className="text-left">
+                    <ul className="space-y-4">
+                      {plan.features.map((feature, index: number) => (
+                        <li key={index} className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-1">
+                            {feature.included ? (
+                              <div className="w-6 h-6 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center">
+                                <FaCheck className="w-3 h-3 text-white" />
+                              </div>
+                            ) : (
+                              <div className="w-6 h-6 bg-gradient-to-r from-red-400 to-pink-500 rounded-full flex items-center justify-center">
+                                <FaTimes className="w-3 h-3 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <span className={`text-sm leading-relaxed ${
+                            feature.included 
+                              ? 'text-gray-700 font-medium' 
+                              : 'text-gray-400 line-through'
+                          }`}>
+                            {feature.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
+
+                {/* Selection Indicator */}
+                {isSelected && (
+                  <div className="absolute -top-2 -right-2">
+                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                      <FaCheck className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
 
+        {/* Action Section */}
         <div className="text-center">
           {selectedPlan === 'free' ? (
             userCurrentPlan !== 'free' && userProfile?.subscription.status === 'active' ? (
               // Usuario tiene plan pagado y quiere cancelar para ir a gratuito
-              <div className="max-w-md mx-auto">
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-6">
-                  <div className="text-amber-600 text-4xl mb-3">⚠️</div>
-                  <h3 className="text-lg font-semibold text-amber-800 mb-2">
+              <div className="max-w-lg mx-auto">
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl p-8 mb-8 shadow-lg">
+                  <div className="text-amber-600 text-5xl mb-4">⚠️</div>
+                  <h3 className="text-2xl font-bold text-amber-800 mb-3">
                     Cancelar Suscripción
                   </h3>
-                  <p className="text-amber-700 text-sm mb-4">
-                    Actualmente tienes el plan <strong>{userCurrentPlan.toUpperCase()}</strong>. 
+                  <p className="text-amber-700 mb-6 leading-relaxed">
+                    Actualmente tienes el plan <strong className="bg-amber-200 px-2 py-1 rounded">{userCurrentPlan.toUpperCase()}</strong>. 
                     Para cambiar al plan gratuito necesitas cancelar tu suscripción actual.
                   </p>
-                  <div className="bg-amber-100 rounded-lg p-3 mb-4">
-                    <p className="text-amber-800 text-xs">
+                  <div className="bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl p-4 mb-6 border border-amber-200">
+                    <p className="text-amber-800 text-sm leading-relaxed">
                       📅 <strong>Importante:</strong> Conservarás todas las funciones de tu plan actual hasta 
                       {userProfile.subscription.currentPeriodEnd ? 
                         ` el ${new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString('es-ES')}` : 
@@ -337,22 +413,22 @@ function SubscriptionContent() {
                       console.error('Error:', error);
                     }
                   }}
-                  className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 text-white font-semibold text-lg transition-all duration-300 hover:shadow-xl hover:scale-105 transform"
+                  className="w-full inline-flex items-center justify-center gap-3 px-10 py-5 rounded-2xl bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 hover:rotate-1 group shadow-lg"
                 >
-                  <IconComponent className="w-6 h-6" />
+                  <IconComponent className="w-6 h-6 transition-transform duration-300 group-hover:rotate-12" />
                   Cancelar Suscripción y Cambiar a Gratuito
                 </button>
                 
-                <div className="mt-4 flex gap-3 justify-center">
+                <div className="mt-6 flex gap-4 justify-center">
                   <button
                     onClick={() => router.push('/dashboard')}
-                    className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                    className="px-8 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-300 font-medium shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
                     Mantener Plan Actual
                   </button>
                   <button
                     onClick={() => router.push('/dashboard?settings=true')}
-                    className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                    className="px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:from-blue-600 hover:to-indigo-600 transition-all duration-300 font-medium shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
                     Gestionar en Settings
                   </button>
@@ -360,94 +436,147 @@ function SubscriptionContent() {
               </div>
             ) : (
               // Usuario ya está en plan gratuito o no tiene plan activo
-              <button
-                onClick={async () => {
-                  try {
-                    const response = await fetch('/api/subscription/update-manual', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ userId: user.uid, planType: 'free' })
-                    });
-                    
-                    if (response.ok) {
-                      alert('✅ ¡Plan gratuito activado! Redirigiendo al dashboard...');
-                      window.location.href = '/dashboard';
-                    } else {
-                      alert('❌ Error al activar el plan gratuito');
+              <div className="max-w-md mx-auto">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-3xl p-6 mb-6">
+                  <div className="text-green-600 text-4xl mb-3">💚</div>
+                  <h3 className="text-xl font-bold text-green-800 mb-2">Plan Gratuito</h3>
+                  <p className="text-green-700 text-sm">
+                    ¡Perfecto para comenzar! Puedes actualizar en cualquier momento.
+                  </p>
+                </div>
+                
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/subscription/update-manual', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user.uid, planType: 'free' })
+                      });
+                      
+                      if (response.ok) {
+                        alert('✅ ¡Plan gratuito activado! Redirigiendo al dashboard...');
+                        window.location.href = '/dashboard';
+                      } else {
+                        alert('❌ Error al activar el plan gratuito');
+                      }
+                    } catch (error) {
+                      alert('❌ Error de conexión');
+                      console.error('Error:', error);
                     }
-                  } catch (error) {
-                    alert('❌ Error de conexión');
-                    console.error('Error:', error);
-                  }
-                }}
-                className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-xl hover:scale-105 transform`}
-              >
-                <IconComponent className="w-6 h-6" />
-                Comenzar con {currentPlan.name} - ¡Gratis!
-              </button>
+                  }}
+                  className={`inline-flex items-center gap-3 px-10 py-5 rounded-2xl text-white font-bold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-2xl hover:-translate-y-1 hover:rotate-1 group shadow-lg`}
+                >
+                  <IconComponent className="w-6 h-6 transition-transform duration-300 group-hover:rotate-12" />
+                  Comenzar con {currentPlan.name} - ¡Gratis!
+                </button>
+              </div>
             )
           ) : userCurrentPlan === selectedPlan && userProfile?.subscription.status === 'active' ? (
             // Usuario ya tiene este plan activo
-            <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-200">
-              <div className="text-blue-600 text-6xl mb-4">✅</div>
-              <h3 className="text-xl font-semibold text-blue-800 mb-2">
-                Ya tienes el plan {currentPlan.name}
-              </h3>
-              <p className="text-blue-600 mb-4">
-                Tu suscripción está activa y funcionando perfectamente.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button
-                  onClick={() => router.push('/dashboard')}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
-                >
-                  Ir al Dashboard
-                </button>
-                {selectedPlan === 'pro' && (
+            <div className="max-w-lg mx-auto">
+              <div className="text-center p-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl border-2 border-blue-200 shadow-lg">
+                <div className="text-blue-600 text-6xl mb-6">✅</div>
+                <h3 className="text-2xl font-bold text-blue-800 mb-3">
+                  Ya tienes el plan {currentPlan.name}
+                </h3>
+                <p className="text-blue-600 mb-6 text-lg leading-relaxed">
+                  Tu suscripción está activa y funcionando perfectamente. ¡Disfruta de todas las funciones premium!
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <button
-                    onClick={() => setSelectedPlan('elite')}
-                    className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:from-orange-600 hover:to-red-600 transition-all font-medium"
+                    onClick={() => router.push('/dashboard')}
+                    className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
-                    Mejorar a Elite
+                    Ir al Dashboard
                   </button>
-                )}
-                <button
-                  onClick={() => router.push('/dashboard?settings=true')}
-                  className="px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors font-medium"
-                >
-                  Cancelar Suscripción
-                </button>
+                  {selectedPlan === 'pro' && (
+                    <button
+                      onClick={() => setSelectedPlan('elite')}
+                      className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl hover:from-orange-600 hover:to-red-600 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1"
+                    >
+                      Mejorar a Elite 👑
+                    </button>
+                  )}
+                  <button
+                    onClick={() => router.push('/dashboard?settings=true')}
+                    className="px-8 py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-2xl hover:from-gray-700 hover:to-gray-800 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1"
+                  >
+                    Cancelar Suscripción
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
-            <button
-              onClick={() => {
-                // Verificar downgrades no permitidos
-                if (userCurrentPlan === 'elite' && selectedPlan === 'pro') {
-                  alert('No puedes cambiar de Elite a Pro directamente. Primero cancela tu suscripción actual desde Settings.');
-                  return;
-                }
-                setShowCheckout(true);
-              }}
-              className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-xl hover:scale-105 transform`}
-            >
-              <IconComponent className="w-6 h-6" />
-              {userCurrentPlan === 'free' ? (
-                <>Comenzar con {currentPlan.name} - €{currentPlan.price}/mes</>
-              ) : (
-                <>Cambiar a {currentPlan.name} - €{currentPlan.price}/mes</>
-              )}
-            </button>
+            <div className="max-w-md mx-auto">
+              <div className="mb-6">
+                <div className={`inline-block p-4 bg-gradient-to-r ${currentPlan.color} rounded-2xl mb-4 shadow-lg`}>
+                  <IconComponent className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                  {userCurrentPlan === 'free' ? (
+                    <>¡Actualiza a {currentPlan.name}!</>
+                  ) : (
+                    <>Cambiar a {currentPlan.name}</>
+                  )}
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {userCurrentPlan === 'free' 
+                    ? 'Desbloquea todo el potencial de SecondBrain'
+                    : 'Cambia tu plan actual por uno que se ajuste mejor a tus necesidades'
+                  }
+                </p>
+              </div>
+              
+              <button
+                onClick={() => {
+                  // Verificar downgrades no permitidos
+                  if (userCurrentPlan === 'elite' && selectedPlan === 'pro') {
+                    alert('No puedes cambiar de Elite a Pro directamente. Primero cancela tu suscripción actual desde Settings.');
+                    return;
+                  }
+                  setShowCheckout(true);
+                }}
+                className={`inline-flex items-center gap-3 px-10 py-5 rounded-2xl text-white font-bold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-2xl hover:-translate-y-1 hover:rotate-1 group shadow-lg`}
+              >
+                <IconComponent className="w-6 h-6 transition-transform duration-300 group-hover:rotate-12" />
+                {userCurrentPlan === 'free' ? (
+                  <>Comenzar con {currentPlan.name} - €{currentPlan.price}/mes</>
+                ) : (
+                  <>Cambiar a {currentPlan.name} - €{currentPlan.price}/mes</>
+                )}
+              </button>
+            </div>
           )}
           
-          <p className="text-sm text-gray-500 mt-4">
-            {selectedPlan === 'free' 
-              ? (userCurrentPlan !== 'free' && userProfile?.subscription.status === 'active' 
-                ? '⚠️ Cancelar tu suscripción significa que cambiarás al plan gratuito al final de tu período de facturación actual.'
-                : '¡Comienza gratis! Actualiza en cualquier momento para más funciones.')
-              : 'Cancela en cualquier momento. Sin compromisos a largo plazo.'
-            }
-          </p>
+          <div className="mt-8 max-w-2xl mx-auto">
+            <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-200">
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {selectedPlan === 'free' 
+                  ? (userCurrentPlan !== 'free' && userProfile?.subscription.status === 'active' 
+                    ? '⚠️ Cancelar tu suscripción significa que cambiarás al plan gratuito al final de tu período de facturación actual.'
+                    : '✨ ¡Comienza gratis! Puedes actualizar en cualquier momento para desbloquear más funciones premium.')
+                  : '🔒 Política de cancelación flexible. Sin compromisos a largo plazo. Cancela en cualquier momento desde tu panel de configuración.'
+                }
+              </p>
+              {selectedPlan !== 'free' && (
+                <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    Pago seguro con Stripe
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    Activación instantánea
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    Soporte 24/7
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

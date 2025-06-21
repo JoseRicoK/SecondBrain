@@ -14,7 +14,7 @@ export interface PlanLimits {
   statisticsAccess: number; // Número de veces que puede acceder a estadísticas por mes
 }
 
-// Límites por plan - ¡Muy generoso! 😄
+// Límites por plan - Actualizados según especificaciones
 export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
   free: {
     maxTranscriptions: -1, // ¡Ilimitado! (Muy generoso)
@@ -23,7 +23,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     hasPersonalChat: true,
     hasStatistics: false,
     personalChatMessages: 5, // 5 mensajes de chat personal por mes
-    personChatMessages: 20, // 20 mensajes de chat con personas por mes
+    personChatMessages: 10, // 10 mensajes de chat con personas por mes
     statisticsAccess: 0, // No puede acceder a estadísticas
   },
   pro: {
@@ -32,8 +32,8 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     hasAdvancedFeatures: true,
     hasPersonalChat: true,
     hasStatistics: true,
-    personalChatMessages: 50, // 50 mensajes de chat personal por mes
-    personChatMessages: 200, // 200 mensajes de chat con personas por mes
+    personalChatMessages: 30, // 30 mensajes de chat personal por mes
+    personChatMessages: 100, // 100 mensajes de chat con personas por mes
     statisticsAccess: 10, // 10 accesos a estadísticas por mes
   },
   elite: {
@@ -42,7 +42,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     hasAdvancedFeatures: true,
     hasPersonalChat: true,
     hasStatistics: true,
-    personalChatMessages: 200, // 200 mensajes de chat personal por mes
+    personalChatMessages: 100, // 100 mensajes de chat personal por mes
     personChatMessages: 500, // 500 mensajes de chat con personas por mes
     statisticsAccess: -1, // Acceso ilimitado a estadísticas
   },
