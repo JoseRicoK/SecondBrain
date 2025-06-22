@@ -405,16 +405,45 @@ export async function POST(request: Request) {
       try {
         const moodAnalysisPrompt = `
           Analiza el siguiente texto de entrada de diario y evalúa cada estado emocional del 0 al 100.
-          Cada categoría debe ser evaluada independientemente (no necesitan sumar 100).
+          Cada categoría debe ser evaluada independientemente según su intensidad real en el texto.
           
-          Categorías a evaluar:
-          - Estrés: Ansiedad, presión, preocupaciones, tensión, agobio (0-100)
-          - Tranquilidad: Calma, serenidad, paz, relajación, equilibrio (0-100)
-          - Felicidad: Alegría, satisfacción, logros, momentos positivos, entusiasmo (0-100)
-          - Tristeza: Melancolía, pena, nostalgia, desánimo, dolor emocional (0-100)
+          GUÍAS DE EVALUACIÓN:
           
-          Evalúa cada emoción de forma independiente según su intensidad en el texto.
-          Un texto puede tener múltiples emociones con diferentes intensidades.
+          ESTRÉS (0-100): Ansiedad, presión, preocupaciones, tensión, agobio, conflictos, discusiones, problemas
+          - 0-20: Muy poco o ningún estrés
+          - 21-40: Estrés leve, pequeñas preocupaciones
+          - 41-60: Estrés moderado, situaciones complicadas
+          - 61-80: Estrés alto, conflictos importantes, discusiones serias
+          - 81-100: Estrés extremo, crisis, situaciones muy tensas
+          
+          TRANQUILIDAD (0-100): Calma, serenidad, paz, relajación, equilibrio
+          - 0-20: Muy agitado, sin paz mental
+          - 21-40: Poca tranquilidad, inquietud
+          - 41-60: Tranquilidad moderada
+          - 61-80: Bastante tranquilo, en calma
+          - 81-100: Muy tranquilo, en completa paz
+          
+          FELICIDAD (0-100): Alegría, satisfacción, logros, momentos positivos, entusiasmo
+          - 0-20: Muy poca o ninguna felicidad
+          - 21-40: Felicidad leve, algunos momentos agradables
+          - 41-60: Felicidad moderada
+          - 61-80: Bastante feliz, buenos momentos
+          - 81-100: Muy feliz, euforia, gran alegría
+          
+          TRISTEZA (0-100): Melancolía, pena, nostalgia, desánimo, dolor emocional, decepción
+          - 0-20: Muy poca o ninguna tristeza
+          - 21-40: Tristeza leve, ligero desánimo
+          - 41-60: Tristeza moderada, momentos melancólicos
+          - 61-80: Tristeza considerable, dolor emocional
+          - 81-100: Tristeza profunda, gran dolor emocional
+          
+          EJEMPLOS DE SITUACIONES:
+          - Discusión/pelea con pareja/amigo: Estrés 70-85, Tranquilidad 10-25, Felicidad 10-30, Tristeza 60-80
+          - Día productivo en el trabajo: Estrés 20-40, Tranquilidad 60-80, Felicidad 70-85, Tristeza 5-20
+          - Muerte de familiar: Estrés 60-80, Tranquilidad 10-30, Felicidad 5-20, Tristeza 80-95
+          - Reunión con amigos: Estrés 5-25, Tranquilidad 60-80, Felicidad 70-90, Tristeza 5-20
+          
+          Evalúa cada emoción considerando el contexto, las palabras utilizadas y la intensidad emocional del texto.
           
           Texto a analizar:
           ${text.slice(0, 2000)}
@@ -422,19 +451,22 @@ export async function POST(request: Request) {
           Responde SOLO con un objeto JSON en este formato exacto:
           {"stress": 25, "tranquility": 70, "happiness": 80, "sadness": 10}
           
-          Cada valor debe estar entre 0 y 100.
+          Cada valor debe estar entre 0 y 100 y reflejar la intensidad real de cada emoción.
         `;
 
         const moodCompletion = await openai.chat.completions.create({
           model: "o4-mini-2025-04-16",
           messages: [
-            { role: "system", content: "Eres un experto en análisis de estados de ánimo en textos." },
+            { 
+              role: "system", 
+              content: "Eres un psicólogo experto en análisis de estados emocionales en textos. Tu objetivo es detectar con precisión y sensibilidad las emociones humanas, especialmente en situaciones de conflicto, estrés, tristeza o alegría. Sé perceptivo a las sutilezas emocionales y evalúa cada emoción de forma independiente según su intensidad real en el contexto." 
+            },
             { role: "user", content: moodAnalysisPrompt }
           ],
           response_format: { type: "json_object" }
         });
 
-        const moodResult = JSON.parse(moodCompletion.choices[0].message.content || '{"stress": 20, "tranquility": 50, "happiness": 60, "sadness": 10}');
+        const moodResult = JSON.parse(moodCompletion.choices[0].message.content || '{"stress": 30, "tranquility": 40, "happiness": 40, "sadness": 20}');
         
         // Validar que los valores estén entre 0 y 100
         const validateMoodValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));

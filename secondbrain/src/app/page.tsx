@@ -805,7 +805,11 @@ export default function Home() {
                       ) : (
                         <div className="prose prose-slate prose-lg max-w-none">
                           {content ? (
-                            <div className="whitespace-pre-wrap text-slate-700 leading-relaxed text-lg bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60">
+                            <div 
+                              className="whitespace-pre-wrap text-slate-700 leading-relaxed text-lg bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60 cursor-pointer hover:bg-slate-100/50 transition-colors duration-200"
+                              onClick={handleToggleEditMode}
+                              title="Haz clic para editar"
+                            >
                               {content}
                             </div>
                           ) : (
