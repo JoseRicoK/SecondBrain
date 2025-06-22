@@ -398,19 +398,21 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
     
     if (!details) return null;
     
-    // Ordenar las categorías según el orden preferido
-    const sortedEntries = Object.entries(details).sort((a, b) => {
-      const indexA = categoryOrder.indexOf(a[0]);
-      const indexB = categoryOrder.indexOf(b[0]);
-      
-      // Si ambas categorías están en la lista, usar ese orden
-      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-      // Si solo una está en la lista, ponerla primero
-      if (indexA !== -1) return -1;
-      if (indexB !== -1) return 1;
-      // Si ninguna está en la lista, orden alfabético
-      return a[0].localeCompare(b[0]);
-    });
+    // Ordenar las categorías según el orden preferido Y filtrar las keys temporales
+    const sortedEntries = Object.entries(details)
+      .filter(([key]) => !key.endsWith('_textarea')) // Filtrar las keys temporales del textarea
+      .sort((a, b) => {
+        const indexA = categoryOrder.indexOf(a[0]);
+        const indexB = categoryOrder.indexOf(b[0]);
+        
+        // Si ambas categorías están en la lista, usar ese orden
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        // Si solo una está en la lista, ponerla primero
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        // Si ninguna está en la lista, orden alfabético
+        return a[0].localeCompare(b[0]);
+      });
     
     return (
       <div className="mt-2 space-y-2 sm:mt-3 sm:space-y-3">
