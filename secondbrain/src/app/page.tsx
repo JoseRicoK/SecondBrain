@@ -45,6 +45,7 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isStylizing, setIsStylizing] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [showPeoplePanel, setShowPeoplePanel] = useState(false); // Cambiado a false por defecto para mejor responsive
   const [peopleRefreshTrigger, setPeopleRefreshTrigger] = useState(0);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
@@ -183,7 +184,7 @@ export default function Home() {
     console.log('📝 DIARY: Extrayendo personas...');
     console.log('📝 DIARY: Fecha seleccionada para extracción:', currentDate);
     console.log('📝 DIARY: currentEntry?.date:', currentEntry?.date);
-    setIsStylizing(true); // Usamos el mismo estado de loading
+    setIsExtracting(true); // Usar el estado específico para extracción
     setError(null);
     
     try {
@@ -259,7 +260,7 @@ export default function Home() {
       console.error('📝 DIARY: Error al extraer personas:', error);
       setError('Error al extraer personas del texto');
     } finally {
-      setIsStylizing(false);
+      setIsExtracting(false);
     }
   };
 
@@ -658,48 +659,6 @@ export default function Home() {
                             <span className="font-medium hidden sm:inline">Estilizar</span>
                           </button>
 
-                          <button
-                            onClick={handleExtractPeople}
-                            disabled={isStylizing || !content}
-                            className={`flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 rounded-xl transition-all duration-200 ${isStylizing ? 'bg-purple-400' : 'bg-purple-500'} text-white hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
-                            title="Analizar con IA"
-                          >
-                            <FiZap size={18} />
-                            <span className="font-medium hidden sm:inline">IA</span>
-                          </button>
-
-                          <button
-                            onClick={handleSave}
-                            className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all duration-200 shadow-lg"
-                            title="Guardar"
-                          >
-                            <FiSave size={18} />
-                            <span className="font-medium hidden sm:inline">Guardar</span>
-                          </button>
-
-                          <button
-                            onClick={handleToggleEditMode}
-                            className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200"
-                            title="Cancelar"
-                          >
-                            <FiX size={18} />
-                            <span className="font-medium hidden sm:inline">Cancelar</span>
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={handleToggleEditMode}
-                          className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-slate-100 transition-all duration-200 border border-slate-200"
-                          disabled={isRecording || isProcessing}
-                          title="Editar"
-                        >
-                          <FiEdit2 size={18} />
-                          <span className="font-medium hidden sm:inline">Editar</span>
-                        </button>
-                      )}
-                      
-                      {!storeIsEditing && (
-                        <>
                           {!isRecording ? (
                             <button
                               onClick={startRecording}
@@ -720,6 +679,67 @@ export default function Home() {
                               <span className="font-medium hidden sm:inline">Detener</span>
                             </button>
                           )}
+
+                          <button
+                            onClick={handleSave}
+                            className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all duration-200 shadow-lg"
+                            title="Guardar"
+                          >
+                            <FiSave size={18} />
+                            <span className="font-medium hidden sm:inline">Guardar</span>
+                          </button>
+
+                          <button
+                            onClick={handleToggleEditMode}
+                            className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200"
+                            title="Cancelar"
+                          >
+                            <FiX size={18} />
+                            <span className="font-medium hidden sm:inline">Cancelar</span>
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={handleToggleEditMode}
+                            className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-slate-100 transition-all duration-200 border border-slate-200"
+                            disabled={isRecording || isProcessing}
+                            title="Editar"
+                          >
+                            <FiEdit2 size={18} />
+                            <span className="font-medium hidden sm:inline">Editar</span>
+                          </button>
+
+                          {!isRecording ? (
+                            <button
+                              onClick={startRecording}
+                              disabled={isProcessing}
+                              className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                              title="Iniciar grabación"
+                            >
+                              <FiMic size={18} />
+                              <span className="font-medium hidden sm:inline">Grabar</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={stopRecording}
+                              className="flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 bg-slate-700 text-white rounded-xl hover:bg-slate-800 transition-all duration-200 shadow-lg animate-pulse"
+                              title="Detener grabación"
+                            >
+                              <FiStopCircle size={18} />
+                              <span className="font-medium hidden sm:inline">Detener</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={handleExtractPeople}
+                            disabled={isExtracting || !content}
+                            className={`flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 rounded-xl transition-all duration-200 ${isExtracting ? 'bg-purple-400' : 'bg-purple-500'} text-white hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
+                            title="Analizar con IA"
+                          >
+                            <FiZap size={18} />
+                            <span className="font-medium hidden sm:inline">IA</span>
+                          </button>
                         </>
                       )}
                     </div>
@@ -754,6 +774,17 @@ export default function Home() {
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                         <span className="font-medium">Estilizando texto con IA...</span>
+                      </div>
+                    )}
+                    
+                    {/* Indicador de extracción de personas */}
+                    {isExtracting && (
+                      <div className="mx-4 mb-4 p-4 bg-purple-50 border border-purple-200 text-purple-700 rounded-xl text-sm flex items-center space-x-3">
+                        <svg className="animate-spin h-5 w-5 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="font-medium">Extrayendo información...</span>
                       </div>
                     )}
                     

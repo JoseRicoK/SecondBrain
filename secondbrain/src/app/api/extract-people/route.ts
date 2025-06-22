@@ -76,8 +76,8 @@ export async function POST(request: Request) {
     console.log('🔍 [API Extract People] Fecha recibida desde frontend:', entryDate);
     console.log('🔍 [API Extract People] Fecha validada para usar:', validEntryDate);
 
-    // Convertir userId a UUID válido para la consulta
-    const validUUID = isValidUUID(userId) ? userId : generateUUID(userId);
+    // Convertir userId a UUID válido para la consulta (usar directamente el userId de Firebase)
+    const validUUID = userId; // Usar directamente el userId de Firebase Auth
     
     // Obtener personas existentes de la base de datos para proporcionar contexto
     const existingPeople = await getPeopleByUserId(validUUID);
@@ -362,11 +362,11 @@ export async function POST(request: Request) {
       
       // Guardar información de personas en la base de datos
       if (peopleExtracted.length > 0 && userId) {
-        // Convertir userId a string
+        // Convertir userId a string (usar directamente el userId de Firebase)
         const userIdString = userId.toString();
         
-        // Convertir el userIdString a un UUID válido si no lo es ya
-        const validUUID = isValidUUID(userIdString) ? userIdString : generateUUID(userIdString);
+        // Usar directamente el userIdString sin convertir a UUID
+        const validUUID = userIdString;
         
         try {
           await Promise.all(peopleExtracted.map(async (personData) => {
@@ -404,21 +404,25 @@ export async function POST(request: Request) {
     if (entryId && text.trim().length > 0) {
       try {
         const moodAnalysisPrompt = `
-          Analiza el siguiente texto de entrada de diario y asigna porcentajes de estado de ánimo.
-          Los porcentajes deben sumar exactamente 100.
+          Analiza el siguiente texto de entrada de diario y evalúa cada estado emocional del 0 al 100.
+          Cada categoría debe ser evaluada independientemente (no necesitan sumar 100).
           
-          Categorías:
-          - Estrés: Ansiedad, presión, preocupaciones, tensión
-          - Felicidad: Alegría, satisfacción, logros, momentos positivos
-          - Neutral: Estados equilibrados, actividades rutinarias, pensamientos neutros
+          Categorías a evaluar:
+          - Estrés: Ansiedad, presión, preocupaciones, tensión, agobio (0-100)
+          - Tranquilidad: Calma, serenidad, paz, relajación, equilibrio (0-100)
+          - Felicidad: Alegría, satisfacción, logros, momentos positivos, entusiasmo (0-100)
+          - Tristeza: Melancolía, pena, nostalgia, desánimo, dolor emocional (0-100)
+          
+          Evalúa cada emoción de forma independiente según su intensidad en el texto.
+          Un texto puede tener múltiples emociones con diferentes intensidades.
           
           Texto a analizar:
           ${text.slice(0, 2000)}
           
           Responde SOLO con un objeto JSON en este formato exacto:
-          {"stress": 25, "happiness": 60, "neutral": 15}
+          {"stress": 25, "tranquility": 70, "happiness": 80, "sadness": 10}
           
-          Asegúrate de que los números sumen exactamente 100.
+          Cada valor debe estar entre 0 y 100.
         `;
 
         const moodCompletion = await openai.chat.completions.create({
@@ -430,26 +434,24 @@ export async function POST(request: Request) {
           response_format: { type: "json_object" }
         });
 
-        const moodResult = JSON.parse(moodCompletion.choices[0].message.content || '{"stress": 20, "happiness": 50, "neutral": 30}');
+        const moodResult = JSON.parse(moodCompletion.choices[0].message.content || '{"stress": 20, "tranquility": 50, "happiness": 60, "sadness": 10}');
         
-        // Normalizar para que sume 100
-        const total = moodResult.stress + moodResult.happiness + moodResult.neutral;
-        if (total !== 100) {
-          moodResult.stress = Math.round((moodResult.stress / total) * 100);
-          moodResult.happiness = Math.round((moodResult.happiness / total) * 100);
-          moodResult.neutral = 100 - moodResult.stress - moodResult.happiness;
-        }
+        // Validar que los valores estén entre 0 y 100
+        const validateMoodValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+        
+        const validatedMood = {
+          stress: validateMoodValue(moodResult.stress || 0),
+          tranquility: validateMoodValue(moodResult.tranquility || 0),
+          happiness: validateMoodValue(moodResult.happiness || 0),
+          sadness: validateMoodValue(moodResult.sadness || 0)
+        };
 
         // Guardar el análisis de estado de ánimo en la entrada
-        const moodUpdated = await updateEntryMoodData(entryId, {
-          happiness: moodResult.happiness,
-          stress: moodResult.stress,
-          neutral: moodResult.neutral
-        });
+        const moodUpdated = await updateEntryMoodData(entryId, validatedMood);
 
         if (moodUpdated) {
-          moodAnalysis = moodResult;
-          console.log('✅ [API Extract People] Estado de ánimo analizado y guardado:', moodResult);
+          moodAnalysis = validatedMood;
+          console.log('✅ [API Extract People] Estado de ánimo analizado y guardado:', validatedMood);
         }
       } catch (moodError) {
         console.error('❌ [API Extract People] Error al analizar estado de ánimo:', moodError);

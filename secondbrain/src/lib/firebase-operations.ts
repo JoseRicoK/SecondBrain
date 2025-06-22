@@ -1402,7 +1402,8 @@ export async function incrementPersonMentionCount(userId: string, personName: st
 export async function updateEntryMoodData(entryId: string, moodData: {
   happiness: number;
   stress: number;
-  neutral: number;
+  tranquility: number;
+  sadness: number;
 }): Promise<boolean> {
   try {
     const entriesRef = collection(db, 'diary_entries');
@@ -1411,7 +1412,8 @@ export async function updateEntryMoodData(entryId: string, moodData: {
     await updateDoc(entryDoc, {
       happiness: moodData.happiness,
       stress: moodData.stress,
-      neutral: moodData.neutral,
+      tranquility: moodData.tranquility,
+      sadness: moodData.sadness,
       mood_analyzed_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     });
@@ -1429,7 +1431,8 @@ export async function getEntriesMoodDataByDateRange(userId: string, startDate: s
   date: string;
   happiness: number;
   stress: number;
-  neutral: number;
+  tranquility: number;
+  sadness: number;
 }[]> {
   try {
     const entriesRef = collection(db, 'diary_entries');
@@ -1449,7 +1452,8 @@ export async function getEntriesMoodDataByDateRange(userId: string, startDate: s
         date: data.date,
         happiness: data.happiness || 0,
         stress: data.stress || 0,
-        neutral: data.neutral || 0
+        tranquility: data.tranquility || 0,
+        sadness: data.sadness || 0
       };
     });
     

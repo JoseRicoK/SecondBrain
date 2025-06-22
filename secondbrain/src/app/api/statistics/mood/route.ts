@@ -48,7 +48,8 @@ export async function GET(request: Request) {
       date: string;
       stress: number;
       happiness: number;
-      neutral: number;
+      tranquility: number;
+      sadness: number;
     }> = [];
 
     if (entriesMoodData && entriesMoodData.length > 0) {
@@ -60,35 +61,28 @@ export async function GET(request: Request) {
       const averageHappiness = Math.round(
         entriesMoodData.reduce((sum, entry) => sum + entry.happiness, 0) / totalEntries
       );
-      const averageNeutral = Math.round(
-        entriesMoodData.reduce((sum, entry) => sum + entry.neutral, 0) / totalEntries
+      const averageTranquility = Math.round(
+        entriesMoodData.reduce((sum, entry) => sum + entry.tranquility, 0) / totalEntries
       );
-
-      // Normalizar para que sume exactamente 100
-      const total = averageStress + averageHappiness + averageNeutral;
-      let finalStress = averageStress;
-      let finalHappiness = averageHappiness;
-      let finalNeutral = averageNeutral;
-
-      if (total !== 100) {
-        finalStress = Math.round((averageStress / total) * 100);
-        finalHappiness = Math.round((averageHappiness / total) * 100);
-        finalNeutral = 100 - finalStress - finalHappiness;
-      }
+      const averageSadness = Math.round(
+        entriesMoodData.reduce((sum, entry) => sum + entry.sadness, 0) / totalEntries
+      );
 
       moodData = [{
         date: format(now, 'yyyy-MM-dd'),
-        stress: finalStress,
-        happiness: finalHappiness,
-        neutral: finalNeutral
+        stress: averageStress,
+        happiness: averageHappiness,
+        tranquility: averageTranquility,
+        sadness: averageSadness
       }];
     } else {
-      // Si no hay datos analizados, devolver valores neutrales
+      // Si no hay datos analizados, devolver valores neutros
       moodData = [{
         date: format(now, 'yyyy-MM-dd'),
         stress: 0,
         happiness: 0,
-        neutral: 100
+        tranquility: 50,
+        sadness: 0
       }];
     }
     
