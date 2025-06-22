@@ -18,6 +18,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editedDetails, setEditedDetails] = useState<Record<string, unknown>>({});
+  const [originalDates, setOriginalDates] = useState<Record<string, Record<string, string>>>({});
   const [editedName, setEditedName] = useState<string>("");
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -67,7 +68,34 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
     if (selectedPerson) {
       // Usar getPersonDetailsWithDates para asegurar formato correcto
       const detailsWithDates = getPersonDetailsWithDates(selectedPerson);
-      setEditedDetails(detailsWithDates);
+      
+      // Capturar las fechas originales para preservarlas durante la edición
+      const originalDatesMap: Record<string, Record<string, string>> = {};
+      
+      // Inicializar las keys temporales de textarea para campos multi-valor
+      const editDetails: Record<string, unknown> = {};
+      const singleValueCategories = ['rol', 'relacion'];
+      
+      for (const [key, value] of Object.entries(detailsWithDates)) {
+        editDetails[key] = value;
+        
+        // Capturar fechas originales
+        if (isNewFormat(value)) {
+          originalDatesMap[key] = {};
+          value.entries.forEach(entry => {
+            originalDatesMap[key][entry.value.trim().toLowerCase()] = entry.date;
+          });
+        }
+        
+        // Para campos multi-valor, inicializar la key temporal del textarea
+        if (!singleValueCategories.includes(key.toLowerCase()) && isNewFormat(value)) {
+          const textContent = sortEntriesByDate(value.entries).map(entry => entry.value).join('\n');
+          editDetails[key + '_textarea'] = textContent;
+        }
+      }
+      
+      setOriginalDates(originalDatesMap);
+      setEditedDetails(editDetails);
       setEditedName(selectedPerson.name);
       setEditMode(true);
     }
@@ -79,10 +107,41 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
     try {
       setIsLoading(true);
       
-      // Limpiar espacios en blanco de los valores antes de guardar
+      // Obtener los datos originales de la persona para preservar fechas
+      const originalPerson = people.find(p => p.id === selectedPersonId);
+      
+      // Limpiar y procesar los detalles antes de guardar
       const cleanedDetails: Record<string, PersonDetailCategory> = {};
+      
       for (const [key, value] of Object.entries(editedDetails)) {
-        if (value && typeof value === 'object' && 'entries' in value) {
+        // Saltar las keys temporales del textarea
+        if (key.endsWith('_textarea')) continue;
+        
+        const currentDate = new Date().toISOString().split('T')[0];
+        
+        // Verificar si hay una versión de textarea para esta key
+        const textareaValue = editedDetails[key + '_textarea'] as string;
+        
+        if (textareaValue !== undefined) {
+          // Si hay valor de textarea, procesarlo línea por línea preservando fechas
+          const lines = textareaValue.split('\n').filter(line => line.trim());
+          
+          cleanedDetails[key] = {
+            entries: lines.map((line) => {
+              const trimmedLine = line.trim();
+              const normalizedLine = trimmedLine.toLowerCase();
+              
+              // Buscar la fecha original usando el mapeo capturado al inicio de la edición
+              const originalDate = originalDates[key]?.[normalizedLine];
+              
+              return {
+                value: trimmedLine,
+                date: originalDate || currentDate // Solo usar fecha actual si es contenido completamente nuevo
+              };
+            }).filter(entry => entry.value) // Eliminar entradas vacías
+          };
+        } else if (value && typeof value === 'object' && 'entries' in value) {
+          // Valor normal con formato de categoría
           const categoryValue = value as PersonDetailCategory;
           cleanedDetails[key] = {
             entries: categoryValue.entries
@@ -94,12 +153,15 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
           };
         } else {
           // Convertir valor simple al formato de categoría con entradas
-          cleanedDetails[key] = {
-            entries: [{
-              value: String(value).trim(),
-              date: new Date().toISOString().split('T')[0]
-            }]
-          };
+          const stringValue = String(value).trim();
+          if (stringValue) {
+            cleanedDetails[key] = {
+              entries: [{
+                value: stringValue,
+                date: currentDate
+              }]
+            };
+          }
         }
       }
       
@@ -118,6 +180,14 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
               : person
           )
         );
+        
+        // Limpiar los valores temporales del textarea
+        const cleanedEditedDetails: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(cleanedDetails)) {
+          cleanedEditedDetails[key] = value;
+        }
+        setEditedDetails(cleanedEditedDetails);
+        setOriginalDates({}); // Limpiar el mapeo de fechas originales
         setEditMode(false);
       }
     } catch (err) {
@@ -130,42 +200,67 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
 
   const handleCancelEdit = () => {
     setEditMode(false);
+    setEditedDetails({}); // Limpiar todas las keys temporales
+    setOriginalDates({}); // Limpiar el mapeo de fechas originales
+  };
+
+  // Función especializada para manejar cambios en textarea sin problemas de cursor
+  const handleTextareaChange = (key: string, newTextValue: string) => {
+    // Solo actualizar la key temporal del textarea, no procesar hasta guardar
+    setEditedDetails(prev => ({
+      ...prev,
+      [key + '_textarea']: newTextValue
+    }));
   };
 
   const handleDetailChange = (key: string, value: unknown) => {
     setEditedDetails(prev => {
-      const currentDate = new Date().toISOString().split('T')[0];
+      const existingValue = prev[key];
       
       // Convertir el valor al formato con fechas
       let newValue: PersonDetailCategory;
       
-      if (Array.isArray(value)) {
-        // Si es un array (viene del textarea en modo edición), crear entradas con fecha
-        newValue = {
-          entries: value
-            .filter(item => item && String(item).trim()) // Filtrar elementos vacíos
-            .map(item => ({
-              value: String(item).trim(),
-              date: currentDate
-            }))
-        };
-      } else if (typeof value === 'string') {
-        // Si es un string, crear el formato con fechas (permitir strings vacíos para edición en tiempo real)
+      if (typeof value === 'string') {
+        // Para inputs de texto simples, usar la fecha original capturada
+        const normalizedValue = value.trim().toLowerCase();
+        const originalDate = originalDates[key]?.[normalizedValue];
+        
+        // Si existe una fecha original para este valor, usarla. Si no, preservar la fecha de la entrada existente
+        let dateToUse = originalDate;
+        if (!dateToUse && isNewFormat(existingValue) && existingValue.entries.length > 0) {
+          dateToUse = existingValue.entries[0].date;
+        }
+        if (!dateToUse) {
+          dateToUse = new Date().toISOString().split('T')[0];
+        }
+        
         newValue = {
           entries: [{
-            value: value, // No hacer trim aquí para permitir espacios mientras se escribe
-            date: currentDate
+            value: value,
+            date: dateToUse
           }]
         };
       } else if (value && typeof value === 'object' && 'entries' in value) {
         // Si ya tiene el formato correcto, mantenerlo
         newValue = value as PersonDetailCategory;
       } else {
-        // Para otros casos, convertir a string
+        // Para otros casos, usar fecha original si existe
+        const stringValue = String(value || '');
+        const normalizedValue = stringValue.trim().toLowerCase();
+        const originalDate = originalDates[key]?.[normalizedValue];
+        
+        let dateToUse = originalDate;
+        if (!dateToUse && isNewFormat(existingValue) && existingValue.entries.length > 0) {
+          dateToUse = existingValue.entries[0].date;
+        }
+        if (!dateToUse) {
+          dateToUse = new Date().toISOString().split('T')[0];
+        }
+        
         newValue = {
           entries: [{
-            value: String(value || ''),
-            date: currentDate
+            value: stringValue,
+            date: dateToUse
           }]
         };
       }
@@ -370,11 +465,12 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                     } else {
                       // Para campos de múltiples valores, usar textarea
                       if (Array.isArray(value)) {
+                        const textareaValue = editedDetails[key + '_textarea'] as string || value.join('\n');
                         return (
                           <textarea
                             id={`detail-${key}`}
-                            value={value.join('\n')}
-                            onChange={e => handleDetailChange(key, e.target.value.split('\n'))}
+                            value={textareaValue}
+                            onChange={e => handleTextareaChange(key, e.target.value)}
                             className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                             rows={Math.min(4, value.length + 1)}
                             placeholder={`Información sobre ${key} (un detalle por línea)`}
@@ -382,11 +478,12 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                           />
                         );
                       } else if (isNewFormat(value)) {
+                        const textareaValue = editedDetails[key + '_textarea'] as string || sortEntriesByDate(value.entries).map(entry => entry.value).join('\n');
                         return (
                           <textarea
                             id={`detail-${key}`}
-                            value={sortEntriesByDate(value.entries).map(entry => entry.value).join('\n')}
-                            onChange={e => handleDetailChange(key, e.target.value.split('\n'))}
+                            value={textareaValue}
+                            onChange={e => handleTextareaChange(key, e.target.value)}
                             className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                             rows={Math.min(4, value.entries.length + 1)}
                             placeholder={`Información sobre ${key} (un detalle por línea)`}
