@@ -4,39 +4,46 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { ChevronDown, HelpCircle } from 'lucide-react';
 
+export const faqs = [
+  {
+    question: "¿Cómo funciona la IA conversacional de SecondBrain?",
+    answer:
+      "Nuestra IA analiza tus entradas de diario para entender tus patrones, emociones y experiencias. Luego puedes conversar con ella sobre tus pensamientos, obtener insights personalizados y descubrir conexiones que quizás no habías notado. Es como tener un terapeuta personal que conoce tu historia completa.",
+  },
+  {
+    question: "¿Mis datos están seguros y privados?",
+    answer:
+      "Absolutamente. Utilizamos encriptación de nivel empresarial, autenticación segura con Google, y almacenamos tus datos en Supabase con las mejores prácticas de seguridad. Tus pensamientos y reflexiones son completamente privados y nunca compartiremos tu información con terceros.",
+  },
+  {
+    question: "¿Qué hace especial la función de chat por persona?",
+    answer:
+      "Esta función te permite crear conversaciones específicas con la IA sobre cada persona importante en tu vida. La IA mantiene el contexto de tus relaciones, analiza patrones de interacción y te ayuda a entender mejor tus dinámicas relacionales. Es perfecta para mejorar la comunicación y resolver conflictos.",
+  },
+  {
+    question: "¿Qué tan precisa es la transcripción de voz?",
+    answer:
+      "Utilizamos la tecnología de transcripción más avanzada de OpenAI, que ofrece una precisión del 95%+ en español. Además, el sistema mejora continuamente y puede manejar diferentes acentos y velocidades de habla. También permite editar las transcripciones si es necesario.",
+  },
+  {
+    question: "¿Puedo usar SecondBrain en móvil y desktop?",
+    answer:
+      "Sí, SecondBrain está completamente optimizado para todos los dispositivos. Funciona perfectamente en iPhone, iPad, Android y desktop. Todos tus datos se sincronizan automáticamente entre dispositivos para que puedas escribir desde cualquier lugar.",
+  },
+  {
+    question: "¿Qué incluye la estilización con IA?",
+    answer:
+      "La IA puede mejorar tu escritura corrigiendo gramática, mejorando la fluidez y claridad, pero manteniendo tu voz personal única. No cambia el significado de tus pensamientos, solo los hace más legibles y expresivos. Es opcional y siempre puedes ver el texto original.",
+  },
+  {
+    question: "¿Hay límite en las entradas o grabaciones?",
+    answer:
+      "En el plan gratuito hay límites modestos para que pruebes la plataforma. Los planes pagos ofrecen uso ilimitado en todas las funciones. Incluso con límites, la mayoría de usuarios encuentran que el plan gratuito es más que suficiente para empezar.",
+  },
+];
+
 export default function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
-
-  const faqs = [
-    {
-      question: "¿Cómo funciona la IA conversacional de SecondBrain?",
-      answer: "Nuestra IA analiza tus entradas de diario para entender tus patrones, emociones y experiencias. Luego puedes conversar con ella sobre tus pensamientos, obtener insights personalizados y descubrir conexiones que quizás no habías notado. Es como tener un terapeuta personal que conoce tu historia completa."
-    },
-    {
-      question: "¿Mis datos están seguros y privados?",
-      answer: "Absolutamente. Utilizamos encriptación de nivel empresarial, autenticación segura con Google, y almacenamos tus datos en Supabase con las mejores prácticas de seguridad. Tus pensamientos y reflexiones son completamente privados y nunca compartiremos tu información con terceros."
-    },
-    {
-      question: "¿Qué hace especial la función de chat por persona?",
-      answer: "Esta función te permite crear conversaciones específicas con la IA sobre cada persona importante en tu vida. La IA mantiene el contexto de tus relaciones, analiza patrones de interacción y te ayuda a entender mejor tus dinámicas relacionales. Es perfecta para mejorar la comunicación y resolver conflictos."
-    },
-    {
-      question: "¿Qué tan precisa es la transcripción de voz?",
-      answer: "Utilizamos la tecnología de transcripción más avanzada de OpenAI, que ofrece una precisión del 95%+ en español. Además, el sistema mejora continuamente y puede manejar diferentes acentos y velocidades de habla. También permite editar las transcripciones si es necesario."
-    },
-    {
-      question: "¿Puedo usar SecondBrain en móvil y desktop?",
-      answer: "Sí, SecondBrain está completamente optimizado para todos los dispositivos. Funciona perfectamente en iPhone, iPad, Android y desktop. Todos tus datos se sincronizan automáticamente entre dispositivos para que puedas escribir desde cualquier lugar."
-    },
-    {
-      question: "¿Qué incluye la estilización con IA?",
-      answer: "La IA puede mejorar tu escritura corrigiendo gramática, mejorando la fluidez y claridad, pero manteniendo tu voz personal única. No cambia el significado de tus pensamientos, solo los hace más legibles y expresivos. Es opcional y siempre puedes ver el texto original."
-    },
-    {
-      question: "¿Hay límite en las entradas o grabaciones?",
-      answer: "En el plan gratuito hay límites modestos para que pruebes la plataforma. Los planes pagos ofrecen uso ilimitado en todas las funciones. Incluso con límites, la mayoría de usuarios encuentran que el plan gratuito es más que suficiente para empezar."
-    }
-  ];
 
   const toggleFAQ = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);

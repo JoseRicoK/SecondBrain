@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Head from 'next/head';
 import { 
   Brain,
   MessageCircle, 
@@ -25,13 +26,33 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import StatsSection from '../components/StatsSection';
 import TestimonialsCarousel from '../components/TestimonialsCarousel';
-import FAQSection from '../components/FAQSection';
+import FAQSection, { faqs } from '../components/FAQSection';
 import AnimatedBackground from '../components/AnimatedBackground';
 import CtaSection from '../components/CtaSection';
 
 export default function Home() {
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative">
+    <>
+      <Head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
+      </Head>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative">
       {/* Animated Background */}
       <AnimatedBackground />
       
@@ -605,5 +626,6 @@ export default function Home() {
         </div>
       </footer>
     </div>
+    </>
   );
 }
