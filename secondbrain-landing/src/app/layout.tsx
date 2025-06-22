@@ -91,6 +91,16 @@ export const metadata: Metadata = {
   },
   category: "Technology",
   classification: "Productivity, Health & Wellness, AI Tools",
+  // Configuración de iconos
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/Logo-simple-SecondBrain.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/Logo-simple-SecondBrain.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export const viewport = {

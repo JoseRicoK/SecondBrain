@@ -17,8 +17,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('🚫 [Cancel Subscription] Iniciando cancelación para usuario:', userId);
-
     // Obtener la suscripción actual del usuario
     const userProfile = await getUserProfile(userId);
     
@@ -42,13 +40,9 @@ export async function POST(req: NextRequest) {
 
     // Si no hay stripeSubscriptionId, es entorno de desarrollo
     if (!userSubscription.stripeSubscriptionId) {
-      console.log('🛠️ [Cancel Subscription] Modo desarrollo - simulando cancelación');
-      
       // Crear fecha de expiración: un mes desde ahora
       currentPeriodEndDate = new Date();
       currentPeriodEndDate.setMonth(currentPeriodEndDate.getMonth() + 1);
-      
-      console.log('📅 [Cancel Subscription] Fecha calculada para desarrollo:', currentPeriodEndDate);
     } else {
       // Intentar cancelar en Stripe si tenemos una suscripción real
       try {
@@ -58,8 +52,6 @@ export async function POST(req: NextRequest) {
             cancel_at_period_end: true,
           }
         );
-
-        console.log('✅ [Cancel Subscription] Suscripción marcada para cancelación en Stripe:', canceledSubscription.id);
 
         // Obtener la fecha de fin del período actual desde la suscripción cancelada
         const currentPeriodEndTimestamp = (canceledSubscription as any).current_period_end;
@@ -75,8 +67,6 @@ export async function POST(req: NextRequest) {
         // En caso de error con Stripe, calcular fecha manualmente
         currentPeriodEndDate = new Date();
         currentPeriodEndDate.setMonth(currentPeriodEndDate.getMonth() + 1);
-        
-        console.log('🛠️ [Cancel Subscription] Usando fecha calculada por error:', currentPeriodEndDate);
       }
     }
 
@@ -85,7 +75,6 @@ export async function POST(req: NextRequest) {
       // Fallback: un mes desde ahora
       currentPeriodEndDate = new Date();
       currentPeriodEndDate.setMonth(currentPeriodEndDate.getMonth() + 1);
-      console.log('🔧 [Cancel Subscription] Usando fecha fallback:', currentPeriodEndDate);
     }
 
     // Actualizar en Firebase que está marcada para cancelación
@@ -93,8 +82,6 @@ export async function POST(req: NextRequest) {
       cancelAtPeriodEnd: true,
       currentPeriodEnd: currentPeriodEndDate,
     });
-
-    console.log('✅ [Cancel Subscription] Estado actualizado en Firebase para usuario:', userId);
 
     return NextResponse.json({
       success: true,

@@ -1,8 +1,9 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Menu, X } from 'lucide-react';
+import { Menu, X, Brain } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 
@@ -46,13 +47,21 @@ const Header = () => {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center space-x-3"
           >
-            <div className="relative">
-              <Brain className="w-7 h-7 sm:w-8 sm:h-8 text-purple-400" />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse"></div>
-            </div>
-            <span className="text-lg sm:text-xl font-bold text-white tracking-tight">
-              SecondBrain
-            </span>
+            <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-300">
+              <div className="relative">
+                <Image
+                  src="/Logo-simple-SecondBrain.png"
+                  alt="SecondBrain Logo"
+                  width={32}
+                  height={32}
+                  className="w-7 h-7 sm:w-8 sm:h-8"
+                />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse"></div>
+              </div>
+              <span className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                SecondBrain
+              </span>
+            </Link>
           </motion.div>
 
           {/* Desktop Navigation */}
@@ -80,16 +89,10 @@ const Header = () => {
             
             <div className="flex items-center space-x-8 header-cta-buttons">
               <Link
-                href="https://app.secondbrainapp.com/login"
-                className="text-gray-300 hover:text-white transition-colors duration-300 text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/10"
-              >
-                Iniciar Sesión
-              </Link>
-              <Link
-                href="https://app.secondbrainapp.com/signup"
+                href="https://app.secondbrainapp.com"
                 className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
               >
-                Crear Cuenta
+                Ir a la App
               </Link>
             </div>
           </motion.div>
@@ -146,18 +149,11 @@ const Header = () => {
                 
                 <div className="flex flex-col space-y-3 pt-4 mt-4 border-t border-white/10">
                   <Link
-                    href="https://app.secondbrainapp.com/login"
-                    onClick={() => handleLinkClick('https://app.secondbrainapp.com/login')}
-                    className="text-center liquid-glass text-white px-4 py-3 rounded-lg text-base font-medium transition-all duration-300"
-                  >
-                    Iniciar Sesión
-                  </Link>
-                  <Link
-                    href="https://app.secondbrainapp.com/signup"
-                    onClick={() => handleLinkClick('https://app.secondbrainapp.com/signup')}
+                    href="https://app.secondbrainapp.com"
+                    onClick={() => handleLinkClick('https://app.secondbrainapp.com')}
                     className="text-center liquid-button text-white px-4 py-3 rounded-lg text-base font-semibold transition-all duration-300 shadow-lg"
                   >
-                    Crear Cuenta Gratis
+                    Ir a la App
                   </Link>
                 </div>
               </div>
