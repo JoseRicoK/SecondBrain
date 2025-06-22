@@ -14,7 +14,6 @@ import {
   Zap,
   Heart,
   Lock,
-  Play,
   BarChart3,
   TrendingUp,
   Award,
