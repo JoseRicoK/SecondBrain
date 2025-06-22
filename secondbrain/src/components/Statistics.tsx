@@ -17,7 +17,8 @@ interface MoodData {
   date: string;
   stress: number;
   happiness: number;
-  neutral: number;
+  tranquility: number;
+  sadness: number;
 }
 
 interface StatisticsData {
@@ -103,7 +104,7 @@ export default function Statistics(props: StatisticsProps) {
   }, [user?.uid, getCacheKey]);
 
   const loadStatistics = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.uid || accessBlocked) return;
     
     setIsLoading(true);
     setError(null);
@@ -129,6 +130,31 @@ export default function Statistics(props: StatisticsProps) {
         setLastUpdate(new Date());
         setIsLoading(false);
         return;
+      }
+
+      // Verificar acceso antes de hacer llamadas a la API
+      console.log('🔒 [Statistics] Verificando acceso antes de cargar datos...');
+      const accessResponse = await fetch('/api/statistics/access', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+
+      if (accessResponse.status === 429) {
+        const errorData = await accessResponse.json();
+        if (errorData.code === 'STATISTICS_LIMIT_EXCEEDED') {
+          setAccessBlocked(true);
+          setError('Has alcanzado el límite de accesos a estadísticas para este mes.');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      if (!accessResponse.ok) {
+        throw new Error('Error al verificar acceso a estadísticas');
       }
 
       // Si no tenemos todo en cache, cargar lo que falte
@@ -195,8 +221,16 @@ export default function Statistics(props: StatisticsProps) {
       
       if (!cachedMood) {
         moodData = responseData[responseIndex++];
+        console.log('🔍 [Statistics Frontend] Datos de mood recibidos de API:', JSON.stringify(moodData, null, 2));
         setCachedData('mood', moodData, moodPeriod);
       }
+
+      console.log('🔍 [Statistics Frontend] Datos finales para setData:', {
+        weekSummary: summaryData?.weekSummary,
+        instagramQuote: quoteData?.instagramQuote,
+        topPeople: peopleData?.topPeople,
+        moodData: moodData?.moodData
+      });
 
       setData({
         weekSummary: summaryData.weekSummary,
@@ -212,16 +246,39 @@ export default function Statistics(props: StatisticsProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, moodPeriod, getCachedData, setCachedData]);
+  }, [user, moodPeriod, getCachedData, setCachedData, accessBlocked]);
 
   const updateSection = useCallback(async (section: 'summary' | 'quote' | 'people' | 'mood') => {
-    if (!user?.uid) return;
+    if (!user?.uid || accessBlocked) return;
     
     setLoadingSection(section);
     setError(null);
     
     try {
       const token = await user.getIdToken();
+      
+      // Verificar acceso antes de actualizar sección
+      const accessResponse = await fetch('/api/statistics/access', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+
+      if (accessResponse.status === 429) {
+        const errorData = await accessResponse.json();
+        if (errorData.code === 'STATISTICS_LIMIT_EXCEEDED') {
+          setAccessBlocked(true);
+          setError('Has alcanzado el límite de accesos a estadísticas para este mes.');
+          return;
+        }
+      }
+
+      if (!accessResponse.ok) {
+        throw new Error('Error al verificar acceso a estadísticas');
+      }
       
       // Invalidar cache de la sección específica
       const cacheKey = getCacheKey(user.uid, section, section === 'mood' ? moodPeriod : undefined);
@@ -281,7 +338,7 @@ export default function Statistics(props: StatisticsProps) {
     } finally {
       setLoadingSection(null);
     }
-  }, [user, moodPeriod, getCacheKey, setCachedData]);
+  }, [user, moodPeriod, getCacheKey, setCachedData, accessBlocked]);
 
   useEffect(() => {
     if (user?.uid) {
@@ -296,46 +353,6 @@ export default function Statistics(props: StatisticsProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moodPeriod]);
-
-  // Verificar acceso a estadísticas al montar el componente
-  useEffect(() => {
-    const checkAccess = async () => {
-      if (!user) return;
-      
-      try {
-        const token = await user.getIdToken();
-        const response = await fetch('/api/statistics/access', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ userId: user.uid }),
-        });
-        
-        if (response.status === 429) {
-          const errorData = await response.json();
-          if (errorData.code === 'STATISTICS_LIMIT_EXCEEDED') {
-            setAccessBlocked(true);
-            return;
-          }
-        }
-        
-        if (response.ok) {
-          setAccessBlocked(false);
-          // Refrescar uso mensual después del acceso
-          await refreshMonthlyUsage();
-          // Cargar estadísticas si el acceso fue exitoso
-          await loadStatistics();
-        }
-      } catch (error) {
-        console.error('Error verificando acceso a estadísticas:', error);
-        setAccessBlocked(true);
-      }
-    };
-    
-    checkAccess();
-  }, [user, refreshMonthlyUsage]);
 
   const formatPeriodText = () => {
     const now = new Date();
@@ -450,39 +467,39 @@ export default function Statistics(props: StatisticsProps) {
             )}
           </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="flex items-center space-x-3 text-gray-600">
-            <FiRefreshCw className="animate-spin" size={20} />
-            <span>Cargando estadísticas...</span>
-          </div>
-        </div>
-      ) : error ? (
-        <div className="text-center py-12">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={loadStatistics}
-            className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
-          >
-            Reintentar
-          </button>
-        </div>
-      ) : accessBlocked ? (
-        <div className="text-center py-12">
-          <p className="text-red-600 mb-4">
-            Has alcanzado el límite de estadísticas disponibles para tu plan. 
-            {currentPlan === 'free' ? ' Actualiza a un plan premium para acceder a más estadísticas.' : ' Intenta más tarde.'}
-          </p>
-          {currentPlan === 'free' && (
-            <a
-              href="/pricing"
-              className="inline-block px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
-            >
-              Actualizar a Premium
-            </a>
-          )}
-        </div>
-      ) : (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="flex items-center space-x-3 text-gray-600">
+                <FiRefreshCw className="animate-spin" size={20} />
+                <span>Cargando estadísticas...</span>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={loadStatistics}
+                className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : accessBlocked ? (
+            <div className="text-center py-12">
+              <p className="text-red-600 mb-4">
+                Has alcanzado el límite de estadísticas disponibles para tu plan. 
+                {currentPlan === 'free' ? ' Actualiza a un plan premium para acceder a más estadísticas.' : ' Intenta más tarde.'}
+              </p>
+              {currentPlan === 'free' && (
+                <a
+                  href="/pricing"
+                  className="inline-block px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
+                >
+                  Actualizar a Premium
+                </a>
+              )}
+            </div>
+          ) : (
         <div className="space-y-8">
           {/* Resumen de la semana */}
           <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden">
@@ -624,80 +641,240 @@ export default function Statistics(props: StatisticsProps) {
             </div>
 
             <div className="p-6">
-              {/* Gráfico simple de barras */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <div className="bg-red-50 rounded-xl p-4">
-                      <div className="text-2xl font-bold text-red-600 mb-1">
-                        {data?.moodData?.[0]?.stress || 0}%
+              {/* Dos gráficos en grid responsive */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Gráfico 1: Felicidad vs Tristeza */}
+                <div className="bg-gradient-to-br from-yellow-50 to-blue-50 rounded-2xl p-6 border border-yellow-100">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+                    Emociones Positivas vs Negativas
+                  </h4>
+                  
+                  {/* Verificar si existen datos de emociones */}
+                  {data?.moodData && data.moodData.length > 0 ? (
+                    <>
+                      <div className="relative h-40 mb-4">
+                        {/* SVG para gráfico de línea suave */}
+                        <svg className="w-full h-full" viewBox="0 0 300 160" preserveAspectRatio="none">
+                          {/* Gradiente para felicidad */}
+                          <defs>
+                            <linearGradient id="happinessGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <stop offset="0%" stopColor="rgba(34, 197, 94, 0.4)" />
+                              <stop offset="100%" stopColor="rgba(34, 197, 94, 0.0)" />
+                            </linearGradient>
+                            <linearGradient id="sadnessGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <stop offset="0%" stopColor="rgba(59, 130, 246, 0.4)" />
+                              <stop offset="100%" stopColor="rgba(59, 130, 246, 0.0)" />
+                            </linearGradient>
+                          </defs>
+                          
+                          {/* Línea base */}
+                          <line x1="20" y1="140" x2="280" y2="140" stroke="#e5e7eb" strokeWidth="1" />
+                          
+                          {/* Área y línea de felicidad */}
+                          <path
+                            d={`M 20 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2} 
+                               Q 150 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2} 
+                               280 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2}
+                               L 280 140 L 20 140 Z`}
+                            fill="url(#happinessGradient)"
+                          />
+                          <path
+                            d={`M 20 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2} 
+                               Q 150 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2} 
+                               280 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2}`}
+                            stroke="rgb(34, 197, 94)"
+                            strokeWidth="3"
+                            fill="none"
+                            strokeLinecap="round"
+                          />
+                          
+                          {/* Área y línea de tristeza */}
+                          <path
+                            d={`M 20 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2} 
+                               Q 150 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2} 
+                               280 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2}
+                               L 280 140 L 20 140 Z`}
+                            fill="url(#sadnessGradient)"
+                          />
+                          <path
+                            d={`M 20 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2} 
+                               Q 150 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2} 
+                               280 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2}`}
+                            stroke="rgb(59, 130, 246)"
+                            strokeWidth="3"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeDasharray="8,4"
+                          />
+                          
+                          {/* Puntos en las líneas */}
+                          <circle 
+                            cx="150" 
+                            cy={140 - (data?.moodData?.[0]?.happiness || 0) * 1.2} 
+                            r="4" 
+                            fill="rgb(34, 197, 94)"
+                          />
+                          <circle 
+                            cx="150" 
+                            cy={140 - (data?.moodData?.[0]?.sadness || 0) * 1.2} 
+                            r="4" 
+                            fill="rgb(59, 130, 246)"
+                          />
+                        </svg>
                       </div>
-                      <div className="text-sm text-red-700">Estrés</div>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="bg-green-50 rounded-xl p-4">
-                      <div className="text-2xl font-bold text-green-600 mb-1">
-                        {data?.moodData?.[0]?.happiness || 0}%
+                      
+                      {/* Leyenda */}
+                      <div className="flex justify-around">
+                        <div className="text-center">
+                          <div className="flex items-center justify-center mb-1">
+                            <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                            <span className="text-sm font-medium text-green-700">Felicidad</span>
+                          </div>
+                          <div className="text-xl font-bold text-green-600">
+                            {data?.moodData?.[0]?.happiness || 0}%
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="flex items-center justify-center mb-1">
+                            <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                            <span className="text-sm font-medium text-blue-700">Tristeza</span>
+                          </div>
+                          <div className="text-xl font-bold text-blue-600">
+                            {data?.moodData?.[0]?.sadness || 0}%
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-sm text-green-700">Felicidad</div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-40 text-gray-500">
+                      <FiBarChart size={32} className="mb-2 opacity-50" />
+                      <p className="text-sm text-center">
+                        No hay datos emocionales para este período.<br />
+                        Agrega entradas en tu diario para ver estadísticas.
+                      </p>
                     </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <div className="text-2xl font-bold text-gray-600 mb-1">
-                        {data?.moodData?.[0]?.neutral || 0}%
-                      </div>
-                      <div className="text-sm text-gray-700">Neutral</div>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* Barras de progreso */}
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-red-700">Estrés</span>
-                      <span className="text-red-600 font-medium">{data?.moodData?.[0]?.stress || 0}%</span>
+                {/* Gráfico 2: Estrés vs Tranquilidad */}
+                <div className="bg-gradient-to-br from-red-50 to-green-50 rounded-2xl p-6 border border-red-100">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+                    Tensión vs Calma
+                  </h4>
+                  
+                  {/* Verificar si existen datos de emociones */}
+                  {data?.moodData && data.moodData.length > 0 ? (
+                    <>
+                      <div className="relative h-40 mb-4">
+                        {/* SVG para gráfico de línea suave */}
+                        <svg className="w-full h-full" viewBox="0 0 300 160" preserveAspectRatio="none">
+                          {/* Gradiente para estrés */}
+                          <defs>
+                            <linearGradient id="stressGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <stop offset="0%" stopColor="rgba(239, 68, 68, 0.4)" />
+                              <stop offset="100%" stopColor="rgba(239, 68, 68, 0.0)" />
+                            </linearGradient>
+                            <linearGradient id="tranquilityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <stop offset="0%" stopColor="rgba(16, 185, 129, 0.4)" />
+                              <stop offset="100%" stopColor="rgba(16, 185, 129, 0.0)" />
+                            </linearGradient>
+                          </defs>
+                          
+                          {/* Línea base */}
+                          <line x1="20" y1="140" x2="280" y2="140" stroke="#e5e7eb" strokeWidth="1" />
+                          
+                          {/* Área y línea de estrés */}
+                          <path
+                            d={`M 20 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2} 
+                               Q 150 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2} 
+                               280 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2}
+                               L 280 140 L 20 140 Z`}
+                            fill="url(#stressGradient)"
+                          />
+                          <path
+                            d={`M 20 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2} 
+                               Q 150 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2} 
+                               280 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2}`}
+                            stroke="rgb(239, 68, 68)"
+                            strokeWidth="3"
+                            fill="none"
+                            strokeLinecap="round"
+                          />
+                          
+                          {/* Área y línea de tranquilidad */}
+                          <path
+                            d={`M 20 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2} 
+                               Q 150 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2} 
+                               280 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2}
+                               L 280 140 L 20 140 Z`}
+                            fill="url(#tranquilityGradient)"
+                          />
+                          <path
+                            d={`M 20 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2} 
+                               Q 150 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2} 
+                               280 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2}`}
+                            stroke="rgb(16, 185, 129)"
+                            strokeWidth="3"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeDasharray="8,4"
+                          />
+                          
+                          {/* Puntos en las líneas */}
+                          <circle 
+                            cx="150" 
+                            cy={140 - (data?.moodData?.[0]?.stress || 0) * 1.2} 
+                            r="4" 
+                            fill="rgb(239, 68, 68)"
+                          />
+                          <circle 
+                            cx="150" 
+                            cy={140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2} 
+                            r="4" 
+                            fill="rgb(16, 185, 129)"
+                          />
+                        </svg>
+                      </div>
+                      
+                      {/* Leyenda */}
+                      <div className="flex justify-around">
+                        <div className="text-center">
+                          <div className="flex items-center justify-center mb-1">
+                            <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                            <span className="text-sm font-medium text-red-700">Estrés</span>
+                          </div>
+                          <div className="text-xl font-bold text-red-600">
+                            {data?.moodData?.[0]?.stress || 0}%
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="flex items-center justify-center mb-1">
+                            <div className="w-3 h-3 bg-emerald-500 rounded-full mr-2"></div>
+                            <span className="text-sm font-medium text-emerald-700">Tranquilidad</span>
+                          </div>
+                          <div className="text-xl font-bold text-emerald-600">
+                            {data?.moodData?.[0]?.tranquility || 0}%
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-40 text-gray-500">
+                      <FiBarChart size={32} className="mb-2 opacity-50" />
+                      <p className="text-sm text-center">
+                        No hay datos emocionales para este período.<br />
+                        Agrega entradas en tu diario para ver estadísticas.
+                      </p>
                     </div>
-                    <div className="w-full bg-red-100 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${styles.progressBar}`}
-                        style={getProgressBarStyle(data?.moodData?.[0]?.stress || 0, 'rgb(239, 68, 68)')}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-green-700">Felicidad</span>
-                      <span className="text-green-600 font-medium">{data?.moodData?.[0]?.happiness || 0}%</span>
-                    </div>
-                    <div className="w-full bg-green-100 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${styles.progressBar}`}
-                        style={getProgressBarStyle(data?.moodData?.[0]?.happiness || 0, 'rgb(34, 197, 94)')}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-700">Neutral</span>
-                      <span className="text-gray-600 font-medium">{data?.moodData?.[0]?.neutral || 0}%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${styles.progressBar}`}
-                        style={getProgressBarStyle(data?.moodData?.[0]?.neutral || 0, 'rgb(156, 163, 175)')}
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
-      )}
-      </>
+          )}
+        </>
       )}
     </div>
   );

@@ -1435,6 +1435,9 @@ export async function getEntriesMoodDataByDateRange(userId: string, startDate: s
   sadness: number;
 }[]> {
   try {
+    console.log(`🔍 [Firebase] Buscando datos de ánimo para userId: ${userId}`);
+    console.log(`🔍 [Firebase] Rango de fechas: ${startDate} a ${endDate}`);
+    
     const entriesRef = collection(db, 'diary_entries');
     const q = query(
       entriesRef,
@@ -1446,8 +1449,18 @@ export async function getEntriesMoodDataByDateRange(userId: string, startDate: s
     
     const querySnapshot = await getDocs(q);
     
+    console.log(`🔍 [Firebase] Documentos encontrados: ${querySnapshot.docs.length}`);
+    
     const moodData = querySnapshot.docs.map(doc => {
       const data = doc.data();
+      console.log(`🔍 [Firebase] Documento ${doc.id}:`, {
+        date: data.date,
+        happiness: data.happiness,
+        stress: data.stress,
+        tranquility: data.tranquility,
+        sadness: data.sadness
+      });
+      
       return {
         date: data.date,
         happiness: data.happiness || 0,
@@ -1458,6 +1471,7 @@ export async function getEntriesMoodDataByDateRange(userId: string, startDate: s
     });
     
     console.log('✅ [Firebase] Obtenidos datos de estado de ánimo:', moodData.length, 'entradas');
+    console.log('✅ [Firebase] Datos finales:', JSON.stringify(moodData, null, 2));
     return moodData;
   } catch (error) {
     console.error('❌ [Firebase] Error al obtener datos de estado de ánimo:', error);
