@@ -55,6 +55,7 @@ const Header = () => {
                   width={32}
                   height={32}
                   className="w-7 h-7 sm:w-8 sm:h-8"
+                  priority
                 />
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse"></div>
               </div>

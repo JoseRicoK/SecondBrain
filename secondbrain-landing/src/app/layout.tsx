@@ -163,16 +163,59 @@ export default function RootLayout({
       'Grabación y transcripción de voz',
       'Análisis de sentimientos',
       'Estadísticas personales',
-      'Gestión inteligente de personas'
-    ]
+    'Gestión inteligente de personas'
+  ]
+  };
+
+  const organizationJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    url: 'https://secondbrainapp.com',
+    name: 'SecondBrain',
+    logo: 'https://secondbrainapp.com/Logo-simple-SecondBrain.png',
+    contactPoint: [
+      {
+        '@type': 'ContactPoint',
+        email: 'support@secondbrainapp.com',
+        contactType: 'customer support',
+        areaServed: 'ES',
+        availableLanguage: ['Spanish', 'English'],
+      },
+    ],
+    sameAs: [
+      'https://twitter.com/SecondBrainApp',
+      'https://www.linkedin.com/company/secondbrainapp',
+    ],
+  };
+
+  const webSiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    url: 'https://secondbrainapp.com',
+    name: 'SecondBrain',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: 'https://secondbrainapp.com/search?q={search_term_string}',
+      'query-input': 'required name=search_term_string',
+    },
   };
 
   return (
     <html lang="es">
       <head>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }}
         />
         <link rel="canonical" href="https://secondbrainapp.com" />
         <link rel="manifest" href="/manifest.json" />
