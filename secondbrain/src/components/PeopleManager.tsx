@@ -691,9 +691,10 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                         <button 
                           onClick={(e) => handleChatClick(person, e)}
                           className="flex items-center px-3 py-2 text-sm text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
+                          title={`Chat con ${person.name}`}
                         >
-                          <FiMessageCircle size={14} className="mr-1.5" />
-                          Chat con {person.name}
+                          <FiMessageCircle size={14} className={editMode ? "" : "mr-1.5"} />
+                          {!editMode && `Chat con ${person.name}`}
                         </button>
                         
                         <div className="flex space-x-2">
