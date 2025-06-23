@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Calendar, { OnArgs } from 'react-calendar';
 import type { CalendarProps } from 'react-calendar';
 import { format } from 'date-fns';
@@ -133,8 +134,15 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onS
       {/* Header con logo y título */}
       <div className="relative z-10 px-6 pt-6 pb-4">
         <div className="flex items-center space-x-3 mb-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-lg">🧠</span>
+          <div className="flex items-center justify-center">
+            <Image 
+              src="/image/Logo-simple-SecondBrain-morado.png" 
+              alt="SecondBrain Logo" 
+              width={40} 
+              height={40} 
+              className="rounded-lg"
+              priority 
+            />
           </div>
           <div>
             <h1 className="text-xl font-bold text-white">SecondBrain</h1>

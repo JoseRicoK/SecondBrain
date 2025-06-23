@@ -29,7 +29,28 @@ export const metadata: Metadata = {
   title: "SecondBrain",
   description: "Tu diario personal con IA",
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      {
+        url: '/favicon.ico',
+        sizes: 'any',
+      },
+      {
+        url: '/image/Logo-simple-SecondBrain-morado.png',
+        type: 'image/png',
+        sizes: '32x32',
+      },
+      {
+        url: '/image/Logo-simple-SecondBrain-morado.png',
+        type: 'image/png',
+        sizes: '16x16',
+      }
+    ],
+    apple: {
+      url: '/image/Logo-simple-SecondBrain-morado.png',
+      sizes: '180x180',
+      type: 'image/png',
+    },
+    shortcut: '/image/Logo-simple-SecondBrain-morado.png',
   },
 };
 
