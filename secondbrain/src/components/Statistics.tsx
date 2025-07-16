@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
-import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiChevronUp, FiLock } from 'react-icons/fi';
+import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiLock } from 'react-icons/fi';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
-import styles from './Statistics.module.css';
 
 interface PersonMention {
   name: string;
@@ -48,7 +47,6 @@ export default function Statistics(props: StatisticsProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<StatisticsData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showAllPeople, setShowAllPeople] = useState(false);
   const [moodPeriod, setMoodPeriod] = useState<'week' | 'month' | 'year'>('week');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [loadingSection, setLoadingSection] = useState<string | null>(null);
@@ -393,7 +391,6 @@ export default function Statistics(props: StatisticsProps) {
     }
   }, [clearCache]);
 
-  const displayedPeople = showAllPeople ? data?.topPeople || [] : (data?.topPeople || []).slice(0, 5);
 
   const getProgressBarStyle = (percentage: number, color: string) => ({
     '--bar-width': `${Math.min(100, Math.max(0, percentage))}%`,
@@ -573,34 +570,39 @@ export default function Statistics(props: StatisticsProps) {
               </div>
               
               <div className="p-6">
-                <div className="space-y-3">
-                  {displayedPeople.map((person, index) => (
-                    <div key={person.name} className="flex items-center justify-between bg-gray-50 rounded-xl p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                          index === 0 ? 'bg-yellow-500' : 
-                          index === 1 ? 'bg-gray-400' : 
-                          index === 2 ? 'bg-yellow-600' : 'bg-green-500'
+                <div className="max-h-80 overflow-y-auto space-y-3 pr-2">
+                  {(data?.topPeople || []).map((person, index) => (
+                    <div key={person.name} className="flex items-center justify-between bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-4 border border-green-100 hover:from-green-100 hover:to-green-200 transition-all duration-200 shadow-sm">
+                      <div className="flex items-center space-x-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md ${
+                          index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' : 
+                          index === 1 ? 'bg-gradient-to-r from-gray-300 to-gray-400' : 
+                          index === 2 ? 'bg-gradient-to-r from-yellow-600 to-yellow-700' : 'bg-gradient-to-r from-green-500 to-green-600'
                         }`}>
                           {index + 1}
                         </div>
-                        <span className="font-medium text-gray-900">{person.name}</span>
+                        <div>
+                          <span className="font-semibold text-gray-900 text-lg">{person.name}</span>
+                          <div className="text-sm text-gray-600">Persona mencionada</div>
+                        </div>
                       </div>
-                      <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                        {person.count} menciones
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-sm">
+                          {person.count}
+                        </span>
+                        <span className="text-xs text-gray-500">menciones</span>
+                      </div>
                     </div>
                   ))}
                 </div>
 
                 {(data?.topPeople || []).length > 5 && (
-                  <button
-                    onClick={() => setShowAllPeople(!showAllPeople)}
-                    className="w-full mt-4 p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <span>{showAllPeople ? 'Mostrar menos' : `Ver ${(data?.topPeople || []).length - 5} personas más`}</span>
-                    {showAllPeople ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
-                  </button>
+                  <div className="mt-4 p-3 bg-green-50 rounded-xl text-center">
+                    <span className="text-sm text-green-700 font-medium flex items-center justify-center space-x-2">
+                      <FiChevronDown size={16} />
+                      <span>Desplázate para ver todas las {(data?.topPeople || []).length} personas</span>
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
