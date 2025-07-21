@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
-import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiChevronUp, FiLock } from 'react-icons/fi';
+import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiChevronUp, FiLock, FiShare } from 'react-icons/fi';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import styles from './Statistics.module.css';
@@ -400,6 +400,114 @@ export default function Statistics(props: StatisticsProps) {
     '--bar-color': color,
   } as React.CSSProperties);
 
+  const generateInstagramStoryImage = (quote: string): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      canvas.width = 1080;
+      canvas.height = 1920;
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#3B82F6');
+      gradient.addColorStop(1, '#1E40AF');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      for (let i = 0; i < 50; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const radius = Math.random() * 3 + 1;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const maxWidth = canvas.width - 120;
+      const lineHeight = 80;
+      const fontSize = 64;
+      ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+
+      const wrapText = (text: string, maxWidth: number) => {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = words[0];
+
+        for (let i = 1; i < words.length; i++) {
+          const word = words[i];
+          const width = ctx.measureText(currentLine + ' ' + word).width;
+          if (width < maxWidth) {
+            currentLine += ' ' + word;
+          } else {
+            lines.push(currentLine);
+            currentLine = word;
+          }
+        }
+        lines.push(currentLine);
+        return lines;
+      };
+
+      const lines = wrapText(`"${quote}"`, maxWidth);
+      const totalTextHeight = lines.length * lineHeight;
+      const startY = (canvas.height - totalTextHeight) / 2;
+
+      lines.forEach((line, index) => {
+        ctx.fillText(line, canvas.width / 2, startY + (index * lineHeight));
+      });
+
+      ctx.font = '32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillText('SecondBrain', canvas.width / 2, canvas.height - 100);
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Failed to generate image'));
+        }
+      }, 'image/png');
+    });
+  };
+
+  const handleShareQuote = async () => {
+    if (!data?.instagramQuote) return;
+
+    try {
+      const imageBlob = await generateInstagramStoryImage(data.instagramQuote);
+      
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'quote.png', { type: 'image/png' })] })) {
+        const file = new File([imageBlob], 'instagram-story-quote.png', { type: 'image/png' });
+        await navigator.share({
+          title: 'Mi cita personal de SecondBrain',
+          text: 'Comparto mi cita inspiracional del día',
+          files: [file]
+        });
+      } else {
+        const url = URL.createObjectURL(imageBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'instagram-story-quote.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Error sharing quote:', error);
+      alert('Error al generar la imagen. Por favor, inténtalo de nuevo.');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8">
       {/* Verificar si el acceso está bloqueado */}
@@ -536,14 +644,24 @@ export default function Statistics(props: StatisticsProps) {
                     <FiHeart size={20} className="text-blue-600" />
                     <span>Cita personal</span>
                   </h3>
-                  <button
-                    onClick={() => updateSection('quote')}
-                    disabled={loadingSection === 'quote'}
-                    className="flex items-center justify-center w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors disabled:opacity-50"
-                    title={loadingSection === 'quote' ? 'Actualizando...' : 'Actualizar cita'}
-                  >
-                    <FiRefreshCw size={16} className={`text-blue-600 ${loadingSection === 'quote' ? 'animate-spin' : ''}`} />
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={handleShareQuote}
+                      disabled={loadingSection === 'quote' || !data?.instagramQuote}
+                      className="flex items-center justify-center w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors disabled:opacity-50"
+                      title="Compartir en Instagram Stories"
+                    >
+                      <FiShare size={16} className="text-blue-600" />
+                    </button>
+                    <button
+                      onClick={() => updateSection('quote')}
+                      disabled={loadingSection === 'quote'}
+                      className="flex items-center justify-center w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors disabled:opacity-50"
+                      title={loadingSection === 'quote' ? 'Actualizando...' : 'Actualizar cita'}
+                    >
+                      <FiRefreshCw size={16} className={`text-blue-600 ${loadingSection === 'quote' ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="p-6">
