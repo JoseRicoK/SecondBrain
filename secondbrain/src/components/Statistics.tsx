@@ -495,7 +495,7 @@ export default function Statistics(props: StatisticsProps) {
     try {
       const imageBlob = await generateInstagramStoryImage(data.instagramQuote);
       
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'quote.png', { type: 'image/png' })] })) {
+      if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'quote.png', { type: 'image/png' })] })) {
         const file = new File([imageBlob], 'instagram-story-quote.png', { type: 'image/png' });
         await navigator.share({
           title: 'Mi cita personal de SecondBrain',
@@ -514,7 +514,9 @@ export default function Statistics(props: StatisticsProps) {
       }
     } catch (error) {
       console.error('Error sharing quote:', error);
-      alert('Error al generar la imagen. Por favor, inténtalo de nuevo.');
+      if (typeof window !== 'undefined' && typeof alert !== 'undefined') {
+        alert('Error al generar la imagen. Por favor, inténtalo de nuevo.');
+      }
     }
   };
 
