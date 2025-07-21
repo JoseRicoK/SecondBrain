@@ -402,6 +402,11 @@ export default function Statistics(props: StatisticsProps) {
 
   const generateInstagramStoryImage = (quote: string): Promise<Blob> => {
     return new Promise((resolve, reject) => {
+      if (typeof window === 'undefined' || typeof document === 'undefined') {
+        reject(new Error('Canvas API not available in server environment'));
+        return;
+      }
+
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       
@@ -481,6 +486,11 @@ export default function Statistics(props: StatisticsProps) {
 
   const handleShareQuote = async () => {
     if (!data?.instagramQuote) return;
+    
+    if (typeof window === 'undefined') {
+      console.warn('Share functionality not available in server environment');
+      return;
+    }
 
     try {
       const imageBlob = await generateInstagramStoryImage(data.instagramQuote);
