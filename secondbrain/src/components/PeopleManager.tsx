@@ -107,9 +107,6 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
     try {
       setIsLoading(true);
       
-      // Obtener los datos originales de la persona para preservar fechas
-      const originalPerson = people.find(p => p.id === selectedPersonId);
-      
       // Limpiar y procesar los detalles antes de guardar
       const cleanedDetails: Record<string, PersonDetailCategory> = {};
       

@@ -3,11 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
-import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiChevronUp, FiLock } from 'react-icons/fi';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, ComposedChart } from 'recharts';
+import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiChevronUp, FiLock, FiShare } from 'react-icons/fi';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
-import styles from './Statistics.module.css';
 
 interface PersonMention {
   name: string;
@@ -41,9 +40,7 @@ export default function Statistics(props: StatisticsProps) {
   const { 
     currentPlan, 
     planLimits, 
-    monthlyUsage, 
-    checkCanAccessStatistics,
-    refreshMonthlyUsage 
+    monthlyUsage 
   } = useSubscription();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -395,11 +392,6 @@ export default function Statistics(props: StatisticsProps) {
   }, [clearCache]);
 
   const displayedPeople = showAllPeople ? data?.topPeople || [] : (data?.topPeople || []).slice(0, 5);
-
-  const getProgressBarStyle = (percentage: number, color: string) => ({
-    '--bar-width': `${Math.min(100, Math.max(0, percentage))}%`,
-    '--bar-color': color,
-  } as React.CSSProperties);
 
   const generateInstagramStoryImage = (quote: string): Promise<Blob> => {
     return new Promise((resolve, reject) => {

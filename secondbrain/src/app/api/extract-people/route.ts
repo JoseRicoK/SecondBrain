@@ -1,16 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { isValidUUID, getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo, incrementPersonMentionCount, updateEntryMoodData } from '@/lib/firebase-operations';
-import { v5 as uuidv5 } from 'uuid';
-
-// Namespace para generar UUIDs determinísticos (este es un UUID arbitrario)
-const NAMESPACE = '1b671a64-40d5-491e-99b0-da01ff1f3341';
-
-// Función para generar un UUID determinístico a partir de un string
-function generateUUID(input: string): string {
-  return uuidv5(input, NAMESPACE);
-}
+import { getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo, incrementPersonMentionCount, updateEntryMoodData } from '@/lib/firebase-operations';
 
 // Inicializar el cliente de OpenAI
 const openai = new OpenAI({
