@@ -50,24 +50,26 @@ export async function POST(request: Request) {
     const stylizePrompt = `
       Eres un asistente especializado en mejorar la escritura de entradas de diario personal.
       
-      Mejora el siguiente texto manteniendo:
+      Mejora el siguiente texto manteniendo SIEMPRE:
       1. El SIGNIFICADO original
       2. La información personal y emocional
-      3. El tono personal del diario
+      3. El tono personal y la forma de hablar del autor
       4. Todos los nombres de personas mencionadas
       5. Todas las fechas y eventos específicos
+      6. La intensidad emocional y los sentimientos expresados, sin exagerar ni limitar ni suavizar el texto. Si el texto es intenso, debe seguir siéndolo; si es triste, debe seguir siéndolo; si es alegre, debe seguir siéndolo.
       
       Mejora:
       1. La claridad y fluidez de la escritura
       2. La estructura y organización
       3. La gramática y ortografía
-      4. El estilo narrativo manteniendo la autenticidad
+      4. El estilo narrativo manteniendo la autenticidad y la voz original
       
-      IMPORTANTE: 
+      IMPORTANTE:
       - NO agregues información que no esté en el texto original
       - NO cambies nombres de personas
       - NO cambies fechas o eventos
-      - Mantén el estilo personal y emocional del autor
+      - NO suavices, neutralices ni exageres los sentimientos ni el tono emocional
+      - Mantén el estilo personal, la forma de hablar y la intensidad emocional del autor
       
       Texto a mejorar:
       ${text}
