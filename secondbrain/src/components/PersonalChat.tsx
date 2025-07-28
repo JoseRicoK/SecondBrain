@@ -30,7 +30,6 @@ export const PersonalChat: React.FC<PersonalChatProps> = ({
 }) => {
   const { user } = useAuth();
   const { 
-    currentPlan, 
     planLimits, 
     monthlyUsage, 
     checkCanSendPersonalChatMessage,

@@ -21,6 +21,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Configuración para manejar Recharts y otras dependencias problemáticas
+  transpilePackages: ['recharts', 'react-smooth'],
+  experimental: {
+    esmExternals: 'loose',
+  },
+  webpack: (config) => {
+    config.externals = [...(config.externals || []), { canvas: 'canvas' }];
+    return config;
+  },
   async headers() {
     return [
       {

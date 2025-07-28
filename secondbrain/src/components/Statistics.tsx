@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
-import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiChevronUp, FiLock } from 'react-icons/fi';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, ComposedChart } from 'recharts';
+import { FiTrendingUp, FiUsers, FiRefreshCw, FiBarChart, FiCalendar, FiHeart, FiChevronDown, FiChevronUp, FiLock, FiShare } from 'react-icons/fi';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
-import styles from './Statistics.module.css';
 
 interface PersonMention {
   name: string;
@@ -40,9 +40,7 @@ export default function Statistics(props: StatisticsProps) {
   const { 
     currentPlan, 
     planLimits, 
-    monthlyUsage, 
-    checkCanAccessStatistics,
-    refreshMonthlyUsage 
+    monthlyUsage 
   } = useSubscription();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -395,10 +393,125 @@ export default function Statistics(props: StatisticsProps) {
 
   const displayedPeople = showAllPeople ? data?.topPeople || [] : (data?.topPeople || []).slice(0, 5);
 
-  const getProgressBarStyle = (percentage: number, color: string) => ({
-    '--bar-width': `${Math.min(100, Math.max(0, percentage))}%`,
-    '--bar-color': color,
-  } as React.CSSProperties);
+  const generateInstagramStoryImage = (quote: string): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (typeof window === 'undefined' || typeof document === 'undefined') {
+        reject(new Error('Canvas API not available in server environment'));
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      canvas.width = 1080;
+      canvas.height = 1920;
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#3B82F6');
+      gradient.addColorStop(1, '#1E40AF');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      for (let i = 0; i < 50; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const radius = Math.random() * 3 + 1;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const maxWidth = canvas.width - 120;
+      const lineHeight = 80;
+      const fontSize = 64;
+      ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+
+      const wrapText = (text: string, maxWidth: number) => {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = words[0];
+
+        for (let i = 1; i < words.length; i++) {
+          const word = words[i];
+          const width = ctx.measureText(currentLine + ' ' + word).width;
+          if (width < maxWidth) {
+            currentLine += ' ' + word;
+          } else {
+            lines.push(currentLine);
+            currentLine = word;
+          }
+        }
+        lines.push(currentLine);
+        return lines;
+      };
+
+      const lines = wrapText(`"${quote}"`, maxWidth);
+      const totalTextHeight = lines.length * lineHeight;
+      const startY = (canvas.height - totalTextHeight) / 2;
+
+      lines.forEach((line, index) => {
+        ctx.fillText(line, canvas.width / 2, startY + (index * lineHeight));
+      });
+
+      ctx.font = '32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillText('SecondBrain', canvas.width / 2, canvas.height - 100);
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Failed to generate image'));
+        }
+      }, 'image/png');
+    });
+  };
+
+  const handleShareQuote = async () => {
+    if (!data?.instagramQuote) return;
+    
+    if (typeof window === 'undefined') {
+      console.warn('Share functionality not available in server environment');
+      return;
+    }
+
+    try {
+      const imageBlob = await generateInstagramStoryImage(data.instagramQuote);
+      
+      if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'quote.png', { type: 'image/png' })] })) {
+        const file = new File([imageBlob], 'instagram-story-quote.png', { type: 'image/png' });
+        await navigator.share({
+          title: 'Mi cita personal de SecondBrain',
+          text: 'Comparto mi cita inspiracional del día',
+          files: [file]
+        });
+      } else {
+        const url = URL.createObjectURL(imageBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'instagram-story-quote.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Error sharing quote:', error);
+      if (typeof window !== 'undefined' && typeof alert !== 'undefined') {
+        alert('Error al generar la imagen. Por favor, inténtalo de nuevo.');
+      }
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8">
@@ -536,14 +649,24 @@ export default function Statistics(props: StatisticsProps) {
                     <FiHeart size={20} className="text-blue-600" />
                     <span>Cita personal</span>
                   </h3>
-                  <button
-                    onClick={() => updateSection('quote')}
-                    disabled={loadingSection === 'quote'}
-                    className="flex items-center justify-center w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors disabled:opacity-50"
-                    title={loadingSection === 'quote' ? 'Actualizando...' : 'Actualizar cita'}
-                  >
-                    <FiRefreshCw size={16} className={`text-blue-600 ${loadingSection === 'quote' ? 'animate-spin' : ''}`} />
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={handleShareQuote}
+                      disabled={loadingSection === 'quote' || !data?.instagramQuote}
+                      className="flex items-center justify-center w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors disabled:opacity-50"
+                      title="Compartir en Instagram Stories"
+                    >
+                      <FiShare size={16} className="text-blue-600" />
+                    </button>
+                    <button
+                      onClick={() => updateSection('quote')}
+                      disabled={loadingSection === 'quote'}
+                      className="flex items-center justify-center w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors disabled:opacity-50"
+                      title={loadingSection === 'quote' ? 'Actualizando...' : 'Actualizar cita'}
+                    >
+                      <FiRefreshCw size={16} className={`text-blue-600 ${loadingSection === 'quote' ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="p-6">
@@ -653,86 +776,90 @@ export default function Statistics(props: StatisticsProps) {
                   {/* Verificar si existen datos de emociones */}
                   {data?.moodData && data.moodData.length > 0 ? (
                     <>
-                      <div className="relative h-40 mb-4">
-                        {/* SVG para gráfico de línea suave */}
-                        <svg className="w-full h-full" viewBox="0 0 300 160" preserveAspectRatio="none">
-                          {/* Gradiente para felicidad */}
-                          <defs>
-                            <linearGradient id="happinessGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" stopColor="rgba(34, 197, 94, 0.4)" />
-                              <stop offset="100%" stopColor="rgba(34, 197, 94, 0.0)" />
-                            </linearGradient>
-                            <linearGradient id="sadnessGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" stopColor="rgba(59, 130, 246, 0.4)" />
-                              <stop offset="100%" stopColor="rgba(59, 130, 246, 0.0)" />
-                            </linearGradient>
-                          </defs>
-                          
-                          {/* Línea base */}
-                          <line x1="20" y1="140" x2="280" y2="140" stroke="#e5e7eb" strokeWidth="1" />
-                          
-                          {/* Área y línea de felicidad */}
-                          <path
-                            d={`M 20 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2} 
-                               Q 150 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2} 
-                               280 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2}
-                               L 280 140 L 20 140 Z`}
-                            fill="url(#happinessGradient)"
-                          />
-                          <path
-                            d={`M 20 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2} 
-                               Q 150 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2} 
-                               280 ${140 - (data?.moodData?.[0]?.happiness || 0) * 1.2}`}
-                            stroke="rgb(34, 197, 94)"
-                            strokeWidth="3"
-                            fill="none"
-                            strokeLinecap="round"
-                          />
-                          
-                          {/* Área y línea de tristeza */}
-                          <path
-                            d={`M 20 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2} 
-                               Q 150 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2} 
-                               280 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2}
-                               L 280 140 L 20 140 Z`}
-                            fill="url(#sadnessGradient)"
-                          />
-                          <path
-                            d={`M 20 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2} 
-                               Q 150 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2} 
-                               280 ${140 - (data?.moodData?.[0]?.sadness || 0) * 1.2}`}
-                            stroke="rgb(59, 130, 246)"
-                            strokeWidth="3"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeDasharray="8,4"
-                          />
-                          
-                          {/* Puntos en las líneas */}
-                          <circle 
-                            cx="150" 
-                            cy={140 - (data?.moodData?.[0]?.happiness || 0) * 1.2} 
-                            r="4" 
-                            fill="rgb(34, 197, 94)"
-                          />
-                          <circle 
-                            cx="150" 
-                            cy={140 - (data?.moodData?.[0]?.sadness || 0) * 1.2} 
-                            r="4" 
-                            fill="rgb(59, 130, 246)"
-                          />
-                        </svg>
+                      <div className="h-52">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart
+                            data={data.moodData}
+                            margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+                          >
+                            <defs>
+                              <linearGradient id="colorHappiness" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#22c55e" stopOpacity={0.1} />
+                              </linearGradient>
+                              <linearGradient id="colorSadness" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                            <XAxis 
+                              dataKey="date"
+                              tickFormatter={(value) => {
+                                const date = new Date(value);
+                                return date.getDate().toString();
+                              }}
+                              tick={{ fontSize: 12 }}
+                              axisLine={{ stroke: '#E5E7EB', strokeWidth: 1 }}
+                              tickLine={false}
+                            />
+                            <YAxis 
+                              domain={[0, 100]}
+                              tick={{ fontSize: 12 }}
+                              axisLine={false}
+                              tickLine={false}
+                              tickCount={5}
+                              tickFormatter={(value) => `${value}%`}
+                            />
+                            <Tooltip
+                              formatter={(value, name) => {
+                                if (name === 'happiness') return [`${value}%`, 'Felicidad'];
+                                if (name === 'sadness') return [`${value}%`, 'Tristeza'];
+                                return [value, name];
+                              }}
+                              labelFormatter={(label) => {
+                                const date = new Date(label);
+                                return format(date, 'd MMM yyyy', { locale: es });
+                              }}
+                              contentStyle={{
+                                borderRadius: '8px',
+                                border: '1px solid #E5E7EB',
+                                boxShadow: '0 1px 3px 0 rgba(0,0,0,0.1)',
+                                backgroundColor: 'rgba(255,255,255,0.95)'
+                              }}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="happiness" 
+                              stroke="#22c55e" 
+                              fill="url(#colorHappiness)" 
+                              strokeWidth={3} 
+                              dot={{ r: 4, fill: '#22c55e', stroke: '#22c55e', strokeWidth: 1 }}
+                              activeDot={{ r: 6, fill: '#22c55e', stroke: '#ffffff', strokeWidth: 2 }}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="sadness" 
+                              stroke="#3b82f6" 
+                              fill="url(#colorSadness)" 
+                              strokeWidth={3}
+                              strokeDasharray="5 3" 
+                              dot={{ r: 4, fill: '#3b82f6', stroke: '#3b82f6', strokeWidth: 1 }}
+                              activeDot={{ r: 6, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 2 }}
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
                       </div>
-                      
+
                       {/* Leyenda */}
-                      <div className="flex justify-around">
+                      <div className="flex justify-around mt-2">
                         <div className="text-center">
                           <div className="flex items-center justify-center mb-1">
                             <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
                             <span className="text-sm font-medium text-green-700">Felicidad</span>
                           </div>
                           <div className="text-xl font-bold text-green-600">
-                            {data?.moodData?.[0]?.happiness || 0}%
+                            {Math.round(data.moodData.reduce((acc, point) => acc + (point.happiness || 0), 0) / data.moodData.length)}%
                           </div>
                         </div>
                         <div className="text-center">
@@ -741,7 +868,7 @@ export default function Statistics(props: StatisticsProps) {
                             <span className="text-sm font-medium text-blue-700">Tristeza</span>
                           </div>
                           <div className="text-xl font-bold text-blue-600">
-                            {data?.moodData?.[0]?.sadness || 0}%
+                            {Math.round(data.moodData.reduce((acc, point) => acc + (point.sadness || 0), 0) / data.moodData.length)}%
                           </div>
                         </div>
                       </div>
@@ -766,95 +893,99 @@ export default function Statistics(props: StatisticsProps) {
                   {/* Verificar si existen datos de emociones */}
                   {data?.moodData && data.moodData.length > 0 ? (
                     <>
-                      <div className="relative h-40 mb-4">
-                        {/* SVG para gráfico de línea suave */}
-                        <svg className="w-full h-full" viewBox="0 0 300 160" preserveAspectRatio="none">
-                          {/* Gradiente para estrés */}
-                          <defs>
-                            <linearGradient id="stressGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" stopColor="rgba(239, 68, 68, 0.4)" />
-                              <stop offset="100%" stopColor="rgba(239, 68, 68, 0.0)" />
-                            </linearGradient>
-                            <linearGradient id="tranquilityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" stopColor="rgba(16, 185, 129, 0.4)" />
-                              <stop offset="100%" stopColor="rgba(16, 185, 129, 0.0)" />
-                            </linearGradient>
-                          </defs>
-                          
-                          {/* Línea base */}
-                          <line x1="20" y1="140" x2="280" y2="140" stroke="#e5e7eb" strokeWidth="1" />
-                          
-                          {/* Área y línea de estrés */}
-                          <path
-                            d={`M 20 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2} 
-                               Q 150 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2} 
-                               280 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2}
-                               L 280 140 L 20 140 Z`}
-                            fill="url(#stressGradient)"
-                          />
-                          <path
-                            d={`M 20 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2} 
-                               Q 150 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2} 
-                               280 ${140 - (data?.moodData?.[0]?.stress || 0) * 1.2}`}
-                            stroke="rgb(239, 68, 68)"
-                            strokeWidth="3"
-                            fill="none"
-                            strokeLinecap="round"
-                          />
-                          
-                          {/* Área y línea de tranquilidad */}
-                          <path
-                            d={`M 20 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2} 
-                               Q 150 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2} 
-                               280 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2}
-                               L 280 140 L 20 140 Z`}
-                            fill="url(#tranquilityGradient)"
-                          />
-                          <path
-                            d={`M 20 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2} 
-                               Q 150 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2} 
-                               280 ${140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2}`}
-                            stroke="rgb(16, 185, 129)"
-                            strokeWidth="3"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeDasharray="8,4"
-                          />
-                          
-                          {/* Puntos en las líneas */}
-                          <circle 
-                            cx="150" 
-                            cy={140 - (data?.moodData?.[0]?.stress || 0) * 1.2} 
-                            r="4" 
-                            fill="rgb(239, 68, 68)"
-                          />
-                          <circle 
-                            cx="150" 
-                            cy={140 - (data?.moodData?.[0]?.tranquility || 0) * 1.2} 
-                            r="4" 
-                            fill="rgb(16, 185, 129)"
-                          />
-                        </svg>
+                      <div className="h-52">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart
+                            data={data.moodData}
+                            margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+                          >
+                            <defs>
+                              <linearGradient id="colorStress" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1} />
+                              </linearGradient>
+                              <linearGradient id="colorTranquility" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                            <XAxis 
+                              dataKey="date"
+                              tickFormatter={(value) => {
+                                const date = new Date(value);
+                                return date.getDate().toString();
+                              }}
+                              tick={{ fontSize: 12 }}
+                              axisLine={{ stroke: '#E5E7EB', strokeWidth: 1 }}
+                              tickLine={false}
+                            />
+                            <YAxis 
+                              domain={[0, 100]}
+                              tick={{ fontSize: 12 }}
+                              axisLine={false}
+                              tickLine={false}
+                              tickCount={5}
+                              tickFormatter={(value) => `${value}%`}
+                            />
+                            <Tooltip
+                              formatter={(value, name) => {
+                                if (name === 'stress') return [`${value}%`, 'Tensión'];
+                                if (name === 'tranquility') return [`${value}%`, 'Calma'];
+                                return [value, name];
+                              }}
+                              labelFormatter={(label) => {
+                                const date = new Date(label);
+                                return format(date, 'd MMM yyyy', { locale: es });
+                              }}
+                              contentStyle={{
+                                borderRadius: '8px',
+                                border: '1px solid #E5E7EB',
+                                boxShadow: '0 1px 3px 0 rgba(0,0,0,0.1)',
+                                backgroundColor: 'rgba(255,255,255,0.95)'
+                              }}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="stress" 
+                              stroke="#ef4444" 
+                              fill="url(#colorStress)" 
+                              strokeWidth={3} 
+                              dot={{ r: 4, fill: '#ef4444', stroke: '#ef4444', strokeWidth: 1 }}
+                              activeDot={{ r: 6, fill: '#ef4444', stroke: '#ffffff', strokeWidth: 2 }}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="tranquility" 
+                              stroke="#10b981" 
+                              fill="url(#colorTranquility)" 
+                              strokeWidth={3}
+                              strokeDasharray="5 3" 
+                              dot={{ r: 4, fill: '#10b981', stroke: '#10b981', strokeWidth: 1 }}
+                              activeDot={{ r: 6, fill: '#10b981', stroke: '#ffffff', strokeWidth: 2 }}
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
                       </div>
-                      
+
                       {/* Leyenda */}
-                      <div className="flex justify-around">
+                      <div className="flex justify-around mt-2">
                         <div className="text-center">
                           <div className="flex items-center justify-center mb-1">
                             <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                            <span className="text-sm font-medium text-red-700">Estrés</span>
+                            <span className="text-sm font-medium text-red-700">Tensión</span>
                           </div>
                           <div className="text-xl font-bold text-red-600">
-                            {data?.moodData?.[0]?.stress || 0}%
+                            {Math.round(data.moodData.reduce((acc, point) => acc + (point.stress || 0), 0) / data.moodData.length)}%
                           </div>
                         </div>
                         <div className="text-center">
                           <div className="flex items-center justify-center mb-1">
-                            <div className="w-3 h-3 bg-emerald-500 rounded-full mr-2"></div>
-                            <span className="text-sm font-medium text-emerald-700">Tranquilidad</span>
+                            <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                            <span className="text-sm font-medium text-green-700">Calma</span>
                           </div>
-                          <div className="text-xl font-bold text-emerald-600">
-                            {data?.moodData?.[0]?.tranquility || 0}%
+                          <div className="text-xl font-bold text-green-600">
+                            {Math.round(data.moodData.reduce((acc, point) => acc + (point.tranquility || 0), 0) / data.moodData.length)}%
                           </div>
                         </div>
                       </div>

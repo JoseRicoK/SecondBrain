@@ -1,0 +1,8 @@
+{
+  "name": "secondbrain-root",
+  "private": true,
+  "workspaces": [
+    "secondbrain",
+    "secondbrain-landing"
+  ]
+}

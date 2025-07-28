@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { getEntriesMoodDataByDateRange } from '@/lib/firebase-operations';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
 export async function GET(request: Request) {
   try {
@@ -25,9 +24,10 @@ export async function GET(request: Request) {
 
     switch (moodPeriod) {
       case 'week':
-        // Calcular desde el lunes de esta semana hasta hoy (o domingo si es posterior)
-        startDate = startOfWeek(now, { weekStartsOn: 1 }); // 1 = lunes
-        endDate = now; // Hasta hoy, no hasta el final de la semana
+        // Calcular los últimos 7 días (hoy + 6 días hacia atrás)
+        endDate = now; // Hasta hoy
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 6); // 6 días hacia atrás = 7 días en total
         break;
       case 'month':
         startDate = startOfMonth(now);
@@ -84,13 +84,10 @@ export async function GET(request: Request) {
         sadness: averageSadness
       });
 
-      moodData = [{
-        date: format(now, 'yyyy-MM-dd'),
-        stress: averageStress,
-        happiness: averageHappiness,
-        tranquility: averageTranquility,
-        sadness: averageSadness
-      }];
+      // Devolver el array completo de entradas ordenadas por fecha
+      moodData = entriesMoodData.sort((a, b) => {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
     } else {
       console.log(`❌ [Mood API] No se encontraron datos para el periodo ${moodPeriod} (${format(startDate, 'yyyy-MM-dd')} - ${format(endDate, 'yyyy-MM-dd')})`);
       
