@@ -30,7 +30,7 @@
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
     "resend": "^4.5.2",
-    "stripe": "^18.2.1",
+    "stripe": "^18.4.0",
     "uuid": "^11.1.0",
     "zustand": "^5.0.5"
   },
