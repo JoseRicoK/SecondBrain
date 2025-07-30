@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { updateUserSubscription, getUserProfile } from '@/lib/subscription-operations';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-05-28.basil',
+  apiVersion: '2025-06-30.basil',
 });
 
 export async function POST(req: NextRequest) {
@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
         );
 
         // Obtener la fecha de fin del período actual desde la suscripción cancelada
-        const currentPeriodEndTimestamp = (canceledSubscription as any).current_period_end;
+        const subscription = canceledSubscription as unknown as { current_period_end: number };
+        const currentPeriodEndTimestamp = subscription.current_period_end;
         
         if (currentPeriodEndTimestamp && currentPeriodEndTimestamp > 0) {
           currentPeriodEndDate = new Date(currentPeriodEndTimestamp * 1000);
