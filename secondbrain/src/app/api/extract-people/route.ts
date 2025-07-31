@@ -1,16 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { isValidUUID, getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo, incrementPersonMentionCount, updateEntryMoodData } from '@/lib/firebase-operations';
-import { v5 as uuidv5 } from 'uuid';
-
-// Namespace para generar UUIDs determinísticos (este es un UUID arbitrario)
-const NAMESPACE = '1b671a64-40d5-491e-99b0-da01ff1f3341';
-
-// Función para generar un UUID determinístico a partir de un string
-function generateUUID(input: string): string {
-  return uuidv5(input, NAMESPACE);
-}
+import { getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo, incrementPersonMentionCount, updateEntryMoodData } from '@/lib/firebase-operations';
 
 // Inicializar el cliente de OpenAI
 const openai = new OpenAI({
@@ -404,46 +395,27 @@ export async function POST(request: Request) {
     if (entryId && text.trim().length > 0) {
       try {
         const moodAnalysisPrompt = `
-          Analiza el siguiente texto de entrada de diario y evalúa cada estado emocional del 0 al 100.
-          Cada categoría debe ser evaluada independientemente según su intensidad real en el texto.
+          Analiza el siguiente texto y evalúa los estados emocionales de estrés, tranquilidad, felicidad y tristeza del 0 al 100.
+          Es fundamental que cada emoción se analice y puntúe de forma completamente independiente, sin compensar ni restar una por la presencia de otra.
+          Si el texto refleja situaciones de mucho estrés, tristeza o conflicto, debes reflejarlo con puntuaciones altas en esas emociones, aunque también haya momentos felices o positivos.
+          La presencia de un final positivo, reconciliación o logro no elimina ni reduce la tristeza o el estrés si están presentes en el texto. Pueden coexistir emociones intensas: por ejemplo, una situación puede ser muy estresante y feliz a la vez, y la tristeza puede estar presente aunque haya terminado bien.
+          No suavices ni resaltes lo positivo por encima de lo negativo: céntrate en la realidad emocional y en la intensidad de cada emoción según lo que se expresa en el texto.
+          Evalúa cada emoción según las palabras, el contexto y la intensidad real, sin compensar ni equilibrar entre ellas.
           
           GUÍAS DE EVALUACIÓN:
-          
           ESTRÉS (0-100): Ansiedad, presión, preocupaciones, tensión, agobio, conflictos, discusiones, problemas
-          - 0-20: Muy poco o ningún estrés
-          - 21-40: Estrés leve, pequeñas preocupaciones
-          - 41-60: Estrés moderado, situaciones complicadas
-          - 61-80: Estrés alto, conflictos importantes, discusiones serias
-          - 81-100: Estrés extremo, crisis, situaciones muy tensas
-          
           TRANQUILIDAD (0-100): Calma, serenidad, paz, relajación, equilibrio
-          - 0-20: Muy agitado, sin paz mental
-          - 21-40: Poca tranquilidad, inquietud
-          - 41-60: Tranquilidad moderada
-          - 61-80: Bastante tranquilo, en calma
-          - 81-100: Muy tranquilo, en completa paz
-          
           FELICIDAD (0-100): Alegría, satisfacción, logros, momentos positivos, entusiasmo
-          - 0-20: Muy poca o ninguna felicidad
-          - 21-40: Felicidad leve, algunos momentos agradables
-          - 41-60: Felicidad moderada
-          - 61-80: Bastante feliz, buenos momentos
-          - 81-100: Muy feliz, euforia, gran alegría
-          
           TRISTEZA (0-100): Melancolía, pena, nostalgia, desánimo, dolor emocional, decepción
-          - 0-20: Muy poca o ninguna tristeza
-          - 21-40: Tristeza leve, ligero desánimo
-          - 41-60: Tristeza moderada, momentos melancólicos
-          - 61-80: Tristeza considerable, dolor emocional
-          - 81-100: Tristeza profunda, gran dolor emocional
           
-          EJEMPLOS DE SITUACIONES:
-          - Discusión/pelea con pareja/amigo: Estrés 70-85, Tranquilidad 10-25, Felicidad 10-30, Tristeza 60-80
-          - Día productivo en el trabajo: Estrés 20-40, Tranquilidad 60-80, Felicidad 70-85, Tristeza 5-20
-          - Muerte de familiar: Estrés 60-80, Tranquilidad 10-30, Felicidad 5-20, Tristeza 80-95
-          - Reunión con amigos: Estrés 5-25, Tranquilidad 60-80, Felicidad 70-90, Tristeza 5-20
+          EJEMPLOS REALES:
+          Ejemplo 1:
+          "Hoy he empezado en el trabajo nuevo, ha sido muy intenso y estresante. Por la tarde discutí con mi novia, aunque al final terminamos bien, me sentí triste y agotado."
+          Resultado esperado: {"stress": 85, "tranquility": 15, "happiness": 60, "sadness": 70}
           
-          Evalúa cada emoción considerando el contexto, las palabras utilizadas y la intensidad emocional del texto.
+          Ejemplo 2:
+          "He tenido una discusión fuerte con mi madre, me ha dolido mucho, pero después hemos hablado y me he sentido algo mejor."
+          Resultado esperado: {"stress": 80, "tranquility": 40, "happiness": 35, "sadness": 80}
           
           Texto a analizar:
           ${text.slice(0, 2000)}

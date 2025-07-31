@@ -10,7 +10,7 @@ interface SettingsProps {
   userId: string;
 }
 
-const Settings: React.FC<SettingsProps> = ({ userId }) => {
+const Settings: React.FC<SettingsProps> = () => {
   const { user, signOut, isGoogleUser } = useAuth();
   const { userProfile, currentPlan, planLimits, monthlyUsage } = useSubscription();
   const router = useRouter();

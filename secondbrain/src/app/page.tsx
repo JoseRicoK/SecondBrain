@@ -7,7 +7,7 @@ import PersonalChatButton from '@/components/PersonalChatButton';
 import Auth from '@/components/Auth';
 import Loading from '@/components/Loading';
 import Settings from '@/components/Settings';
-import Statistics from '@/components/Statistics';
+import StatisticsWrapper from '@/components/StatisticsWrapper';
 import PeopleManager from '@/components/PeopleManager';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiaryStore } from '@/lib/store';
@@ -625,7 +625,7 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-              <Statistics userId={user.uid} />
+              <StatisticsWrapper userId={user.uid} />
             </div>
           ) : (
             /* Vista principal del diario */

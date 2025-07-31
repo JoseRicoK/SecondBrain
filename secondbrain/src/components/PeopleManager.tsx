@@ -107,9 +107,6 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
     try {
       setIsLoading(true);
       
-      // Obtener los datos originales de la persona para preservar fechas
-      const originalPerson = people.find(p => p.id === selectedPersonId);
-      
       // Limpiar y procesar los detalles antes de guardar
       const cleanedDetails: Record<string, PersonDetailCategory> = {};
       
@@ -165,11 +162,13 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
         }
       }
       
-      const result = await savePerson({
+      const personToSave = {
         id: selectedPersonId,
         name: editedName.trim(),
         details: cleanedDetails
-      });
+      };
+      
+      const result = await savePerson(personToSave);
       
       if (result) {
         // Actualizar la lista local de personas
@@ -725,6 +724,32 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({ userId, className 
                           )}
                         </div>
                       </div>
+                      
+                      {editMode && (
+                        <div className="mb-4">
+                          <div className="mb-2">
+                            <label 
+                              htmlFor="person-name" 
+                              className="font-medium text-slate-700 text-sm uppercase tracking-wide"
+                            >
+                              Nombre
+                            </label>
+                          </div>
+                          <input
+                            type="text"
+                            id="person-name"
+                            value={editedName}
+                            onChange={e => {
+                              console.log("Cambiando nombre a:", e.target.value);
+                              setEditedName(e.target.value);
+                            }}
+                            className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow border-2 border-purple-400"
+                            placeholder="Nombre de la persona"
+                            aria-label="Nombre de la persona"
+                            autoFocus
+                          />
+                        </div>
+                      )}
                       
                       {renderPersonDetails(person)}
                     </div>
