@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { updateUserSubscription, findUserByStripeCustomerId, markFirstPaymentComplete } from '@/lib/subscription-operations';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-05-28.basil',
-});
+  apiVersion: '2024-06-20',
+} as any);
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -165,6 +167,28 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
     currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
   });
 
+  try {
+    const renewalDate = new Date();
+    const billingPeriod = getBillingPeriodString(renewalDate);
+    
+    const resetUsage = {
+      personalChatMessages: 0,
+      personChatMessages: 0,
+      statisticsAccess: 0,
+      month: billingPeriod,
+      lastUpdated: renewalDate
+    };
+
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, {
+      'subscription.monthlyUsage': resetUsage
+    });
+
+    console.log('✅ [Stripe Webhook] Monthly usage reset for user:', uid, 'Period:', billingPeriod);
+  } catch (error) {
+    console.error('❌ [Stripe Webhook] Error resetting monthly usage:', error);
+  }
+
   console.log('✅ [Stripe Webhook] Pago procesado para usuario:', uid);
 }
 
@@ -215,4 +239,10 @@ function mapStripeStatusToOurs(stripeStatus: string): 'active' | 'inactive' | 'c
     default:
       return 'inactive';
   }
+}
+
+function getBillingPeriodString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
 }
