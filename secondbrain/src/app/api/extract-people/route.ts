@@ -302,25 +302,42 @@ export async function POST(request: Request) {
       console.log('❌ [API Extract People] ERROR: El prompt NO contiene "cumpleaños" con ñ');
     }
 
-    const extractCompletion = await openai.chat.completions.create({
-      model: "o4-mini-2025-04-16",
-      messages: [
-        { role: "system", content: "Eres un asistente especializado en extraer información estructurada sobre personas." },
-        { role: "user", content: extractPrompt }
-      ],
-      response_format: { type: "json_object" }
-    });
+    const extractCompletion = await openai.responses.create({
+      model: "gpt-5-mini",
+      input: `Eres un asistente especializado en extraer información estructurada sobre personas.\n\n${extractPrompt}`,
+      reasoning: { effort: "minimal" } as any,
+      text: { verbosity: "low" } as any
+    } as any);
 
     let peopleExtracted: PersonExtracted[] = [];
 
     try {
-      const content = extractCompletion.choices[0].message.content || '{}';
+      let content = (extractCompletion as any).output_text
+        || ((extractCompletion as any).output?.[0]?.content?.[0]?.text) 
+        || '{}';
       
       // Log temporal para debug - remover en producción
       console.log('🔍 [API Extract People] Respuesta de la IA:');
       console.log(content);
       
-      const extractResponse = JSON.parse(content);
+      // Normalizar posibles fences ```json ... ``` y extraer el objeto JSON si es necesario
+      let normalized = content.trim();
+      if (normalized.startsWith('```')) {
+        normalized = normalized.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '');
+      }
+      let extractResponse: any;
+      try {
+        extractResponse = JSON.parse(normalized);
+      } catch {
+        const first = normalized.indexOf('{');
+        const last = normalized.lastIndexOf('}');
+        if (first !== -1 && last !== -1 && last > first) {
+          const inner = normalized.slice(first, last + 1);
+          extractResponse = JSON.parse(inner);
+        } else {
+          throw new Error('Formato de JSON inválido en la respuesta de extracción');
+        }
+      }
       
       // Verificar específicamente si hay "cumpleaños" con ñ en la respuesta de la IA
       const contentLower = content.toLowerCase();
@@ -426,19 +443,33 @@ export async function POST(request: Request) {
           Cada valor debe estar entre 0 y 100 y reflejar la intensidad real de cada emoción.
         `;
 
-        const moodCompletion = await openai.chat.completions.create({
-          model: "o4-mini-2025-04-16",
-          messages: [
-            { 
-              role: "system", 
-              content: "Eres un psicólogo experto en análisis de estados emocionales en textos. Tu objetivo es detectar con precisión y sensibilidad las emociones humanas, especialmente en situaciones de conflicto, estrés, tristeza o alegría. Sé perceptivo a las sutilezas emocionales y evalúa cada emoción de forma independiente según su intensidad real en el contexto." 
-            },
-            { role: "user", content: moodAnalysisPrompt }
-          ],
-          response_format: { type: "json_object" }
-        });
+        const moodCompletion = await openai.responses.create({
+          model: "gpt-5-mini",
+          input: `Eres un psicólogo experto en análisis de estados emocionales en textos. Tu objetivo es detectar con precisión y sensibilidad las emociones humanas, especialmente en situaciones de conflicto, estrés, tristeza o alegría. Sé perceptivo a las sutilezas emocionales y evalúa cada emoción de forma independiente según su intensidad real en el contexto.\n\n${moodAnalysisPrompt}`,
+          reasoning: { effort: "minimal" } as any,
+          text: { verbosity: "low" } as any
+        } as any);
 
-        const moodResult = JSON.parse(moodCompletion.choices[0].message.content || '{"stress": 30, "tranquility": 40, "happiness": 40, "sadness": 20}');
+        let moodText = (moodCompletion as any).output_text 
+          || ((moodCompletion as any).output?.[0]?.content?.[0]?.text) 
+          || '{"stress": 30, "tranquility": 40, "happiness": 40, "sadness": 20}';
+        let moodNormalized = moodText.trim();
+        if (moodNormalized.startsWith('```')) {
+          moodNormalized = moodNormalized.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '');
+        }
+        let moodResult: any;
+        try {
+          moodResult = JSON.parse(moodNormalized);
+        } catch {
+          const first = moodNormalized.indexOf('{');
+          const last = moodNormalized.lastIndexOf('}');
+          if (first !== -1 && last !== -1 && last > first) {
+            const inner = moodNormalized.slice(first, last + 1);
+            moodResult = JSON.parse(inner);
+          } else {
+            moodResult = { stress: 30, tranquility: 40, happiness: 40, sadness: 20 };
+          }
+        }
         
         // Validar que los valores estén entre 0 y 100
         const validateMoodValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));

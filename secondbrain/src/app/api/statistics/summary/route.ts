@@ -54,15 +54,17 @@ export async function GET(request: Request) {
       `;
 
       try {
-        const summaryCompletion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: "Eres un asistente especializado en análisis de diarios personales y desarrollo personal." },
-            { role: "user", content: summaryPrompt }
-          ]
-        });
+        const summaryCompletion = await openai.responses.create({
+          model: "gpt-5-mini",
+          input: `Eres un asistente especializado en análisis de diarios personales y desarrollo personal.\n\n${summaryPrompt}`,
+          reasoning: { effort: "minimal" } as any,
+          text: { verbosity: "low" } as any
+        } as any);
 
-        weekSummary = summaryCompletion.choices[0].message.content || weekSummary;
+        const summaryText = (summaryCompletion as any).output_text 
+          || ((summaryCompletion as any).output?.[0]?.content?.[0]?.text) 
+          || weekSummary;
+        weekSummary = summaryText;
       } catch (error) {
         console.error('Error generando resumen semanal:', error);
       }

@@ -52,15 +52,17 @@ export async function GET(request: Request) {
       `;
 
       try {
-        const quoteCompletion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: "Eres un especialista en crear citas inspiracionales personalizadas." },
-            { role: "user", content: quotePrompt }
-          ]
-        });
+        const quoteCompletion = await openai.responses.create({
+          model: "gpt-5-mini",
+          input: `Eres un especialista en crear citas inspiracionales personalizadas.\n\n${quotePrompt}`,
+          reasoning: { effort: "minimal" } as any,
+          text: { verbosity: "low" } as any
+        } as any);
 
-        instagramQuote = quoteCompletion.choices[0].message.content || instagramQuote;
+        const quoteText = (quoteCompletion as any).output_text 
+          || ((quoteCompletion as any).output?.[0]?.content?.[0]?.text) 
+          || instagramQuote;
+        instagramQuote = quoteText;
       } catch (error) {
         console.error('Error generando cita inspiracional:', error);
       }

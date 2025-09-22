@@ -77,17 +77,17 @@ export async function POST(request: Request) {
       Responde SOLO con el texto mejorado, sin explicaciones adicionales.
     `;
 
-    // Llamada a OpenAI para estilizar el texto
-    const stylizeCompletion = await openai.chat.completions.create({
-      model: "o4-mini-2025-04-16",
-      messages: [
-        { role: "system", content: "Eres un asistente especializado en mejorar la escritura de diarios personales." },
-        { role: "user", content: stylizePrompt }
-      ]
-      // No incluimos temperature ya que o4-mini solo acepta el valor predeterminado (1)
-    });
+    // Llamada a OpenAI (Responses API) para estilizar el texto
+    const stylizeCompletion = await openai.responses.create({
+      model: "gpt-5-mini",
+      input: `Eres un asistente especializado en mejorar la escritura de diarios personales.\n\n${stylizePrompt}`,
+      reasoning: { effort: "minimal" } as any,
+      text: { verbosity: "low" } as any
+    } as any);
 
-    const stylizedText = stylizeCompletion.choices[0].message.content || text;
+    const stylizedText = (stylizeCompletion as any).output_text 
+      || ((stylizeCompletion as any).output?.[0]?.content?.[0]?.text) 
+      || text;
 
     return NextResponse.json({ 
       stylizedText,
