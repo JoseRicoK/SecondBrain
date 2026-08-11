@@ -1,0 +1,4 @@
+Contact: mailto:hello@secondbrainapp.com
+Expires: 2030-12-31T23:59:59.000Z
+Policy: https://secondbrainapp.com/seguridad
+Preferred-Languages: es, en

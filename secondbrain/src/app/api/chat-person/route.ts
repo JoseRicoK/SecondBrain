@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { Person } from '@/lib/firebase-operations';
+import { Person } from '@/lib/supabase-operations';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { canSendPersonChatMessage } from '@/middleware/subscription';
 import { getUserMonthlyUsage, incrementPersonChatUsage } from '@/lib/subscription-operations';

@@ -2,13 +2,13 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFirebaseAuthContext } from '@/contexts/FirebaseAuthContext';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import Auth from '@/components/Auth';
 import Loading from '@/components/Loading';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading } = useFirebaseAuthContext();
+  const { user, loading } = useSupabaseAuthContext();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleAuthSuccess = async (authenticatedUser: any, selectedPlan?: string) => {

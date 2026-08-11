@@ -1,347 +1,78 @@
-import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from './firebase';
+import { getDatabaseClient } from './supabase';
 
-export interface MonthlyUsage {
-  personalChatMessages: number;
-  personChatMessages: number;
-  statisticsAccess: number;
-  month: string; // Formato 'YYYY-MM'
-  lastUpdated: Date;
-}
-
+export interface MonthlyUsage { personalChatMessages: number; personChatMessages: number; statisticsAccess: number; month: string; lastUpdated: Date; }
 export interface UserSubscription {
-  plan: 'free' | 'pro' | 'elite';
-  status: 'active' | 'inactive' | 'canceled' | 'past_due';
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
-  currentPeriodEnd?: Date;
-  cancelAtPeriodEnd?: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  // Nuevo campo para uso mensual
-  monthlyUsage?: MonthlyUsage;
+  plan: 'free' | 'pro' | 'elite'; status: 'active' | 'inactive' | 'canceled' | 'past_due';
+  stripeCustomerId?: string; stripeSubscriptionId?: string; currentPeriodEnd?: Date; cancelAtPeriodEnd?: boolean;
+  createdAt: Date; updatedAt: Date; monthlyUsage?: MonthlyUsage;
 }
-
 export interface UserProfile {
-  uid: string;
-  email: string;
-  displayName: string;
-  isGoogleUser: boolean;
-  subscription: UserSubscription;
-  isFirstLogin?: boolean;
-  hasCompletedFirstPayment?: boolean;
-  showWelcomeModal?: boolean;
-  createdAt: Date;
-  lastLoginAt: Date;
+  uid: string; email: string; displayName: string; isGoogleUser: boolean; subscription: UserSubscription;
+  isFirstLogin?: boolean; hasCompletedFirstPayment?: boolean; showWelcomeModal?: boolean; createdAt: Date; lastLoginAt: Date;
 }
 
-// Crear/actualizar perfil de usuario con suscripción
-export async function createUserProfile(
-  uid: string, 
-  userData: Partial<UserProfile>,
-  preserveSubscription: boolean = true
-): Promise<void> {
-  try {
-    const userRef = doc(db, 'users', uid);
-    const userDoc = await getDoc(userRef);
-    
-    const now = new Date();
-    
-    if (!userDoc.exists()) {
-      // Usuario nuevo - plan gratuito por defecto
-      const newUserProfile: UserProfile = {
-        uid,
-        email: userData.email || '',
-        displayName: userData.displayName || '',
-        isGoogleUser: userData.isGoogleUser || false,
-        subscription: {
-          plan: 'free',
-          status: 'inactive',
-          createdAt: now,
-          updatedAt: now,
-        },
-        isFirstLogin: true,
-        createdAt: now,
-        lastLoginAt: now,
-        ...userData
-      };
-      
-      await setDoc(userRef, newUserProfile);
-      console.log('✅ [Subscription] Perfil de usuario creado con plan gratuito');
-    } else {
-      // Usuario existente - actualizar datos pero preservar suscripción si se especifica
-      const existingData = userDoc.data() as UserProfile;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const updateData: any = {
-        lastLoginAt: now,
-        ...userData
-      };
-      
-      // Si se especifica preservar suscripción, no incluirla en la actualización
-      if (preserveSubscription && existingData.subscription) {
-        delete (updateData as Partial<UserProfile>).subscription;
-      }
-      
-      await updateDoc(userRef, updateData);
-      console.log('✅ [Subscription] Perfil de usuario actualizado');
-    }
-  } catch (error) {
-    console.error('❌ [Subscription] Error al crear/actualizar perfil:', error);
-    throw error;
+const now = () => new Date();
+const serialize = (subscription: UserSubscription) => JSON.parse(JSON.stringify(subscription));
+function deserialize(data: Record<string, unknown>): UserProfile {
+  const subscription = (data.subscription || {}) as Record<string, unknown>;
+  const usage = subscription.monthlyUsage as Record<string, unknown> | undefined;
+  return {
+    uid: String(data.uid), email: String(data.email || ''), displayName: String(data.display_name || ''), isGoogleUser: Boolean(data.is_google_user),
+    subscription: {
+      ...subscription, plan: (subscription.plan || 'free') as UserSubscription['plan'], status: (subscription.status || 'inactive') as UserSubscription['status'],
+      createdAt: new Date(String(subscription.createdAt || data.created_at)), updatedAt: new Date(String(subscription.updatedAt || data.created_at)),
+      currentPeriodEnd: subscription.currentPeriodEnd ? new Date(String(subscription.currentPeriodEnd)) : undefined,
+      monthlyUsage: usage ? { ...usage, personalChatMessages: Number(usage.personalChatMessages || 0), personChatMessages: Number(usage.personChatMessages || 0), statisticsAccess: Number(usage.statisticsAccess || 0), month: String(usage.month), lastUpdated: new Date(String(usage.lastUpdated)) } : undefined,
+    },
+    isFirstLogin: Boolean(data.is_first_login), hasCompletedFirstPayment: Boolean(data.has_completed_first_payment), showWelcomeModal: Boolean(data.show_welcome_modal),
+    createdAt: new Date(String(data.created_at)), lastLoginAt: new Date(String(data.last_login_at)),
+  };
+}
+function defaultSubscription(): UserSubscription { const value = now(); return { plan: 'free', status: 'inactive', createdAt: value, updatedAt: value }; }
+
+export async function createUserProfile(uid: string, userData: Partial<UserProfile>, preserveSubscription = true): Promise<void> {
+  const database = getDatabaseClient();
+  const existing = await getUserProfile(uid);
+  if (!existing) {
+    const subscription = userData.subscription || defaultSubscription();
+    const { error } = await database.from('profiles').insert({ uid, email: userData.email || '', display_name: userData.displayName || '', is_google_user: userData.isGoogleUser || false, subscription: serialize(subscription) });
+    if (error) throw error;
+    return;
   }
+  const payload: Record<string, unknown> = { email: userData.email ?? existing.email, display_name: userData.displayName ?? existing.displayName, is_google_user: userData.isGoogleUser ?? existing.isGoogleUser, last_login_at: now().toISOString() };
+  if (!preserveSubscription && userData.subscription) payload.subscription = serialize(userData.subscription);
+  const { error } = await database.from('profiles').update(payload).eq('uid', uid);
+  if (error) throw error;
 }
-
-// Obtener perfil completo del usuario
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  try {
-    const userRef = doc(db, 'users', uid);
-    const userDoc = await getDoc(userRef);
-    
-    if (userDoc.exists()) {
-      const data = userDoc.data() as UserProfile;
-      console.log('✅ [Subscription] Perfil obtenido:', data.subscription.plan);
-      return data;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('❌ [Subscription] Error al obtener perfil:', error);
-    return null;
-  }
+  const { data, error } = await getDatabaseClient().from('profiles').select('*').eq('uid', uid).maybeSingle();
+  if (error) { console.error('Error al obtener perfil:', error); return null; }
+  return data ? deserialize(data) : null;
 }
-
-// Actualizar suscripción del usuario
-export async function updateUserSubscription(
-  uid: string, 
-  subscriptionData: Partial<UserSubscription>
-): Promise<void> {
-  try {
-    const userRef = doc(db, 'users', uid);
-    
-    // Primero obtener la suscripción actual para hacer merge
-    const userDoc = await getDoc(userRef);
-    let currentSubscription: UserSubscription;
-    
-    if (userDoc.exists()) {
-      const userData = userDoc.data() as UserProfile;
-      currentSubscription = userData.subscription;
-    } else {
-      // Fallback si no existe el documento (no debería pasar)
-      currentSubscription = {
-        plan: 'free',
-        status: 'inactive',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-    }
-    
-    // Hacer merge de los datos manteniendo campos existentes
-    const updateData: Record<string, unknown> = {
-      ...currentSubscription,
-      ...subscriptionData,
-      updatedAt: new Date()
-    };
-    
-    // Asegurar que las fechas se guarden como Timestamp de Firebase
-    if (updateData.currentPeriodEnd && updateData.currentPeriodEnd instanceof Date) {
-      // Mantener la fecha como Date object - Firebase la convertirá automáticamente
-      console.log('🕐 [Subscription] Guardando fecha de expiración:', updateData.currentPeriodEnd);
-    }
-    
-    await updateDoc(userRef, {
-      subscription: updateData
-    });
-    
-    console.log('✅ [Subscription] Suscripción actualizada:', subscriptionData.plan, subscriptionData);
-  } catch (error) {
-    console.error('❌ [Subscription] Error al actualizar suscripción:', error);
-    throw error;
-  }
-}
-
-// Verificar si el usuario tiene una suscripción activa
-export async function hasActiveSubscription(uid: string): Promise<boolean> {
+export async function updateUserSubscription(uid: string, updates: Partial<UserSubscription>): Promise<void> {
   const profile = await getUserProfile(uid);
-  if (!profile) return false;
-  
-  const { plan, status } = profile.subscription;
-  
-  // Plan gratuito siempre está "activo" (con limitaciones)
-  if (plan === 'free') return true;
-  
-  // Planes de pago deben tener status activo
-  return status === 'active';
+  const subscription = { ...(profile?.subscription || defaultSubscription()), ...updates, updatedAt: now() };
+  const { error } = await getDatabaseClient().from('profiles').update({ subscription: serialize(subscription) }).eq('uid', uid);
+  if (error) throw error;
 }
-
-// Marcar que el usuario ya vio la bienvenida
-export async function markWelcomeComplete(uid: string): Promise<void> {
-  try {
-    const userRef = doc(db, 'users', uid);
-    await updateDoc(userRef, {
-      isFirstLogin: false
-    });
-    
-    console.log('✅ [Subscription] Bienvenida marcada como completada');
-  } catch (error) {
-    console.error('❌ [Subscription] Error al marcar bienvenida:', error);
-    throw error;
-  }
+export async function hasActiveSubscription(uid: string) { const profile = await getUserProfile(uid); return Boolean(profile && (profile.subscription.plan === 'free' || profile.subscription.status === 'active')); }
+export async function markWelcomeComplete(uid: string) { const { error } = await getDatabaseClient().from('profiles').update({ is_first_login: false }).eq('uid', uid); if (error) throw error; }
+export async function markFirstPaymentComplete(uid: string) { const { error } = await getDatabaseClient().from('profiles').update({ has_completed_first_payment: true, show_welcome_modal: true }).eq('uid', uid); if (error) throw error; }
+export async function markWelcomeModalSeen(uid: string) { const { error } = await getDatabaseClient().from('profiles').update({ show_welcome_modal: false }).eq('uid', uid); if (error) throw error; }
+export async function findUserByStripeCustomerId(customerId: string) {
+  const { data, error } = await getDatabaseClient().from('profiles').select('uid').eq('subscription->>stripeCustomerId', customerId).maybeSingle();
+  if (error) { console.error('Error buscando cliente de Stripe:', error); return null; }
+  return data?.uid || null;
 }
-
-// Marcar que el usuario completó su primer pago exitoso
-export async function markFirstPaymentComplete(uid: string): Promise<void> {
-  try {
-    const userRef = doc(db, 'users', uid);
-    await updateDoc(userRef, {
-      hasCompletedFirstPayment: true,
-      showWelcomeModal: true  // Flag para mostrar el modal una vez
-    });
-    
-    console.log('✅ [Subscription] Primer pago marcado como completado');
-  } catch (error) {
-    console.error('❌ [Subscription] Error al marcar primer pago:', error);
-    throw error;
-  }
+const currentMonth = () => new Date().toISOString().slice(0, 7);
+function defaultUsage(): MonthlyUsage { return { personalChatMessages: 0, personChatMessages: 0, statisticsAccess: 0, month: currentMonth(), lastUpdated: now() }; }
+function normalizeUsage(usage?: MonthlyUsage) { return !usage || usage.month !== currentMonth() ? defaultUsage() : usage; }
+export async function getUserMonthlyUsage(uid: string) { return normalizeUsage((await getUserProfile(uid))?.subscription.monthlyUsage); }
+async function updateUsage(uid: string, key: keyof Pick<MonthlyUsage, 'personalChatMessages' | 'personChatMessages' | 'statisticsAccess'>) {
+  const profile = await getUserProfile(uid); if (!profile) return;
+  const usage = normalizeUsage(profile.subscription.monthlyUsage); usage[key] += 1; usage.lastUpdated = now();
+  await updateUserSubscription(uid, { monthlyUsage: usage });
 }
-
-// Marcar que el usuario ya vio el modal de bienvenida
-export async function markWelcomeModalSeen(uid: string): Promise<void> {
-  try {
-    const userRef = doc(db, 'users', uid);
-    await updateDoc(userRef, {
-      showWelcomeModal: false
-    });
-    
-    console.log('✅ [Subscription] Modal de bienvenida marcado como visto');
-  } catch (error) {
-    console.error('❌ [Subscription] Error al marcar modal como visto:', error);
-    throw error;
-  }
-}
-
-// Buscar usuario por Stripe Customer ID
-export async function findUserByStripeCustomerId(customerId: string): Promise<string | null> {
-  try {
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('subscription.stripeCustomerId', '==', customerId));
-    const querySnapshot = await getDocs(q);
-    
-    if (!querySnapshot.empty) {
-      const userDoc = querySnapshot.docs[0];
-      console.log('✅ [Subscription] Usuario encontrado por Stripe Customer ID:', userDoc.id);
-      return userDoc.id;
-    }
-    
-    console.log('⚠️ [Subscription] No se encontró usuario con Stripe Customer ID:', customerId);
-    return null;
-  } catch (error) {
-    console.error('❌ [Subscription] Error buscando usuario por Stripe Customer ID:', error);
-    return null;
-  }
-}
-
-// Funciones para manejo de uso mensual
-
-// Obtener el mes actual en formato YYYY-MM
-function getCurrentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
-// Inicializar uso mensual si no existe o es de un mes diferente
-function initializeMonthlyUsage(existingUsage?: MonthlyUsage): MonthlyUsage {
-  const currentMonth = getCurrentMonth();
-  
-  if (!existingUsage || existingUsage.month !== currentMonth) {
-    return {
-      personalChatMessages: 0,
-      personChatMessages: 0,
-      statisticsAccess: 0,
-      month: currentMonth,
-      lastUpdated: new Date()
-    };
-  }
-  
-  return existingUsage;
-}
-
-// Obtener uso mensual actual del usuario
-export async function getUserMonthlyUsage(uid: string): Promise<MonthlyUsage> {
-  try {
-    const userProfile = await getUserProfile(uid);
-    if (!userProfile) {
-      return initializeMonthlyUsage();
-    }
-    
-    return initializeMonthlyUsage(userProfile.subscription.monthlyUsage);
-  } catch (error) {
-    console.error('❌ [Subscription] Error obteniendo uso mensual:', error);
-    return initializeMonthlyUsage();
-  }
-}
-
-// Incrementar contador de mensajes de chat personal
-export async function incrementPersonalChatUsage(uid: string): Promise<void> {
-  try {
-    const userRef = doc(db, 'users', uid);
-    const currentUsage = await getUserMonthlyUsage(uid);
-    
-    const updatedUsage: MonthlyUsage = {
-      ...currentUsage,
-      personalChatMessages: currentUsage.personalChatMessages + 1,
-      lastUpdated: new Date()
-    };
-    
-    await updateDoc(userRef, {
-      'subscription.monthlyUsage': updatedUsage
-    });
-    
-    console.log('✅ [Subscription] Uso de chat personal incrementado:', updatedUsage.personalChatMessages);
-  } catch (error) {
-    console.error('❌ [Subscription] Error incrementando uso de chat personal:', error);
-  }
-}
-
-// Incrementar contador de mensajes de chat con personas
-export async function incrementPersonChatUsage(uid: string): Promise<void> {
-  try {
-    const userRef = doc(db, 'users', uid);
-    const currentUsage = await getUserMonthlyUsage(uid);
-    
-    const updatedUsage: MonthlyUsage = {
-      ...currentUsage,
-      personChatMessages: currentUsage.personChatMessages + 1,
-      lastUpdated: new Date()
-    };
-    
-    await updateDoc(userRef, {
-      'subscription.monthlyUsage': updatedUsage
-    });
-    
-    console.log('✅ [Subscription] Uso de chat con personas incrementado:', updatedUsage.personChatMessages);
-  } catch (error) {
-    console.error('❌ [Subscription] Error incrementando uso de chat con personas:', error);
-  }
-}
-
-// Incrementar contador de acceso a estadísticas
-export async function incrementStatisticsAccess(uid: string): Promise<void> {
-  try {
-    const userRef = doc(db, 'users', uid);
-    const currentUsage = await getUserMonthlyUsage(uid);
-    
-    const updatedUsage: MonthlyUsage = {
-      ...currentUsage,
-      statisticsAccess: currentUsage.statisticsAccess + 1,
-      lastUpdated: new Date()
-    };
-    
-    await updateDoc(userRef, {
-      'subscription.monthlyUsage': updatedUsage
-    });
-    
-    console.log('✅ [Subscription] Acceso a estadísticas incrementado:', updatedUsage.statisticsAccess);
-  } catch (error) {
-    console.error('❌ [Subscription] Error incrementando acceso a estadísticas:', error);
-  }
-}
+export const incrementPersonalChatUsage = (uid: string) => updateUsage(uid, 'personalChatMessages');
+export const incrementPersonChatUsage = (uid: string) => updateUsage(uid, 'personChatMessages');
+export const incrementStatisticsAccess = (uid: string) => updateUsage(uid, 'statisticsAccess');

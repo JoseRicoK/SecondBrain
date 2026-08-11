@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { FiLock, FiEye, FiEyeOff, FiCheck, FiX } from 'react-icons/fi';
-import { auth } from '@/lib/firebase';
-import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
@@ -15,32 +14,12 @@ function ResetPasswordForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [oobCode, setOobCode] = useState<string | null>(null);
-  
   const router = useRouter();
 
   useEffect(() => {
-    // Para Firebase, obtenemos el código de verificación de la URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('oobCode');
-    const mode = urlParams.get('mode');
-    
-    if (mode !== 'resetPassword' || !code) {
-      setError('Enlace de recuperación inválido o expirado. Por favor, solicita un nuevo enlace.');
-      return;
-    }
-    
-    setOobCode(code);
-    
-    // Verificar que el código es válido
-    verifyPasswordResetCode(auth, code)
-      .then(() => {
-        console.log('Código de verificación válido');
-      })
-      .catch((error) => {
-        console.error('Error al verificar código:', error);
-        setError('Enlace de recuperación inválido o expirado. Por favor, solicita un nuevo enlace.');
-      });
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) setError('Enlace de recuperación inválido o expirado. Por favor, solicita un nuevo enlace.');
+    });
   }, []);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -67,14 +46,9 @@ function ResetPasswordForm() {
       return;
     }
 
-    if (!oobCode) {
-      setError('Código de verificación no válido');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      await confirmPasswordReset(auth, oobCode, password);
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) throw updateError;
       setSuccess(true);
       
       // Redirigir al login después de 3 segundos

@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { updateUserSubscription, getUserProfile } from '@/lib/subscription-operations';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-07-30.basil',
+  apiVersion: '2024-06-20' as any,
 });
 
 export async function POST(req: NextRequest) {
@@ -78,7 +81,7 @@ export async function POST(req: NextRequest) {
       currentPeriodEndDate.setMonth(currentPeriodEndDate.getMonth() + 1);
     }
 
-    // Actualizar en Firebase que está marcada para cancelación
+    // Actualizar en Supabase que está marcada para cancelación
     await updateUserSubscription(userId, {
       cancelAtPeriodEnd: true,
       currentPeriodEnd: currentPeriodEndDate,

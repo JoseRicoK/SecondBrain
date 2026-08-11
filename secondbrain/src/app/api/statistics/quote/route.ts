@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { getDiaryEntriesByUserId } from '@/lib/firebase-operations';
+import { getDiaryEntriesByUserId } from '@/lib/supabase-operations';
 
 // Inicializar el cliente de OpenAI
 const openai = new OpenAI({

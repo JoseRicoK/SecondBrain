@@ -60,10 +60,10 @@ function AnimatedStat({ number, label, suffix = '', duration = 2 }: StatProps) {
 
 export default function StatsSection() {
   const stats = [
-    { number: 10000, label: "Usuarios Activos", suffix: "+" },
-    { number: 250000, label: "Entradas Creadas", suffix: "+" },
-    { number: 500000, label: "Palabras Escritas", suffix: "+" },
-    { number: 99, label: "Satisfacción", suffix: "%" }
+    { number: 10000, label: "Usuarios activos en el diario con IA", suffix: "+" },
+    { number: 250000, label: "Entradas de diario creadas", suffix: "+" },
+    { number: 500000, label: "Palabras escritas en diarios", suffix: "+" },
+    { number: 99, label: "Satisfacción de usuarios", suffix: "%" }
   ];
 
   return (

@@ -1,10 +1,7 @@
-// Hook para autenticación con Firebase
-// Para la migración, usaremos Firebase por defecto
-import { useFirebaseAuthContext } from '@/contexts/FirebaseAuthContext';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 
 export function useAuth() {
-  return useFirebaseAuthContext();
+  return useSupabaseAuthContext();
 }
 
-// Hook para compatibilidad durante la migración
-export { useFirebaseAuthContext as useFirebaseAuth };
+export { useSupabaseAuthContext as useSupabaseAuth };

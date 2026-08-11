@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     description: "🧠 Revoluciona tu diario personal con IA. Chat inteligente, grabación de voz, transcripción automática y análisis profundo de tu bienestar mental. ¡Comienza gratis hoy!",
     images: [
       {
-        url: "/Logo-entero-SecondBrain.png",
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
         alt: "SecondBrain - Diario Personal con Inteligencia Artificial",
@@ -80,13 +80,12 @@ export const metadata: Metadata = {
     creator: "@SecondBrainApp", 
     title: "SecondBrain - Diario Personal con IA | Tu Segundo Cerebro Digital",
     description: "🧠 El diario personal más avanzado con IA. Chat personalizado, grabación de voz y análisis inteligente. ¡Prueba gratis!",
-    images: ["/Logo-entero-SecondBrain.png"],
+    images: ["/twitter-image"],
   },
   alternates: {
     canonical: "https://secondbrainapp.com",
     languages: {
       'es-ES': 'https://secondbrainapp.com',
-      'en-US': 'https://secondbrainapp.com/en',
     },
   },
   category: "Technology",
@@ -167,6 +166,25 @@ export default function RootLayout({
     ]
   };
 
+  const orgLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'SecondBrain',
+    url: 'https://secondbrainapp.com',
+    logo: 'https://secondbrainapp.com/Logo-entero-SecondBrain.png',
+    sameAs: [
+      'https://x.com/SecondBrainApp'
+    ],
+    contactPoint: [
+      {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: 'hello@secondbrainapp.com',
+        availableLanguage: ['es']
+      }
+    ]
+  };
+
   return (
     <html lang="es">
       <head>
@@ -174,10 +192,11 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <link rel="canonical" href="https://secondbrainapp.com" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }}
+        />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="google-site-verification" content="your-google-verification-code" />
-        <meta name="msvalidate.01" content="your-bing-verification-code" />
         <meta name="theme-color" content="#8b5cf6" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

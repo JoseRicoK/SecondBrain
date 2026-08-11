@@ -1,0 +1,12 @@
+/* TEAM */
+Developer: SecondBrain Team
+Website: https://secondbrainapp.com
+Contact: hello@secondbrainapp.com
+
+/* SITE */
+Last-Update: 2025-09-22
+Language: es
+
+/* TECHNOLOGY */
+Framework: Next.js
+Hosting: Vercel

@@ -15,8 +15,7 @@ import { FiMenu, FiEdit2, FiSave, FiX, FiMic, FiStopCircle, FiZap, FiUsers, FiUs
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Image from 'next/image';
-import { FirebaseUser } from '@/lib/firebase-operations';
-import { auth } from '@/lib/firebase';
+import { AuthUser } from '@/lib/supabase-operations';
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -40,6 +39,7 @@ export default function Home() {
   
   // Estados del diario
   const [content, setContent] = useState('');
+  const [secondaryContent, setSecondaryContent] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -132,7 +132,7 @@ export default function Home() {
     setError(null);
     
     try {
-      // Obtener token de Firebase
+      // Obtener token de Supabase
       const token = await user.getIdToken();
       
       const response = await fetch('/api/stylize', {
@@ -188,7 +188,7 @@ export default function Home() {
     setError(null);
     
     try {
-      // Obtener token de Firebase
+      // Obtener token de Supabase
       const token = await user.getIdToken();
       
       const response = await fetch('/api/extract-people', {
@@ -321,8 +321,8 @@ export default function Home() {
       formData.append('file', audioBlob, 'recording.wav');
       formData.append('userId', user.uid);
 
-      // Obtener el token de autenticación de Firebase
-      const token = await auth.currentUser?.getIdToken();
+      // Obtener el token de autenticación de Supabase
+      const token = await user.getIdToken();
 
       const response = await fetch('/api/transcribe', {
         method: 'POST',
@@ -418,7 +418,7 @@ export default function Home() {
     setIsChatMinimized(!isChatMinimized);
   };
 
-  const handleAuthSuccess = async (authenticatedUser: FirebaseUser, selectedPlan?: string) => {
+  const handleAuthSuccess = async (authenticatedUser: AuthUser, selectedPlan?: string) => {
     // El hook useAuth se encargará de actualizar el estado
     console.log('Usuario autenticado:', authenticatedUser.uid);
     
@@ -797,6 +797,13 @@ export default function Home() {
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="Escribe tu entrada del diario aquí... ✨"
                             className="w-full h-[500px] p-4 border-2 border-slate-200 rounded-2xl resize-none focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-400 text-slate-700 leading-relaxed text-lg bg-white/50 backdrop-blur-sm transition-all duration-200"
+                          />
+                          <input
+                            type="text"
+                            value={secondaryContent}
+                            onChange={(e) => setSecondaryContent(e.target.value)}
+                            placeholder="Añade una nota rápida..."
+                            className="mt-4 w-full p-4 border-2 border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-400 text-slate-700 bg-white/50 backdrop-blur-sm transition-all duration-200"
                           />
                           <div className="absolute bottom-4 right-4 text-xs text-slate-400">
                             {content.length} caracteres

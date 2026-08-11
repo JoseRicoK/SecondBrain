@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo, incrementPersonMentionCount, updateEntryMoodData } from '@/lib/firebase-operations';
+import { getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo, incrementPersonMentionCount, updateEntryMoodData } from '@/lib/supabase-operations';
 
 // Inicializar el cliente de OpenAI
 const openai = new OpenAI({
@@ -67,8 +67,8 @@ export async function POST(request: Request) {
     console.log('🔍 [API Extract People] Fecha recibida desde frontend:', entryDate);
     console.log('🔍 [API Extract People] Fecha validada para usar:', validEntryDate);
 
-    // Convertir userId a UUID válido para la consulta (usar directamente el userId de Firebase)
-    const validUUID = userId; // Usar directamente el userId de Firebase Auth
+    // Convertir userId a UUID válido para la consulta (usar directamente el userId de Supabase)
+    const validUUID = userId; // Usar directamente el userId de Supabase Auth
     
     // Obtener personas existentes de la base de datos para proporcionar contexto
     const existingPeople = await getPeopleByUserId(validUUID);
@@ -370,7 +370,7 @@ export async function POST(request: Request) {
       
       // Guardar información de personas en la base de datos
       if (peopleExtracted.length > 0 && userId) {
-        // Convertir userId a string (usar directamente el userId de Firebase)
+        // Convertir userId a string (usar directamente el userId de Supabase)
         const userIdString = userId.toString();
         
         // Usar directamente el userIdString sin convertir a UUID

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useFirebaseAuthContext } from '@/contexts/FirebaseAuthContext';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { FaCrown, FaHeart, FaCheck, FaArrowLeft, FaTimes } from 'react-icons/fa';
 import { FiZap } from 'react-icons/fi';
@@ -80,7 +80,7 @@ const basePlans = {
 function SubscriptionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading } = useFirebaseAuthContext();
+  const { user, loading } = useSupabaseAuthContext();
   const { currentPlan: userCurrentPlan, userProfile } = useSubscription();
   const [selectedPlan, setSelectedPlan] = useState<keyof typeof basePlans | 'free'>('pro');
   const [showCheckout, setShowCheckout] = useState(false);

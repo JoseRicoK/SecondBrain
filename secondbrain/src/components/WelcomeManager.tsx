@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useFirebaseAuthContext } from '@/contexts/FirebaseAuthContext';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import { useSearchParams } from 'next/navigation';
 import { markWelcomeModalSeen } from '@/lib/subscription-operations';
 import WelcomeModal from './WelcomeModal';
 
 function WelcomeContent() {
-  const { user, userProfile, loading } = useFirebaseAuthContext();
+  const { user, userProfile, loading } = useSupabaseAuthContext();
   const searchParams = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
   const sessionId = searchParams.get('session_id');
@@ -28,7 +28,7 @@ function WelcomeContent() {
   const handleCloseWelcome = async () => {
     setShowWelcome(false);
     
-    // Marcar el modal como visto en Firebase
+    // Marcar el modal como visto en Supabase
     if (user) {
       try {
         await markWelcomeModalSeen(user.uid);

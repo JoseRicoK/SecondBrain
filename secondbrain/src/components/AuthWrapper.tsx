@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import { FirebaseAuthProvider } from '@/contexts/FirebaseAuthContext';
+import { SupabaseAuthProvider } from '@/contexts/SupabaseAuthContext';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
@@ -65,9 +65,9 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
   return (
     <ChunkErrorBoundary>
       <Suspense fallback={<LoadingFallback />}>
-        <FirebaseAuthProvider>
+        <SupabaseAuthProvider>
           {children}
-        </FirebaseAuthProvider>
+        </SupabaseAuthProvider>
       </Suspense>
     </ChunkErrorBoundary>
   );

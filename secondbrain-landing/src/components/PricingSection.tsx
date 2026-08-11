@@ -9,7 +9,7 @@ export default function PricingSection() {
     {
       name: "Gratuito",
       price: "0",
-      description: "Perfecto para empezar tu viaje personal",
+      description: "Empieza hoy sin tarjeta. Ideal para probar el diario con IA",
       icon: Heart,
       color: "from-gray-500 to-slate-500",
       features: [
@@ -29,7 +29,7 @@ export default function PricingSection() {
     {
       name: "Pro",
       price: "9.99",
-      description: "Para usuarios serios sobre su crecimiento",
+      description: "Para crecer más rápido: más IA, más análisis, más claridad",
       icon: Zap,
       color: "from-purple-500 to-pink-500",
       features: [
@@ -39,8 +39,8 @@ export default function PricingSection() {
         { text: "🎨 Estilización avanzada con IA", included: true },
         { text: "📊 10 estadísticas avanzadas por mes", included: true },
         { text: "🔍 Análisis inteligente mejorado", included: true },
-        { text: "💬 Chat personal ilimitado", included: false },
-        { text: "👥 Chat con personas ilimitado", included: false }
+        { text: "💬 100 mensajes de chat personal por mes", included: false },
+        { text: "👥 500 mensajes con personas por mes", included: false }
       ],
       cta: "Comenzar Pro",
       href: "https://app.secondbrainapp.com/signup?plan=pro",
@@ -49,7 +49,7 @@ export default function PricingSection() {
     {
       name: "Elite",
       price: "19.99",
-      description: "Para profesionales que buscan lo mejor",
+      description: "Para profesionales exigentes: todo ilimitado y soporte prioritario",
       icon: Crown,
       color: "from-orange-500 to-red-500",
       features: [
@@ -152,6 +152,7 @@ export default function PricingSection() {
               >
                 {plan.cta}
               </Link>
+              <p className="text-xs text-gray-400 mt-3 text-center">Cancela cuando quieras. Sin permanencia.</p>
             </motion.div>
             </article>
           ))}
@@ -167,7 +168,7 @@ export default function PricingSection() {
             ¿Necesitas algo más específico? Hablemos.
           </p>
           <Link
-            href="mailto:support@secondbrainapp.com"
+            href="mailto:hello@secondbrainapp.com"
             className="text-purple-400 hover:text-purple-300 transition-colors text-sm sm:text-base"
           >
             Contactar para más información →

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { getEntriesByDateRange } from '@/lib/firebase-operations';
+import { getEntriesByDateRange } from '@/lib/supabase-operations';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 

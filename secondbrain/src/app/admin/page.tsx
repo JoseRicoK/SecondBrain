@@ -103,7 +103,7 @@ export default function AdminPage() {
           <div className="mb-6">
             <label className="block text-white font-semibold mb-3">
               <FaUserPlus className="inline mr-2" />
-              User ID (Firebase UID)
+              User ID (Supabase UID)
             </label>
             <div className="relative">
               <input

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DiaryEntry, AudioTranscription, getEntryByDate, saveEntry, getTranscriptionsByEntryId } from './firebase-operations';
+import { DiaryEntry, AudioTranscription, getEntryByDate, saveEntry, getTranscriptionsByEntryId } from './supabase-operations';
 
 interface DiaryState {
   currentDate: string;

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FiCalendar, FiCheck, FiLink, FiUser, FiTrash2, FiMessageSquare, FiMail, FiAlertTriangle, FiSave, FiEye, FiEyeOff, FiLogOut, FiCreditCard, FiArrowUp, FiX } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
-import { updateUserProfile, updateUserPassword, deleteUserAccount } from '@/lib/firebase-operations';
+import { updateUserProfile, updateUserPassword, deleteUserAccount } from '@/lib/supabase-operations';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
@@ -671,7 +671,7 @@ const Settings: React.FC<SettingsProps> = () => {
                       
                       let dateObj: Date;
                       
-                      // Manejar Firebase Timestamp
+                      // Manejar Supabase Timestamp
                       if (date && typeof date === 'object' && 'toDate' in date) {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         dateObj = (date as any).toDate();

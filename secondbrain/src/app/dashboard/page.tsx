@@ -2,13 +2,13 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useFirebaseAuthContext } from '@/contexts/FirebaseAuthContext';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import { FaCheckCircle, FaSpinner, FaHome } from 'react-icons/fa';
 
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, userProfile, loading, refreshUserProfile } = useFirebaseAuthContext();
+  const { user, userProfile, loading, refreshUserProfile } = useSupabaseAuthContext();
   const [paymentStatus, setPaymentStatus] = useState<'checking' | 'success' | 'error' | 'none'>('none');
   const [message, setMessage] = useState('');
 

@@ -2,14 +2,14 @@
 
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useFirebaseAuthContext } from '@/contexts/FirebaseAuthContext';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import Auth from '@/components/Auth';
 import Loading from '@/components/Loading';
 
 function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading } = useFirebaseAuthContext();
+  const { user, loading } = useSupabaseAuthContext();
   const plan = searchParams.get('plan');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

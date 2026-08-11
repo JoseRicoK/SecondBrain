@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import styles from './PersonalChat.module.css';
-import { auth } from '@/lib/firebase';
+
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -44,7 +44,7 @@ export const PersonalChat: React.FC<PersonalChatProps> = ({
   
   // Get user display name from auth - using useCallback to avoid dependency issues
   const getUserDisplayName = useCallback(() => {
-    // Para Firebase Auth
+    // Para Supabase Auth
     if (user?.displayName) {
       return user.displayName;
     }
@@ -158,8 +158,8 @@ Puedo ayudarte a:
         weekday: 'long'
       }).format(now);
 
-      // Obtener token de Firebase
-      const token = await auth.currentUser?.getIdToken();
+      // Obtener token de Supabase
+      const token = await user?.getIdToken();
       const response = await fetch('/api/personal-chat', {
         method: 'POST',
         headers: {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { getPeopleByUserId } from '@/lib/firebase-operations';
+import { getPeopleByUserId } from '@/lib/supabase-operations';
 
 export async function GET(request: Request) {
   try {

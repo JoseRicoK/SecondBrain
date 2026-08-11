@@ -125,7 +125,7 @@ export default function FAQSection() {
             ¿No encuentras la respuesta que buscas?
           </p>
           <a
-            href="mailto:support@secondbrainapp.com"
+            href="mailto:hello@secondbrainapp.com"
             className="text-purple-400 hover:text-purple-300 transition-colors font-medium"
           >
             Contáctanos directamente →

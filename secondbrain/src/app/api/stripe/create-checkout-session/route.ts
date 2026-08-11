@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createUserProfile } from '@/lib/subscription-operations';
+import { createUserProfile, getUserProfile, updateUserSubscription } from '@/lib/subscription-operations';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-07-30.basil',
+  apiVersion: '2024-06-20' as any,
 });
 
 export async function POST(req: NextRequest) {
@@ -24,7 +27,7 @@ export async function POST(req: NextRequest) {
       displayName
     });
 
-    // Crear o actualizar el perfil del usuario en Firebase
+    // Crear o actualizar el perfil del usuario en Supabase
     try {
       await createUserProfile(userId, {
         email: userEmail,
@@ -55,6 +58,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Asegurar que el Customer de Stripe existe y reutilizarlo
+    let customerId: string | undefined;
+    try {
+      const profile = await getUserProfile(userId);
+      customerId = profile?.subscription?.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: userEmail,
+          metadata: { uid: userId, display_name: displayName || userEmail.split('@')[0] },
+        });
+        customerId = customer.id;
+        // Guardar el customerId en el perfil para futuras operaciones
+        await updateUserSubscription(userId, { stripeCustomerId: customerId });
+      }
+    } catch (customerErr) {
+      console.warn('⚠️ No se pudo asegurar/crear el Customer en Stripe. Continuando con customer_email.', customerErr);
+    }
+
     // Crear la sesión de checkout
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -65,7 +86,7 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      customer_email: userEmail,
+      ...(customerId ? { customer: customerId } : { customer_email: userEmail }),
       metadata: {
         uid: userId, // Cambiado de userId a uid para consistencia
         plan_type: planType,

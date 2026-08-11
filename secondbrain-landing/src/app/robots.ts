@@ -20,6 +20,21 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/', '/_next/', '/admin/'],
         crawlDelay: 1,
       },
+      {
+        userAgent: 'GPTBot',
+        allow: '/',
+        disallow: ['/api/'],
+      },
+      {
+        userAgent: 'ChatGPT-User',
+        allow: '/',
+        disallow: ['/api/'],
+      },
+      {
+        userAgent: 'Google-Extended',
+        allow: '/',
+        disallow: ['/api/'],
+      },
     ],
     sitemap: 'https://secondbrainapp.com/sitemap.xml',
   }

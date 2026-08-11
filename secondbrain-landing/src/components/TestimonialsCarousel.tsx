@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Star, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
+import Script from 'next/script';
 
 const testimonials = [
   {
@@ -51,6 +52,24 @@ export default function TestimonialsCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(true);
 
+  const avgRating = (testimonials.reduce((sum, t) => sum + t.stars, 0) / testimonials.length).toFixed(1);
+  const reviewsLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: 'SecondBrain - Diario Personal con IA',
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: avgRating,
+      reviewCount: testimonials.length,
+    },
+    review: testimonials.map((t) => ({
+      '@type': 'Review',
+      reviewRating: { '@type': 'Rating', ratingValue: t.stars },
+      author: { '@type': 'Person', name: t.name },
+      reviewBody: t.text,
+    })),
+  };
+
   useEffect(() => {
     if (!isAutoPlay) return;
     
@@ -71,6 +90,12 @@ export default function TestimonialsCarousel() {
 
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <Script
+        id="reviews-schema"
+        type="application/ld+json"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(reviewsLd) }}
+      />
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

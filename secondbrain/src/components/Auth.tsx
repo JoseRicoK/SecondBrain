@@ -8,13 +8,13 @@ import {
   signInWithGoogle,
   resetUserPassword,
   resendEmailVerification,
-  type FirebaseUser 
-} from '@/lib/firebase-operations';
-import { testFirebaseConnection } from '@/lib/firebase-test';
+  type AuthUser
+} from '@/lib/supabase-operations';
+import { testSupabaseConnection } from '@/lib/supabase-test';
 import Image from 'next/image';
 
 interface AuthProps {
-  onAuthSuccess: (user: FirebaseUser, selectedPlan?: string) => void;
+  onAuthSuccess: (user: AuthUser, selectedPlan?: string) => void;
 }
 
 export default function Auth({ onAuthSuccess }: AuthProps) {
@@ -300,7 +300,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
             </button>
           )}
           <div className="pt-2">
-            <button type="button" onClick={testFirebaseConnection} className="inline-flex items-center text-gray-500 hover:text-gray-700">
+            <button type="button" onClick={testSupabaseConnection} className="inline-flex items-center text-gray-500 hover:text-gray-700">
               <FiWifi className="mr-1" />Probar conexión
             </button>
           </div>

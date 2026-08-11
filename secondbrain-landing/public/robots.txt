@@ -20,6 +20,19 @@ Disallow: /_next/
 Disallow: /admin/
 Crawl-delay: 1
 
+# Permisos para crawlers de IA
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /api/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /api/
+
 # Sitemap
 Sitemap: https://secondbrainapp.com/sitemap.xml
 

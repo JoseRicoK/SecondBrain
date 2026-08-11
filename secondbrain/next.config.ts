@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
-    value: "default-src 'self'; img-src 'self' data: blob: https://lh3.googleusercontent.com; media-src 'self' data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.googleapis.com https://apis.google.com https://js.stripe.com https://*.stripe.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.googleapis.com https://*.firebase.com https://*.firebaseapp.com https://*.cloudfunctions.net wss://*.firebaseio.com https://api.stripe.com https://*.stripe.com; frame-src 'self' https://*.firebaseapp.com https://*.googleapis.com https://accounts.google.com https://js.stripe.com https://checkout.stripe.com https://*.stripe.com; font-src 'self' data:"
+    value: "default-src 'self'; img-src 'self' data: blob: https://lh3.googleusercontent.com; media-src 'self' data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.googleapis.com https://apis.google.com https://js.stripe.com https://*.stripe.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.googleapis.com https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.stripe.com; frame-src 'self' https://*.googleapis.com https://accounts.google.com https://js.stripe.com https://checkout.stripe.com https://*.stripe.com; font-src 'self' data:"
   },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
@@ -23,13 +23,8 @@ const nextConfig: NextConfig = {
   },
   // Configuración para manejar Recharts y otras dependencias problemáticas
   transpilePackages: ['recharts', 'react-smooth'],
-  experimental: {
-    esmExternals: 'loose',
-  },
-  webpack: (config) => {
-    config.externals = [...(config.externals || []), { canvas: 'canvas' }];
-    return config;
-  },
+  serverExternalPackages: ['canvas'],
+  turbopack: {},
   async headers() {
     return [
       {

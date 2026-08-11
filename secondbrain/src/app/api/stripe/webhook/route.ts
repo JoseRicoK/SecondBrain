@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { updateUserSubscription, findUserByStripeCustomerId, markFirstPaymentComplete } from '@/lib/subscription-operations';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-07-30.basil',
+  apiVersion: '2024-06-20' as any,
 });
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;

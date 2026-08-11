@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useFirebaseAuthContext } from '@/contexts/FirebaseAuthContext';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import { 
   canUseFeature, 
   canCreateTranscription, 
@@ -17,7 +17,7 @@ import {
 import { getUserMonthlyUsage, MonthlyUsage } from '@/lib/subscription-operations';
 
 export function useSubscription() {
-  const { user, userProfile, loading } = useFirebaseAuthContext();
+  const { user, userProfile, loading } = useSupabaseAuthContext();
   const [currentPlan, setCurrentPlan] = useState<PlanType>('free');
   const [planLimits, setPlanLimits] = useState(PLAN_LIMITS.free);
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsage | null>(null);

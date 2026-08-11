@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { getEntriesMoodDataByDateRange } from '@/lib/firebase-operations';
+import { getEntriesMoodDataByDateRange } from '@/lib/supabase-operations';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
 export async function GET(request: Request) {

@@ -1,0 +1,7 @@
+# AI Crawler Policy for SecondBrain
+User-agent: *
+Allow: /
+Disallow: /api/
+Sitemap: https://secondbrainapp.com/sitemap.xml
+Website: https://secondbrainapp.com
+Contact: mailto:hello@secondbrainapp.com

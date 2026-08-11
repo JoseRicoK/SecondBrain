@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { FiLogOut, FiChevronDown, FiMail, FiAlertCircle } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
-import { sendEmailVerificationToCurrentUser } from '@/lib/firebase-operations';
+import { sendEmailVerificationToCurrentUser } from '@/lib/supabase-operations';
 
 export default function UserHeader() {
   const { user, signOut } = useAuth();
@@ -32,7 +32,7 @@ export default function UserHeader() {
   };
 
   const getUserDisplayName = () => {
-    // Para Firebase Auth
+    // Para Supabase Auth
     if (user?.displayName) {
       return user.displayName;
     }

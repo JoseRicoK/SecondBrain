@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiSend, FiX, FiUser, FiLoader } from 'react-icons/fi';
-import { Person } from '@/lib/firebase-operations';
+import { Person } from '@/lib/supabase-operations';
 import { useSubscription } from '@/hooks/useSubscription';
-import { auth } from '@/lib/firebase';
+import { useAuth } from '@/hooks/useAuth';
+
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -17,6 +18,7 @@ interface PersonChatProps {
 }
 
 export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose }) => {
+  const { user } = useAuth();
   const { 
     planLimits, 
     monthlyUsage, 
@@ -97,7 +99,7 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
         weekday: 'long'
       }).format(now);
 
-      const token = await auth.currentUser?.getIdToken();
+      const token = await user?.getIdToken();
       const response = await fetch('/api/chat-person', {
         method: 'POST',
         headers: {

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import Head from 'next/head';
+import Script from 'next/script';
 import { 
   Brain,
   MessageCircle, 
@@ -46,12 +46,12 @@ export default function Home() {
 
   return (
     <>
-      <Head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-        />
-      </Head>
+      <Script
+        id="faq-schema"
+        type="application/ld+json"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative">
       {/* Animated Background */}
       <AnimatedBackground />
@@ -86,7 +86,7 @@ export default function Home() {
                 >
                   <div className="inline-flex items-center bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full px-4 py-2 lg:px-6 lg:py-3 backdrop-blur-sm border border-purple-500/30">
                     <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400 mr-2" aria-hidden="true" />
-                    <span className="text-purple-300 text-sm font-medium">Potenciado por Inteligencia Artificial</span>
+                    <span className="text-purple-300 text-sm font-medium">Impulsado por GPT‑5</span>
                   </div>
                 </motion.div>
 
@@ -139,7 +139,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.8 }}
-              className="flex justify-center items-center"
+              className="flex justify-center items-center gap-4 flex-col sm:flex-row"
             >
               <Link
                 href="https://app.secondbrainapp.com/signup?plan=free"
@@ -147,6 +147,12 @@ export default function Home() {
               >
                 Comenzar Gratis
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link
+                href="#features"
+                className="w-full sm:w-auto max-w-xs liquid-glass border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center"
+              >
+                Explorar Funciones
               </Link>
             </motion.div>
 
@@ -305,7 +311,7 @@ export default function Home() {
               </p>
               <div className="flex items-center text-purple-400 text-sm">
                 <Sparkles className="w-4 h-4 mr-2" />
-                Potenciado por OpenAI
+                Impulsado por GPT‑5
               </div>
             </motion.div>
 
@@ -482,13 +488,13 @@ export default function Home() {
               <div className="bg-gradient-to-r from-orange-500 to-red-500 w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <TrendingUp className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-4">Resumen Semanal</h3>
+              <h3 className="text-xl font-bold text-white mb-4">Resumen Semanal con GPT-5</h3>
               <p className="text-gray-300 mb-6 leading-relaxed">
                 Recibe automáticamente insights sobre tu semana: patrones de comportamiento, tendencias emocionales y momentos destacados.
               </p>
               <div className="flex items-center text-orange-400 text-sm font-medium">
                 <Sparkles className="w-4 h-4 mr-2" />
-                Powered by IA
+                Impulsado por GPT‑5
               </div>
             </motion.div>
 
@@ -601,7 +607,7 @@ export default function Home() {
       <CtaSection />
 
       {/* Footer */}
-      <footer className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 border-t border-gray-800">
+      <footer className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="flex items-center space-x-2">
@@ -609,18 +615,18 @@ export default function Home() {
               <span className="text-lg font-semibold text-white">SecondBrain</span>
             </div>
             <div className="flex space-x-6 text-gray-400 text-sm sm:text-base">
-              <Link href="#" className="hover:text-white transition-colors">
+              <Link href="/privacidad" className="hover:text-white transition-colors">
                 Privacidad
               </Link>
-              <Link href="#" className="hover:text-white transition-colors">
+              <Link href="/terminos" className="hover:text-white transition-colors">
                 Términos
               </Link>
-              <Link href="#" className="hover:text-white transition-colors">
+              <Link href="/soporte" className="hover:text-white transition-colors">
                 Soporte
               </Link>
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-400 text-sm">
+          <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-400 text-sm mx-4 sm:mx-6 lg:mx-8">
             <p>&copy; 2025 SecondBrain. Todos los derechos reservados.</p>
           </div>
         </div>

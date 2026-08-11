@@ -15,6 +15,7 @@ const Header = () => {
     { href: '/#features', label: 'Funciones' },
     { href: '/precios', label: 'Precios' },
     { href: '/#faq', label: 'FAQ' },
+    { href: '/soporte', label: 'Soporte' },
   ];
 
   const handleLinkClick = (href: string) => {

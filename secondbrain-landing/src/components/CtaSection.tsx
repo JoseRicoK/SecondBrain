@@ -48,8 +48,8 @@ export default function CtaSection() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
             >
-              <span className="block sm:inline">¿Listo para tener tu</span>
-              <span className="block sm:inline sm:ml-2">Segundo Cerebro?</span>
+              <span className="block sm:inline">Empieza gratis tu</span>
+              <span className="block sm:inline sm:ml-2">Diario Personal con IA</span>
             </motion.h2>
 
             <motion.p 
@@ -58,7 +58,8 @@ export default function CtaSection() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             >
-              Únete a <strong>+10,000 usuarios</strong> que ya están transformando su manera de recordar y reflexionar
+              Únete a <strong>+10,000 personas</strong> que usan un <strong>diario inteligente</strong> para mejorar su
+              <strong> bienestar mental</strong> y <strong>crecimiento personal</strong>. Sin tarjeta. Sin permanencia.
             </motion.p>
 
             {/* Benefits */}
@@ -85,7 +86,7 @@ export default function CtaSection() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
-              className="mb-6"
+              className="mb-6 flex flex-col sm:flex-row items-center justify-center gap-4"
             >
               <Link
                 href="https://app.secondbrainapp.com/signup?plan=free"
@@ -93,6 +94,12 @@ export default function CtaSection() {
               >
                 Comenzar Gratis
                 <ArrowRight className="w-5 h-5 ml-2" />
+              </Link>
+              <Link
+                href="/precios"
+                className="inline-flex items-center liquid-glass border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-300"
+              >
+                Ver Planes
               </Link>
             </motion.div>
 
@@ -103,7 +110,7 @@ export default function CtaSection() {
               className="flex flex-col sm:flex-row gap-4 justify-center mt-6"
             >
               <Link
-                href="mailto:support@secondbrainapp.com"
+                href="mailto:hello@secondbrainapp.com"
                 className="text-gray-400 hover:text-white transition-colors"
               >
                 ¿Preguntas? Contáctanos →
