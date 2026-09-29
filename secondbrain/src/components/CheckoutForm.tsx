@@ -1,12 +1,10 @@
-'use client';
+"use client";
 
-import { authenticatedFetch } from '@/lib/authenticated-fetch';
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
 
-import { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
+import { useRef, useState } from "react";
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 interface CheckoutFormProps {
   plan: {
@@ -24,71 +22,85 @@ interface CheckoutFormProps {
   enabled: boolean;
 }
 
-export default function CheckoutForm({ plan, userId, userEmail, displayName, enabled }: CheckoutFormProps) {
+export default function CheckoutForm({
+  plan,
+  userId,
+  userEmail,
+  displayName,
+  enabled,
+}: CheckoutFormProps) {
+  const checkoutAttempt = useRef<{ key: string; id: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleCheckout = async () => {
-    if (!enabled || !stripePromise) return;
+    if (!enabled || !publishableKey) return;
     try {
       setIsLoading(true);
       setError(null);
 
       // Determinar el tipo de plan basado en el nombre
       const planTypeMap: Record<string, string> = {
-        'Pro': 'pro', 
-        'Elite': 'elite'
+        Pro: "pro",
+        Elite: "elite",
       };
-      
+
       const planType = planTypeMap[plan.name];
-      
+
       if (!planType) {
-        throw new Error('Tipo de plan no válido');
+        throw new Error("Tipo de plan no válido");
       }
 
-      console.log('🎯 Enviando solicitud de checkout:', {
-        planType,
-        planName: plan.name,
-        userId,
-        userEmail
-      });
+      const attemptKey = `${userId}:${planType}`;
+      if (checkoutAttempt.current?.key !== attemptKey)
+        checkoutAttempt.current = { key: attemptKey, id: crypto.randomUUID() };
 
       // Crear la sesión de checkout
-      const response = await authenticatedFetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await authenticatedFetch(
+        "/api/stripe/create-checkout-session",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            requestId: checkoutAttempt.current.id,
+            planType,
+            userId,
+            userEmail,
+            displayName,
+          }),
         },
-        body: JSON.stringify({
-          planType,
-          userId,
-          userEmail,
-          displayName,
-        }),
-      });
+      );
 
-      const { sessionId, error: apiError } = await response.json();
+      const { sessionId, portalUrl, error: apiError } = await response.json();
 
       if (apiError) {
         throw new Error(apiError);
       }
 
-      // Redirigir a Stripe Checkout
-      const stripe = await stripePromise;
-      if (!stripe) {
-        throw new Error('Stripe no se pudo cargar');
+      if (
+        response.ok &&
+        typeof portalUrl === "string" &&
+        new URL(portalUrl).hostname === "billing.stripe.com"
+      ) {
+        window.location.assign(portalUrl);
+        return;
       }
-
+      if (!response.ok || !sessionId)
+        throw new Error("No se pudo iniciar el pago");
+      const { loadStripe } = await import("@stripe/stripe-js");
+      const stripe = await loadStripe(publishableKey!);
+      if (!stripe) throw new Error("Stripe no se pudo cargar");
       const { error: stripeError } = await stripe.redirectToCheckout({
         sessionId,
       });
-
-      if (stripeError) {
-        throw new Error(stripeError.message);
-      }
+      if (stripeError) throw new Error(stripeError.message);
     } catch (err) {
-      console.error('Error en checkout:', err);
-      setError(err instanceof Error ? err.message : 'Error al procesar el pago');
+      console.error("Error en checkout:", err);
+      setError(
+        err instanceof Error ? err.message : "Error al procesar el pago",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -99,24 +111,24 @@ export default function CheckoutForm({ plan, userId, userEmail, displayName, ena
   return (
     <div className="bg-white rounded-xl p-8 shadow-lg">
       <div className="text-center mb-6">
-        <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${plan.color} flex items-center justify-center`}>
+        <div
+          className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${plan.color} flex items-center justify-center`}
+        >
           <IconComponent className="w-8 h-8 text-white" />
         </div>
-        
+
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
           Plan {plan.name}
         </h2>
-        
+
         <div className="mb-4">
           <span className="text-3xl font-bold text-gray-800">
             €{plan.price}
           </span>
           <span className="text-gray-600">/mes</span>
         </div>
-        
-        <p className="text-gray-600 mb-6">
-          {plan.description}
-        </p>
+
+        <p className="text-gray-600 mb-6">{plan.description}</p>
       </div>
 
       {error && (
@@ -127,10 +139,10 @@ export default function CheckoutForm({ plan, userId, userEmail, displayName, ena
 
       <button
         onClick={handleCheckout}
-        disabled={isLoading || !enabled || !stripePromise}
+        disabled={isLoading || !enabled || !publishableKey}
         className={`w-full py-4 px-6 rounded-xl text-white font-semibold text-lg transition-all duration-300 ${
-          isLoading || !enabled || !stripePromise
-            ? 'bg-gray-400 cursor-not-allowed' 
+          isLoading || !enabled || !publishableKey
+            ? "bg-gray-400 cursor-not-allowed"
             : `bg-gradient-to-r ${plan.color} hover:shadow-xl hover:scale-105 transform`
         }`}
       >
@@ -139,16 +151,18 @@ export default function CheckoutForm({ plan, userId, userEmail, displayName, ena
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
             Procesando...
           </div>
-        ) : !enabled || !stripePromise ? (
-          'Pagos disponibles próximamente'
+        ) : !enabled || !publishableKey ? (
+          "Pagos disponibles próximamente"
         ) : (
           `Suscribirse a ${plan.name}`
         )}
       </button>
-      
-      {enabled && <p className="text-xs text-gray-500 mt-4 text-center">
-        Pago seguro procesado por Stripe. Cancela en cualquier momento.
-      </p>}
+
+      {enabled && (
+        <p className="text-xs text-gray-500 mt-4 text-center">
+          Pago seguro procesado por Stripe. Cancela en cualquier momento.
+        </p>
+      )}
     </div>
   );
 }

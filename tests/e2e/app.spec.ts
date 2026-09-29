@@ -229,6 +229,89 @@ test("statistics displays summary, quote and people data", async ({
   await expect(page.getByText("Ana", { exact: true })).toBeVisible();
   await noHorizontalOverflow(page);
 });
+test("statistics period changes query graphs without another charged report", async ({
+  page,
+  backend,
+}) => {
+  await signIn(page);
+  await page.goto("/");
+  await openSidebar(page);
+  await page.getByRole("button", { name: /Estadísticas/ }).click();
+  await expect(
+    page.getByText("Has dedicado tiempo a tus amistades."),
+  ).toBeVisible();
+  const reports = backend.calls.filter(
+    (call) => call.path === "/api/statistics/report",
+  ).length;
+  await page.getByRole("combobox").selectOption("month");
+  await expect
+    .poll(
+      () =>
+        backend.calls.filter((call) => call.path === "/api/statistics/mood")
+          .length,
+    )
+    .toBeGreaterThan(0);
+  expect(
+    backend.calls.filter((call) => call.path === "/api/statistics/report"),
+  ).toHaveLength(reports);
+  await noHorizontalOverflow(page);
+});
+test("free statistics show an upgrade requirement without graph data", async ({
+  page,
+  backend,
+}) => {
+  backend.tables.profiles[0].subscription.plan = "free";
+  backend.tables.profiles[0].subscription.status = "inactive";
+  await signIn(page);
+  await page.goto("/");
+  await openSidebar(page);
+  await page.getByRole("button", { name: /Estadísticas/ }).click();
+  await expect(
+    page.getByText(
+      "Las estadísticas no están disponibles en el plan gratuito.",
+    ),
+  ).toBeVisible();
+  expect(
+    backend.calls.filter((call) => call.path === "/api/statistics/mood"),
+  ).toHaveLength(0);
+});
+test("chat success updates the usage displayed by settings", async ({
+  page,
+  backend,
+}) => {
+  await signIn(page);
+  await page.goto("/");
+  await page
+    .getByTitle(/Chat Personal/)
+    .filter({ visible: true })
+    .click();
+  const input = page.getByPlaceholder(
+    "Pregúntame sobre tu vida, patrones, crecimiento...",
+  );
+  await input.fill("Hola");
+  await input.press("Enter");
+  await expect(
+    page.getByText("Puedes reflexionar sobre tus relaciones."),
+  ).toBeVisible();
+  await expect
+    .poll(
+      () =>
+        backend.tables.profiles[0].subscription.monthlyUsage
+          .personalChatMessages,
+    )
+    .toBe(3);
+  await page.getByTitle("Cerrar chat").click();
+  await openSidebar(page);
+  await page.getByRole("button", { name: /Configuración/ }).click();
+  await expect(page.getByText(/La cuota se renueva el/)).toBeVisible();
+  await expect
+    .poll(
+      () =>
+        backend.calls.filter((call) => call.path === "/api/subscription/status")
+          .length,
+    )
+    .toBeGreaterThan(1);
+});
 test("subscription preserves plans but cannot start real checkout", async ({
   page,
   backend,

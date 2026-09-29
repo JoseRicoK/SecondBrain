@@ -1,221 +1,83 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-import { updateUserSubscription, findUserByStripeCustomerId, markFirstPaymentComplete } from '@/lib/subscription-operations';
-import { getStripeClient } from '@/lib/stripe-server';
-
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
-export async function POST(req: NextRequest) {
+import { NextResponse } from "next/server";
+import type Stripe from "stripe";
+import { getStripeClient } from "@/lib/stripe-server";
+import { stripeObjectId, syncStripeSubscription } from "@/lib/stripe-billing";
+import { markFirstPaymentComplete } from "@/lib/subscription-operations";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export async function POST(request: Request) {
   const stripe = getStripeClient();
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!stripe || !endpointSecret) {
-    return NextResponse.json({ error: 'Stripe no está configurado' }, { status: 503 });
-  }
-  const body = await req.text();
-  const sig = req.headers.get('stripe-signature')!;
-
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!stripe || !secret)
+    return NextResponse.json(
+      { error: "Stripe no está configurado" },
+      { status: 503 },
+    );
+  const signature = request.headers.get("stripe-signature");
+  if (!signature)
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   let event: Stripe.Event;
-
   try {
-    event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
-  } catch (err) {
-    console.error('❌ [Stripe Webhook] Error verificando signature:', err);
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    event = stripe.webhooks.constructEvent(
+      await request.text(),
+      signature,
+      secret,
+    );
+  } catch {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
-
-  console.log('🎣 [Stripe Webhook] Evento recibido:', event.type);
-
   try {
-    switch (event.type) {
-      case 'checkout.session.completed':
-        await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
-        break;
-
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
-        break;
-
-      case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
-        break;
-
-      case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(event.data.object as Stripe.Invoice);
-        break;
-
-      case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object as Stripe.Invoice);
-        break;
-
-      default:
-        console.log(`🤷 [Stripe Webhook] Evento no manejado: ${event.type}`);
-    }
-
+    let subscriptionId: string | null = null;
+    let checkoutOwner: string | undefined;
+    if (
+      event.type === "checkout.session.completed" ||
+      event.type === "checkout.session.async_payment_succeeded"
+    ) {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.mode !== "subscription" || session.payment_status !== "paid")
+        return NextResponse.json({ received: true });
+      checkoutOwner = session.metadata?.uid;
+      if (!checkoutOwner) throw new Error("Checkout missing owner");
+      subscriptionId = stripeObjectId(session.subscription);
+    } else if (
+      [
+        "customer.subscription.created",
+        "customer.subscription.updated",
+        "customer.subscription.deleted",
+      ].includes(event.type)
+    ) {
+      subscriptionId = (event.data.object as Stripe.Subscription).id;
+    } else if (
+      [
+        "invoice.paid",
+        "invoice.payment_succeeded",
+        "invoice.payment_failed",
+      ].includes(event.type)
+    ) {
+      const invoice = event.data.object as Stripe.Invoice;
+      // Retrieve with the pinned API version instead of trusting a potentially legacy webhook shape.
+      if (!invoice.id) throw new Error("Invoice ID missing");
+      const latest = await stripe.invoices.retrieve(invoice.id);
+      subscriptionId = stripeObjectId(
+        latest.parent?.subscription_details?.subscription || null,
+      );
+    } else return NextResponse.json({ received: true });
+    if (!subscriptionId) throw new Error("Billing event missing subscription");
+    // Re-read current Stripe state for all event types, including late invoice events.
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const result = await syncStripeSubscription(
+      subscription,
+      event,
+      checkoutOwner,
+    );
+    if (checkoutOwner && result.snapshot.status === "active")
+      await markFirstPaymentComplete(result.owner);
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('❌ [Stripe Webhook] Error procesando evento:', error);
-    return NextResponse.json({ error: 'Error processing webhook' }, { status: 500 });
-  }
-}
-
-async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
-  console.log('💳 [Stripe Webhook] Checkout completado:', session.id);
-
-  if (!session.customer || !session.metadata?.uid) {
-    console.error('❌ [Stripe Webhook] Faltan datos del customer o uid en metadata');
-    return;
-  }
-
-  const uid = session.metadata.uid;
-  const planType = session.metadata.plan_type as 'pro' | 'elite';
-
-  if (!planType) {
-    console.error('❌ [Stripe Webhook] No se encontró plan_type en metadata');
-    return;
-  }
-
-  // Si hay una suscripción, obtener los detalles
-  if (session.subscription) {
-    const subscription = await getStripeClient()!.subscriptions.retrieve(session.subscription as string);
-    
-    await updateUserSubscription(uid, {
-      plan: planType,
-      status: 'active',
-      stripeCustomerId: session.customer as string,
-      stripeSubscriptionId: subscription.id,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false,
-    });
-
-    // Marcar que este usuario completó su primer pago
-    await markFirstPaymentComplete(uid);
-
-    console.log('✅ [Stripe Webhook] Suscripción activada para usuario:', uid);
-  }
-}
-
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  console.log('🔄 [Stripe Webhook] Suscripción actualizada:', subscription.id);
-
-  // Buscar el usuario por customer ID
-  const uid = await findUserByCustomerId(subscription.customer as string);
-  if (!uid) {
-    console.error('❌ [Stripe Webhook] No se encontró usuario para customer:', subscription.customer);
-    return;
-  }
-
-  // Determinar el plan basado en el precio
-  const planType = await getPlanTypeFromSubscription(subscription);
-  if (!planType) {
-    console.error('❌ [Stripe Webhook] No se pudo determinar el tipo de plan');
-    return;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const status = mapStripeStatusToOurs((subscription as any).status);
-
-  await updateUserSubscription(uid, {
-    plan: planType,
-    status,
-    stripeSubscriptionId: subscription.id,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false,
-  });
-
-  console.log('✅ [Stripe Webhook] Suscripción actualizada para usuario:', uid);
-}
-
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  console.log('❌ [Stripe Webhook] Suscripción cancelada:', subscription.id);
-
-  const uid = await findUserByCustomerId(subscription.customer as string);
-  if (!uid) {
-    console.error('❌ [Stripe Webhook] No se encontró usuario para customer:', subscription.customer);
-    return;
-  }
-
-  await updateUserSubscription(uid, {
-    plan: 'free',
-    status: 'canceled',
-    cancelAtPeriodEnd: false,
-  });
-
-  console.log('✅ [Stripe Webhook] Usuario movido a plan gratuito:', uid);
-}
-
-async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
-  console.log('💰 [Stripe Webhook] Pago exitoso:', invoice.id);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!(invoice as any).subscription) return;
-
-  const uid = await findUserByCustomerId(invoice.customer as string);
-  if (!uid) return;
-
-  // Actualizar la fecha de fin del período actual
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const subscription = await getStripeClient()!.subscriptions.retrieve((invoice as any).subscription as string);
-  
-  await updateUserSubscription(uid, {
-    status: 'active',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
-  });
-
-  console.log('✅ [Stripe Webhook] Pago procesado para usuario:', uid);
-}
-
-async function handlePaymentFailed(invoice: Stripe.Invoice) {
-  console.log('❌ [Stripe Webhook] Pago fallido:', invoice.id);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!(invoice as any).subscription) return;
-
-  const uid = await findUserByCustomerId(invoice.customer as string);
-  if (!uid) return;
-
-  await updateUserSubscription(uid, {
-    status: 'past_due',
-  });
-
-  console.log('⚠️ [Stripe Webhook] Suscripción marcada como vencida para usuario:', uid);
-}
-
-// Funciones auxiliares
-
-async function findUserByCustomerId(customerId: string): Promise<string | null> {
-  return await findUserByStripeCustomerId(customerId);
-}
-
-async function getPlanTypeFromSubscription(subscription: Stripe.Subscription): Promise<'pro' | 'elite' | null> {
-  const priceId = subscription.items.data[0]?.price.id;
-  
-  if (priceId === process.env.STRIPE_PRO_PRICE_ID) return 'pro';
-  if (priceId === process.env.STRIPE_ELITE_PRICE_ID) return 'elite';
-  
-  return null;
-}
-
-function mapStripeStatusToOurs(stripeStatus: string): 'active' | 'inactive' | 'canceled' | 'past_due' {
-  switch (stripeStatus) {
-    case 'active':
-      return 'active';
-    case 'canceled':
-    case 'unpaid':
-      return 'canceled';
-    case 'past_due':
-      return 'past_due';
-    case 'incomplete':
-    case 'incomplete_expired':
-    case 'trialing':
-    case 'paused':
-    default:
-      return 'inactive';
+    console.error("Billing event processing failed", error);
+    return NextResponse.json(
+      { error: "Error processing webhook" },
+      { status: 500 },
+    );
   }
 }

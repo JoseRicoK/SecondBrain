@@ -87,40 +87,46 @@ it("login profile update preserves paid subscriptions", async () => {
   });
   expect(db.calls[1].steps[0][1]).not.toHaveProperty("subscription");
 });
-it("explicit subscription replacement serializes dates", async () => {
+it("partial subscription updates do not overwrite usage or other billing fields", async () => {
+  db.reply({ user_id: "u" });
+  await repo.updateUserSubscription("u", { cancelAtPeriodEnd: true });
+  expect(db.calls[0].table).toBe("subscriptions");
+  expect(db.calls[0].steps[0]).toEqual([
+    "update",
+    { cancel_at_period_end: true, updated_at: "2026-09-29T12:00:00.000Z" },
+  ]);
+  expect(db.calls[0].steps).toContainEqual(["eq", "user_id", "u"]);
+});
+it("missing subscriptions fail instead of inventing paid rows", async () => {
+  db.reply(null);
+  await expect(
+    repo.updateUserSubscription("u", { status: "active" }),
+  ).rejects.toThrow("Subscription not found");
+});
+it("typed subscription rows take precedence over legacy JSON", async () => {
+  db.reply({
+    ...row,
+    subscriptions: {
+      plan: "elite",
+      status: "active",
+      current_period_end: "2026-12-31",
+      created_at: "2026-01-01",
+      updated_at: "2026-01-01",
+    },
+  });
+  expect((await repo.getUserProfile("u"))?.subscription.plan).toBe("elite");
+});
+it("explicit replacement uses normalized fields and never writes profile JSON", async () => {
   db.reply(row);
+  db.reply({ user_id: "u" });
   db.reply();
   await repo.createUserProfile(
     "u",
-    {
-      subscription: { plan: "elite", createdAt: new Date("2026-01-01") } as any,
-    },
+    { subscription: { plan: "elite" } as any },
     false,
   );
-  expect(db.calls[1].steps[0][1].subscription).toEqual({
-    plan: "elite",
-    createdAt: "2026-01-01T00:00:00.000Z",
-  });
-});
-it("partial subscription update preserves other billing fields", async () => {
-  db.reply(row);
-  db.reply();
-  await repo.updateUserSubscription("u", { cancelAtPeriodEnd: true });
-  expect(db.calls[1].steps[0][1].subscription).toMatchObject({
-    plan: "pro",
-    stripeCustomerId: "cus_test",
-    cancelAtPeriodEnd: true,
-    updatedAt: "2026-09-29T12:00:00.000Z",
-  });
-});
-it("missing subscription uses free defaults", async () => {
-  db.reply(null);
-  db.reply();
-  await repo.updateUserSubscription("u", { status: "active" });
-  expect(db.calls[1].steps[0][1].subscription).toMatchObject({
-    plan: "free",
-    status: "active",
-  });
+  expect(db.calls[1].table).toBe("subscriptions");
+  expect(db.calls[2].steps[0][1]).not.toHaveProperty("subscription");
 });
 it.each([
   ["free", "inactive", true],
@@ -145,11 +151,11 @@ it.each([
   expect(db.calls[0].steps).toContainEqual(["eq", "uid", "u"]);
 });
 it("finds the user by Stripe customer ID", async () => {
-  db.reply({ uid: "u" });
+  db.reply({ user_id: "u" });
   expect(await repo.findUserByStripeCustomerId("cus_test")).toBe("u");
   expect(db.calls[0].steps).toContainEqual([
     "eq",
-    "subscription->>stripeCustomerId",
+    "stripe_customer_id",
     "cus_test",
   ]);
 });
@@ -160,63 +166,61 @@ it.each([null, { message: "denied" }])(
     expect(await repo.findUserByStripeCustomerId("missing")).toBeNull();
   },
 );
-it("retains this month usage", async () => {
-  db.reply(row);
+it("reads authoritative monthly usage including valid reservations", async () => {
+  db.reply([
+    { feature: "personalChatMessages", used: 2, reserved: 1 },
+    { feature: "personChatMessages", used: 3, reserved: 0 },
+  ]);
   expect(await repo.getUserMonthlyUsage("u")).toMatchObject({
-    personalChatMessages: 2,
+    personalChatMessages: 3,
     personChatMessages: 3,
-    statisticsAccess: 4,
+    statisticsAccess: 0,
     month: "2026-09",
   });
+  expect(db.rpc).toHaveBeenCalledWith("read_monthly_usage", { p_user_id: "u" });
 });
-it.each(["2026-08", "2025-09", undefined])(
-  "resets old/absent monthly usage %s",
-  async (month) => {
-    db.reply({
-      ...row,
-      subscription: {
-        ...row.subscription,
-        monthlyUsage: month
-          ? { ...row.subscription.monthlyUsage, month }
-          : undefined,
-      },
-    });
-    expect(await repo.getUserMonthlyUsage("u")).toMatchObject({
-      personalChatMessages: 0,
-      personChatMessages: 0,
-      statisticsAccess: 0,
-      month: "2026-09",
-    });
-    expect(db.calls).toHaveLength(1);
-  },
-);
-it("resets at the UTC year boundary", async () => {
+it("new months read fresh counters", async () => {
   vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
-  db.reply(row);
+  db.reply([]);
   expect(await repo.getUserMonthlyUsage("u")).toMatchObject({
     month: "2027-01",
     personalChatMessages: 0,
   });
 });
+it("usage read errors never become zero usage", async () => {
+  db.reply(null, new Error("offline"));
+  await expect(repo.getUserMonthlyUsage("u")).rejects.toThrow("offline");
+});
 it.each([
-  [repo.incrementPersonalChatUsage, "personalChatMessages", 3],
-  [repo.incrementPersonChatUsage, "personChatMessages", 4],
-  [repo.incrementStatisticsAccess, "statisticsAccess", 5],
-])("increments only its usage counter", async (run, key, value) => {
-  db.reply(row);
-  db.reply(row);
+  repo.incrementPersonalChatUsage,
+  repo.incrementPersonChatUsage,
+  repo.incrementStatisticsAccess,
+])("compatibility increments reserve and finish once", async (run) => {
+  db.reply({ allowed: true, id: "r" });
   db.reply();
   await run("u");
-  expect(db.calls[2].steps[0][1].subscription.monthlyUsage).toMatchObject({
-    ...row.subscription.monthlyUsage,
-    [key]: value,
-    lastUpdated: "2026-09-29T12:00:00.000Z",
-  });
+  expect(db.rpc.mock.calls[0][0]).toBe("reserve_usage");
+  expect(db.rpc.mock.calls[1]).toEqual([
+    "finish_usage",
+    { p_user_id: "u", p_id: "r", p_success: true },
+  ]);
 });
-it("does not increment nonexistent profiles", async () => {
-  db.reply(null);
-  await repo.incrementPersonalChatUsage("u");
-  expect(db.calls).toHaveLength(1);
+it("exhausted usage never increments", async () => {
+  db.reply({ allowed: false });
+  await expect(repo.incrementPersonalChatUsage("u")).rejects.toThrow(
+    "Monthly limit exceeded",
+  );
+  expect(db.rpc).toHaveBeenCalledTimes(1);
+});
+it("missing quota response fails closed", async () => {
+  db.reply();
+  await expect(repo.reserveUsage("u", "personalChatMessages")).rejects.toThrow(
+    "Quota unavailable",
+  );
+});
+it("finish errors propagate", async () => {
+  db.reply(null, new Error("offline"));
+  await expect(repo.finishUsage("u", "r", true)).rejects.toThrow("offline");
 });
 it.each([
   repo.markWelcomeComplete,
@@ -227,7 +231,6 @@ it.each([
   await expect(run("u")).rejects.toThrow("denied");
 });
 it("propagates subscription persistence errors", async () => {
-  db.reply(row);
   db.reply(null, new Error("denied"));
   await expect(repo.updateUserSubscription("u", {})).rejects.toThrow("denied");
 });

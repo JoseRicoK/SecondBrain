@@ -1,181 +1,87 @@
-'use client';
-
-import { authenticatedFetch } from '@/lib/authenticated-fetch';
-
-import { useState, useEffect } from 'react';
-import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
-import { 
-  canUseFeature, 
-  canCreateTranscription, 
-  canManageMorePeople, 
-  canSendPersonalChatMessage,
-  canSendPersonChatMessage,
-  canAccessStatistics,
-  getEffectivePlan,
-  needsSubscriptionUpgrade,
-  PlanType,
-  PLAN_LIMITS
-} from '@/middleware/subscription';
-import { getUserMonthlyUsage, MonthlyUsage } from '@/lib/subscription-operations';
+"use client";
+import { useEffect, useCallback } from "react";
+import { useSupabaseAuthContext } from "@/contexts/SupabaseAuthContext";
+import { PLAN_LIMITS, type PlanLimits } from "@/lib/subscription-policy";
+import {
+  clearSubscriptionState,
+  loadSubscriptionState,
+  useSubscriptionState,
+} from "@/lib/subscription-state";
 
 export function useSubscription() {
   const { user, userProfile, loading } = useSupabaseAuthContext();
-  const [currentPlan, setCurrentPlan] = useState<PlanType>('free');
-  const [planLimits, setPlanLimits] = useState(PLAN_LIMITS.free);
-  const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsage | null>(null);
-  const [needsUpgrade, setNeedsUpgrade] = useState(false);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
-
+  const state = useSubscriptionState();
+  const uid = user?.uid;
+  const snapshot = state.uid === uid ? state.snapshot : null;
   useEffect(() => {
-    let canceled = false;
-    async function updateSubscriptionInfo() {
-      if (loading || !user) {
-        if (!user) {
-          setCurrentPlan('free');
-          setPlanLimits(PLAN_LIMITS.free);
-          setMonthlyUsage(null);
-          setNeedsUpgrade(false);
-        }
-        setSubscriptionLoading(false);
-        return;
-      }
-
-      setSubscriptionLoading(true);
-      try {
-        // Verificar si hay suscripciones expiradas antes de obtener el plan efectivo
-        await checkAndUpdateExpiredSubscription(user.uid);
-        
-        const effectivePlan = await getEffectivePlan(user.uid);
-        const upgradeNeeded = await needsSubscriptionUpgrade(user.uid);
-        const usage = await getUserMonthlyUsage(user.uid);
-        
-        if (canceled) return;
-        setCurrentPlan(effectivePlan);
-        setPlanLimits(PLAN_LIMITS[effectivePlan]);
-        setMonthlyUsage(usage);
-        setNeedsUpgrade(upgradeNeeded);
-      } catch (error) {
-        if (canceled) return;
-        console.error('❌ [useSubscription] Error obteniendo info de suscripción:', error);
-        // En caso de error, asumir plan gratuito
-        setCurrentPlan('free');
-        setPlanLimits(PLAN_LIMITS.free);
-        setMonthlyUsage(null);
-        setNeedsUpgrade(false);
-      } finally {
-        if (!canceled) setSubscriptionLoading(false);
-      }
+    if (loading) return;
+    if (!uid) {
+      clearSubscriptionState();
+      return;
     }
-
-    updateSubscriptionInfo();
-    return () => { canceled = true; };
-  }, [loading, user, userProfile]);
-
-  // Funciones de verificación
-  const checkCanUseFeature = async (feature: keyof typeof PLAN_LIMITS.free): Promise<boolean> => {
-    if (!user) return false;
-    return await canUseFeature(user.uid, feature);
-  };
-
-  const checkCanCreateTranscription = async (currentCount: number): Promise<boolean> => {
-    if (!user) return false;
-    return await canCreateTranscription(user.uid, currentCount);
-  };
-
-  const checkCanManageMorePeople = async (currentCount: number): Promise<boolean> => {
-    if (!user) return false;
-    return await canManageMorePeople(user.uid, currentCount);
-  };
-
-  // Función para verificar y actualizar suscripciones expiradas
-  const checkAndUpdateExpiredSubscription = async (userId: string) => {
-    try {
-      const response = await authenticatedFetch('/api/subscription/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
-      });
-
-      if (response.ok) {
-        const { subscription } = await response.json();
-        
-        // Verificar si la suscripción está marcada para cancelar y ha expirado
-        if (subscription?.cancelAtPeriodEnd && subscription?.currentPeriodEnd) {
-          const now = new Date();
-          let periodEndDate: Date;
-          
-          // Manejar diferentes tipos de fecha
-          if (subscription.currentPeriodEnd.toDate) {
-            periodEndDate = subscription.currentPeriodEnd.toDate();
-          } else {
-            periodEndDate = new Date(subscription.currentPeriodEnd);
-          }
-          
-          // Si ya expiró, actualizar a plan gratuito
-          if (periodEndDate <= now && subscription.plan !== 'free') {
-            console.log('⏰ [useSubscription] Suscripción expirada, cambiando a plan gratuito');
-            
-            await authenticatedFetch('/api/subscription/update-manual', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                userId, 
-                planType: 'free',
-                clearCancellation: true 
-              })
-            });
-            
-            // Recargar la página para actualizar el estado
-            window.location.reload();
-          }
-        }
-      }
-    } catch (error) {
-      console.error('❌ [useSubscription] Error verificando expiración:', error);
-    }
-  };
-
-  // Nuevas funciones de verificación para chat y estadísticas
-  const checkCanSendPersonalChatMessage = async (): Promise<boolean> => {
-    if (!user || !monthlyUsage) return false;
-    return await canSendPersonalChatMessage(user.uid, monthlyUsage.personalChatMessages);
-  };
-
-  const checkCanSendPersonChatMessage = async (): Promise<boolean> => {
-    if (!user || !monthlyUsage) return false;
-    return await canSendPersonChatMessage(user.uid, monthlyUsage.personChatMessages);
-  };
-
-  const checkCanAccessStatistics = async (): Promise<boolean> => {
-    if (!user || !monthlyUsage) return false;
-    return await canAccessStatistics(user.uid, monthlyUsage.statisticsAccess);
-  };
-
-  // Función para refrescar el uso mensual
-  const refreshMonthlyUsage = async () => {
-    if (!user) return;
-    try {
-      const usage = await getUserMonthlyUsage(user.uid);
-      setMonthlyUsage(usage);
-    } catch (error) {
-      console.error('❌ [useSubscription] Error refrescando uso mensual:', error);
-    }
-  };
-
+    void loadSubscriptionState(uid);
+    const refresh = () => {
+      if (document.visibilityState !== "hidden")
+        void loadSubscriptionState(uid);
+    };
+    const changed = () => {
+      void loadSubscriptionState(uid, true);
+    };
+    const storage = (event: StorageEvent) => {
+      if (event.key === "secondbrain-subscription-updated") changed();
+    };
+    const interval = window.setInterval(refresh, 60000);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("subscription-updated", changed);
+    window.addEventListener("storage", storage);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("subscription-updated", changed);
+      window.removeEventListener("storage", storage);
+    };
+  }, [uid, loading]);
+  const planLimits = snapshot?.planLimits || PLAN_LIMITS.free;
+  const usage = snapshot?.monthlyUsage || null;
+  const permitted = (count: number, maximum: number) =>
+    Boolean(uid && snapshot && (maximum === -1 || count < maximum));
+  const refreshMonthlyUsage = useCallback(async () => {
+    if (uid) await loadSubscriptionState(uid, true);
+  }, [uid]);
   return {
     user,
-    userProfile,
-    currentPlan,
+    userProfile:
+      userProfile && snapshot
+        ? { ...userProfile, subscription: snapshot.subscription }
+        : userProfile,
+    currentPlan: snapshot?.currentPlan || "free",
     planLimits,
-    monthlyUsage,
-    needsUpgrade,
-    loading: loading || subscriptionLoading,
-    checkCanUseFeature,
-    checkCanCreateTranscription,
-    checkCanManageMorePeople,
-    checkCanSendPersonalChatMessage,
-    checkCanSendPersonChatMessage,
-    checkCanAccessStatistics,
+    monthlyUsage: usage,
+    needsUpgrade: snapshot?.needsUpgrade || false,
+    resetAt: snapshot?.resetAt,
+    error: state.uid === uid ? state.error : null,
+    loading: loading || Boolean(uid && (state.uid !== uid || state.loading)),
+    checkCanUseFeature: async (feature: keyof PlanLimits) =>
+      Boolean(uid && snapshot && planLimits[feature]),
+    checkCanCreateTranscription: async (count: number) =>
+      permitted(count, planLimits.maxTranscriptions),
+    checkCanManageMorePeople: async (count: number) =>
+      permitted(count, planLimits.maxPeopleManagement),
+    checkCanSendPersonalChatMessage: async () =>
+      permitted(
+        usage?.personalChatMessages ?? Infinity,
+        planLimits.personalChatMessages,
+      ),
+    checkCanSendPersonChatMessage: async () =>
+      permitted(
+        usage?.personChatMessages ?? Infinity,
+        planLimits.personChatMessages,
+      ),
+    checkCanAccessStatistics: async () =>
+      permitted(
+        usage?.statisticsAccess ?? Infinity,
+        planLimits.statisticsAccess,
+      ),
     refreshMonthlyUsage,
   };
 }

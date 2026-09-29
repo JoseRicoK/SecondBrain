@@ -1,11 +1,31 @@
-import { authenticatedFetch } from '@/lib/authenticated-fetch';
-import React, { useState } from 'react';
-import { FiCalendar, FiCheck, FiLink, FiUser, FiTrash2, FiMessageSquare, FiMail, FiAlertTriangle, FiSave, FiEye, FiEyeOff, FiLogOut, FiCreditCard, FiArrowUp, FiX } from 'react-icons/fi';
-import { useAuth } from '@/hooks/useAuth';
-import { useSubscription } from '@/hooks/useSubscription';
-import { updateUserProfile, updateUserPassword, deleteUserAccount } from '@/lib/supabase-operations';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
+import React, { useState } from "react";
+import {
+  FiCalendar,
+  FiCheck,
+  FiLink,
+  FiUser,
+  FiTrash2,
+  FiMessageSquare,
+  FiMail,
+  FiAlertTriangle,
+  FiSave,
+  FiEye,
+  FiEyeOff,
+  FiLogOut,
+  FiCreditCard,
+  FiArrowUp,
+  FiX,
+} from "react-icons/fi";
+import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
+import {
+  updateUserProfile,
+  updateUserPassword,
+  deleteUserAccount,
+} from "@/lib/supabase-operations";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 interface SettingsProps {
   userId: string;
@@ -13,114 +33,143 @@ interface SettingsProps {
 
 const Settings: React.FC<SettingsProps> = () => {
   const { user, signOut, isGoogleUser } = useAuth();
-  const { userProfile, currentPlan, planLimits, monthlyUsage } = useSubscription();
+  const {
+    userProfile,
+    currentPlan,
+    planLimits,
+    monthlyUsage,
+    resetAt,
+    refreshMonthlyUsage,
+    loading: subscriptionLoading,
+    error: subscriptionError,
+  } = useSubscription();
   const router = useRouter();
-  
+
   // Estados para cambio de datos personales
   const [newDisplayName, setNewDisplayName] = useState(
-    user?.displayName || 
-    user?.email?.split('@')[0] || 
-    ''
+    user?.displayName || user?.email?.split("@")[0] || "",
   );
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
-  const [updateSuccess, setUpdateSuccess] = useState('');
-  const [updateError, setUpdateError] = useState('');
-  
+  const [updateSuccess, setUpdateSuccess] = useState("");
+  const [updateError, setUpdateError] = useState("");
+
   // Estados para eliminación de cuenta
-  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
+
   // Estados para sugerencias y problemas
-  const [suggestionText, setSuggestionText] = useState('');
-  const [problemText, setProblemText] = useState('');
-  const [contactEmail, setContactEmail] = useState(user?.email || '');
+  const [suggestionText, setSuggestionText] = useState("");
+  const [problemText, setProblemText] = useState("");
+  const contactEmail = user?.email || "";
   const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const [feedbackSuccess, setFeedbackSuccess] = useState('');
-  
+  const [feedbackSuccess, setFeedbackSuccess] = useState("");
+
   // Estados para cancelación de suscripción
   const [cancelLoading, setCancelLoading] = useState(false);
-  const [cancelError, setCancelError] = useState('');
+  const [cancelError, setCancelError] = useState("");
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [cancelSuccess, setCancelSuccess] = useState<{message: string, cancelDate: Date} | null>(null);
+  const [cancelSuccess, setCancelSuccess] = useState<{
+    message: string;
+    cancelDate: Date;
+  } | null>(null);
 
   const handleUpdateProfile = async () => {
     setUpdateLoading(true);
-    setUpdateError('');
-    setUpdateSuccess('');
+    setUpdateError("");
+    setUpdateSuccess("");
 
     try {
       let hasUpdates = false;
-      
+
       // Actualizar nombre de usuario si ha cambiado (solo para usuarios no-Google)
-      const currentDisplayName = user?.displayName || user?.email?.split('@')[0] || '';
-      if (!isGoogleUser && newDisplayName.trim() && newDisplayName.trim() !== currentDisplayName) {
+      const currentDisplayName =
+        user?.displayName || user?.email?.split("@")[0] || "";
+      if (
+        !isGoogleUser &&
+        newDisplayName.trim() &&
+        newDisplayName.trim() !== currentDisplayName
+      ) {
         await updateUserProfile({ displayName: newDisplayName.trim() });
-        setUpdateSuccess('Nombre actualizado correctamente');
+        setUpdateSuccess("Nombre actualizado correctamente");
         hasUpdates = true;
       }
 
       // Actualizar contraseña si se proporcionó (solo para usuarios no-Google)
       if (!isGoogleUser && newPassword.trim()) {
         if (newPassword !== confirmPassword) {
-          throw new Error('Las contraseñas no coinciden');
+          throw new Error("Las contraseñas no coinciden");
         }
-        
+
         if (newPassword.length < 6) {
-          throw new Error('La contraseña debe tener al menos 6 caracteres');
+          throw new Error("La contraseña debe tener al menos 6 caracteres");
         }
 
         await updateUserPassword(newPassword);
-        setUpdateSuccess(hasUpdates ? 'Perfil y contraseña actualizados correctamente' : 'Contraseña actualizada correctamente');
-        setNewPassword('');
-        setConfirmPassword('');
+        setUpdateSuccess(
+          hasUpdates
+            ? "Perfil y contraseña actualizados correctamente"
+            : "Contraseña actualizada correctamente",
+        );
+        setNewPassword("");
+        setConfirmPassword("");
         hasUpdates = true;
       }
 
       // Para usuarios de Google, mostrar mensaje informativo
       if (isGoogleUser) {
-        setUpdateError('Los usuarios de Google no pueden cambiar sus datos desde aquí. La información se sincroniza automáticamente desde tu cuenta de Google.');
+        setUpdateError(
+          "Los usuarios de Google no pueden cambiar sus datos desde aquí. La información se sincroniza automáticamente desde tu cuenta de Google.",
+        );
         return;
       }
 
       // Si no hay cambios que hacer
       if (!hasUpdates) {
-        setUpdateError('No se detectaron cambios para actualizar');
+        setUpdateError("No se detectaron cambios para actualizar");
       }
-      
     } catch (error: unknown) {
-      console.error('Error updating profile:', error);
-      setUpdateError(error instanceof Error ? error.message : 'Error al actualizar el perfil');
+      console.error("Error updating profile:", error);
+      setUpdateError(
+        error instanceof Error
+          ? error.message
+          : "Error al actualizar el perfil",
+      );
     } finally {
       setUpdateLoading(false);
     }
   };
 
   const handleDeleteAccount = async () => {
-    if (deleteConfirmation !== 'ELIMINAR') {
+    if (deleteConfirmation !== "ELIMINAR") {
       setUpdateError('Debes escribir "ELIMINAR" para confirmar');
       return;
     }
 
     setDeleteLoading(true);
-    setUpdateError('');
+    setUpdateError("");
 
     try {
       await deleteUserAccount();
       // Si llegamos aquí, la eliminación fue exitosa
-      alert('Tu cuenta y todos tus datos han sido eliminados exitosamente. Serás redirigido al login.');
+      alert(
+        "Tu cuenta y todos tus datos han sido eliminados exitosamente. Serás redirigido al login.",
+      );
       // Recargar la página para que se muestre el login
       window.location.reload();
     } catch (error: unknown) {
-      console.error('Error deleting account:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error al eliminar la cuenta';
-      
+      console.error("Error deleting account:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Error al eliminar la cuenta";
+
       // Si es el error de reautenticación, dar instrucciones más claras
-      if (errorMessage.includes('volver a introducir tu contraseña')) {
-        setUpdateError('Para mayor seguridad, necesitas cerrar sesión, volver a entrar con tu contraseña y luego intentar eliminar la cuenta de nuevo.');
+      if (errorMessage.includes("volver a introducir tu contraseña")) {
+        setUpdateError(
+          "Para mayor seguridad, necesitas cerrar sesión, volver a entrar con tu contraseña y luego intentar eliminar la cuenta de nuevo.",
+        );
       } else {
         setUpdateError(errorMessage);
       }
@@ -129,44 +178,47 @@ const Settings: React.FC<SettingsProps> = () => {
     }
   };
 
-  const handleSendFeedback = async (type: 'suggestion' | 'problem') => {
+  const handleSendFeedback = async (type: "suggestion" | "problem") => {
     setFeedbackLoading(true);
-    setUpdateError('');
-    setFeedbackSuccess('');
+    setUpdateError("");
+    setFeedbackSuccess("");
 
     try {
-      const text = type === 'suggestion' ? suggestionText : problemText;
+      const text = type === "suggestion" ? suggestionText : problemText;
       if (!text.trim()) {
-        throw new Error('Por favor escribe tu mensaje');
+        throw new Error("Por favor escribe tu mensaje");
       }
 
-      const response = await authenticatedFetch('/api/send-feedback', {
-        method: 'POST',
+      const response = await authenticatedFetch("/api/send-feedback", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           type,
           message: text.trim(),
-          userEmail: contactEmail
+          userEmail: contactEmail,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Error al enviar el mensaje');
+        throw new Error("Error al enviar el mensaje");
       }
-      
-      setFeedbackSuccess(`Tu ${type === 'suggestion' ? 'sugerencia' : 'reporte'} ha sido enviado correctamente`);
-      
-      if (type === 'suggestion') {
-        setSuggestionText('');
+
+      setFeedbackSuccess(
+        `Tu ${type === "suggestion" ? "sugerencia" : "reporte"} ha sido enviado correctamente`,
+      );
+
+      if (type === "suggestion") {
+        setSuggestionText("");
       } else {
-        setProblemText('');
+        setProblemText("");
       }
-      
     } catch (error: unknown) {
-      console.error('Error sending feedback:', error);
-      setUpdateError(error instanceof Error ? error.message : 'Error al enviar el mensaje');
+      console.error("Error sending feedback:", error);
+      setUpdateError(
+        error instanceof Error ? error.message : "Error al enviar el mensaje",
+      );
     } finally {
       setFeedbackLoading(false);
     }
@@ -174,47 +226,50 @@ const Settings: React.FC<SettingsProps> = () => {
 
   const handleCancelSubscription = async () => {
     if (!user?.uid) {
-      setCancelError('Error: Usuario no identificado');
+      setCancelError("Error: Usuario no identificado");
       return;
     }
 
     setCancelLoading(true);
-    setCancelError('');
+    setCancelError("");
     setCancelSuccess(null);
 
     try {
-      const response = await authenticatedFetch('/api/stripe/cancel-subscription', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await authenticatedFetch(
+        "/api/stripe/cancel-subscription",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: user.uid,
+          }),
         },
-        body: JSON.stringify({
-          userId: user.uid,
-        }),
-      });
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al cancelar la suscripción');
+        throw new Error(data.error || "Error al cancelar la suscripción");
       }
 
       // Mostrar modal de éxito
       setCancelSuccess({
         message: data.message,
-        cancelDate: new Date(data.cancelAt)
+        cancelDate: new Date(data.cancelAt),
       });
-      
+
       setShowCancelModal(false);
-      
-      // Recargar después de un momento para actualizar el estado
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
-      
+
+      await refreshMonthlyUsage();
     } catch (error: unknown) {
-      console.error('Error canceling subscription:', error);
-      setCancelError(error instanceof Error ? error.message : 'Error al cancelar la suscripción');
+      console.error("Error canceling subscription:", error);
+      setCancelError(
+        error instanceof Error
+          ? error.message
+          : "Error al cancelar la suscripción",
+      );
     } finally {
       setCancelLoading(false);
     }
@@ -223,13 +278,14 @@ const Settings: React.FC<SettingsProps> = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
-        
         {/* Título principal */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-2">
             Configuración
           </h1>
-          <p className="text-slate-600">Personaliza tu experiencia en SecondBrain</p>
+          <p className="text-slate-600">
+            Personaliza tu experiencia en SecondBrain
+          </p>
         </div>
 
         {/* Mensajes de éxito y error */}
@@ -239,7 +295,7 @@ const Settings: React.FC<SettingsProps> = () => {
             {updateSuccess}
           </div>
         )}
-        
+
         {updateError && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-center">
             <FiAlertTriangle className="inline mr-2" />
@@ -256,7 +312,6 @@ const Settings: React.FC<SettingsProps> = () => {
 
         {/* Grid de configuraciones */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          
           {/* Sección Datos Personales */}
           <div className="lg:col-span-2 bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center mb-6">
@@ -264,16 +319,23 @@ const Settings: React.FC<SettingsProps> = () => {
                 <FiUser className="text-white text-xl" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-slate-800">Datos Personales</h2>
-                <p className="text-slate-600 text-sm">Actualiza tu información personal</p>
+                <h2 className="text-xl font-semibold text-slate-800">
+                  Datos Personales
+                </h2>
+                <p className="text-slate-600 text-sm">
+                  Actualiza tu información personal
+                </p>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Cambio de nombre */}
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="displayName" className="block text-sm font-medium text-slate-700 mb-2">
+                  <label
+                    htmlFor="displayName"
+                    className="block text-sm font-medium text-slate-700 mb-2"
+                  >
                     Nombre de usuario
                   </label>
                   <input
@@ -283,39 +345,57 @@ const Settings: React.FC<SettingsProps> = () => {
                     onChange={(e) => setNewDisplayName(e.target.value)}
                     disabled={isGoogleUser}
                     className={`w-full px-4 py-3 border rounded-xl transition-colors ${
-                      isGoogleUser 
-                        ? 'border-slate-200 bg-slate-50 text-slate-500' 
-                        : 'border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                      isGoogleUser
+                        ? "border-slate-200 bg-slate-50 text-slate-500"
+                        : "border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     }`}
                     placeholder="Tu nombre de usuario"
                   />
                   {isGoogleUser && (
                     <p className="text-xs text-slate-500 mt-1">
-                      El nombre se sincroniza automáticamente desde tu cuenta de Google
+                      El nombre se sincroniza automáticamente desde tu cuenta de
+                      Google
                     </p>
                   )}
                 </div>
-                
+
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-slate-700 mb-2"
+                  >
                     Email (solo lectura)
                   </label>
                   <input
                     id="email"
                     type="email"
-                    value={user?.email || ''}
+                    value={user?.email || ""}
                     disabled
                     className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-500"
                   />
                   {isGoogleUser && (
                     <div className="flex items-center mt-2">
                       <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        />
                       </svg>
-                      <span className="text-xs text-slate-500">Cuenta de Google</span>
+                      <span className="text-xs text-slate-500">
+                        Cuenta de Google
+                      </span>
                     </div>
                   )}
                 </div>
@@ -325,7 +405,10 @@ const Settings: React.FC<SettingsProps> = () => {
               {!isGoogleUser && (
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="newPassword" className="block text-sm font-medium text-slate-700 mb-2">
+                    <label
+                      htmlFor="newPassword"
+                      className="block text-sm font-medium text-slate-700 mb-2"
+                    >
                       Nueva contraseña
                     </label>
                     <div className="relative">
@@ -342,13 +425,20 @@ const Settings: React.FC<SettingsProps> = () => {
                         onClick={() => setShowPasswords(!showPasswords)}
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
                       >
-                        {showPasswords ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                        {showPasswords ? (
+                          <FiEyeOff size={20} />
+                        ) : (
+                          <FiEye size={20} />
+                        )}
                       </button>
                     </div>
                   </div>
-                  
+
                   <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
+                    <label
+                      htmlFor="confirmPassword"
+                      className="block text-sm font-medium text-slate-700 mb-2"
+                    >
                       Confirmar contraseña
                     </label>
                     <input
@@ -368,29 +458,39 @@ const Settings: React.FC<SettingsProps> = () => {
                 <div className="space-y-4">
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                     <div className="flex items-start">
-                      <svg className="w-5 h-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      <svg
+                        className="w-5 h-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       <div>
                         <h4 className="text-sm font-medium text-blue-900 mb-1">
                           Cuenta de Google
                         </h4>
                         <p className="text-sm text-blue-700">
-                          Tu información se sincroniza automáticamente desde Google. Para cambiar tu contraseña, hazlo desde tu cuenta de Google.
+                          Tu información se sincroniza automáticamente desde
+                          Google. Para cambiar tu contraseña, hazlo desde tu
+                          cuenta de Google.
                         </p>
                       </div>
                     </div>
                   </div>
-                  
+
                   {user?.photoURL && (
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
                         Foto de perfil
                       </label>
                       <div className="flex items-center space-x-3">
-                        <Image 
-                          src={user.photoURL} 
-                          alt="Foto de perfil" 
+                        <Image
+                          src={user.photoURL}
+                          alt="Foto de perfil"
                           width={48}
                           height={48}
                           className="rounded-full border-2 border-slate-200"
@@ -425,7 +525,7 @@ const Settings: React.FC<SettingsProps> = () => {
                   )}
                 </button>
               )}
-              
+
               <button
                 onClick={signOut}
                 className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg transition-all"
@@ -443,74 +543,134 @@ const Settings: React.FC<SettingsProps> = () => {
                 <FiCreditCard className="text-white text-xl" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-slate-800">Mi Suscripción</h2>
-                <p className="text-slate-600 text-sm">Gestiona tu plan y funcionalidades</p>
+                <h2 className="text-xl font-semibold text-slate-800">
+                  Mi Suscripción
+                </h2>
+                <p className="text-slate-600 text-sm">
+                  Gestiona tu plan y funcionalidades
+                </p>
               </div>
             </div>
-            
+
+            {subscriptionLoading && (
+              <p role="status" className="text-sm text-slate-600 mb-4">
+                Comprobando plan y cuota...
+              </p>
+            )}
+            {subscriptionError && (
+              <div role="alert" className="text-red-700 mb-4">
+                {subscriptionError}{" "}
+                <button
+                  onClick={() => void refreshMonthlyUsage()}
+                  className="underline"
+                >
+                  Reintentar
+                </button>
+              </div>
+            )}
+            {resetAt && (
+              <p className="text-sm text-slate-600 mb-4">
+                La cuota se renueva el{" "}
+                {new Date(resetAt).toLocaleDateString("es-ES", {
+                  timeZone: "UTC",
+                })}{" "}
+                a las 00:00 UTC. Los cambios de plan conservan el consumo de
+                este mes.
+              </p>
+            )}
             {/* Plan actual - Card destacada */}
             <div className="mb-6">
-              <div className={`rounded-2xl p-6 border-2 ${
-                currentPlan === 'free' ? 'bg-gray-50 border-gray-200' :
-                currentPlan === 'pro' ? 'bg-purple-50 border-purple-200' :
-                'bg-yellow-50 border-yellow-200'
-              }`}>
+              <div
+                className={`rounded-2xl p-6 border-2 ${
+                  currentPlan === "free"
+                    ? "bg-gray-50 border-gray-200"
+                    : currentPlan === "pro"
+                      ? "bg-purple-50 border-purple-200"
+                      : "bg-yellow-50 border-yellow-200"
+                }`}
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-slate-800">
-                      Plan {currentPlan === 'free' ? 'Gratuito' :
-                           currentPlan === 'pro' ? 'Pro' : 'Elite'}
+                      Plan{" "}
+                      {currentPlan === "free"
+                        ? "Gratuito"
+                        : currentPlan === "pro"
+                          ? "Pro"
+                          : "Elite"}
                     </h3>
-                    <p className={`text-sm font-medium ${
-                      userProfile?.subscription.status === 'active' ? 'text-green-600' :
-                      userProfile?.subscription.status === 'past_due' ? 'text-yellow-600' :
-                      'text-gray-600'
-                    }`}>
-                      {userProfile?.subscription.status === 'active' ? '✅ Activo' :
-                       userProfile?.subscription.status === 'past_due' ? '⚠️ Pago pendiente' :
-                       userProfile?.subscription.status === 'canceled' ? '❌ Cancelado' :
-                       '⏸️ Inactivo'}
+                    <p
+                      className={`text-sm font-medium ${
+                        userProfile?.subscription.status === "active"
+                          ? "text-green-600"
+                          : userProfile?.subscription.status === "past_due"
+                            ? "text-yellow-600"
+                            : "text-gray-600"
+                      }`}
+                    >
+                      {userProfile?.subscription.status === "active"
+                        ? "✅ Activo"
+                        : userProfile?.subscription.status === "past_due"
+                          ? "⚠️ Pago pendiente"
+                          : userProfile?.subscription.status === "canceled"
+                            ? "❌ Cancelado"
+                            : "⏸️ Inactivo"}
                     </p>
                   </div>
-                  <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
-                    currentPlan === 'free' ? 'bg-gray-200 text-gray-800' :
-                    currentPlan === 'pro' ? 'bg-purple-200 text-purple-800' :
-                    'bg-yellow-200 text-yellow-800'
-                  }`}>
+                  <span
+                    className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                      currentPlan === "free"
+                        ? "bg-gray-200 text-gray-800"
+                        : currentPlan === "pro"
+                          ? "bg-purple-200 text-purple-800"
+                          : "bg-yellow-200 text-yellow-800"
+                    }`}
+                  >
                     {currentPlan.toUpperCase()}
                   </span>
                 </div>
-                
+
                 {userProfile?.subscription.currentPeriodEnd && (
                   <p className="text-sm text-slate-600 mb-4">
-                    <strong>Próxima renovación:</strong> {new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString('es-ES')}
+                    <strong>
+                      {userProfile.subscription.cancelAtPeriodEnd
+                        ? "Acceso hasta:"
+                        : "Fin del período actual:"}
+                    </strong>{" "}
+                    {new Date(
+                      userProfile.subscription.currentPeriodEnd,
+                    ).toLocaleDateString("es-ES")}
                   </p>
                 )}
-                
+
                 {/* Características del plan actual */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="text-sm">
                     <span className="text-slate-600">Transcripciones: </span>
                     <span className="font-semibold text-slate-800">
-                      {planLimits.maxTranscriptions === -1 ? 'Ilimitadas' : planLimits.maxTranscriptions}
+                      {planLimits.maxTranscriptions === -1
+                        ? "Ilimitadas"
+                        : planLimits.maxTranscriptions}
                     </span>
                   </div>
                   <div className="text-sm">
                     <span className="text-slate-600">Personas: </span>
                     <span className="font-semibold text-slate-800">
-                      {planLimits.maxPeopleManagement === -1 ? 'Ilimitadas' : planLimits.maxPeopleManagement}
+                      {planLimits.maxPeopleManagement === -1
+                        ? "Ilimitadas"
+                        : planLimits.maxPeopleManagement}
                     </span>
                   </div>
                   <div className="text-sm">
                     <span className="text-slate-600">Chat personal: </span>
                     <span className="font-semibold text-slate-800">
-                      {planLimits.hasPersonalChat ? '✅' : '❌'}
+                      {planLimits.hasPersonalChat ? "✅" : "❌"}
                     </span>
                   </div>
                   <div className="text-sm">
                     <span className="text-slate-600">Estadísticas: </span>
                     <span className="font-semibold text-slate-800">
-                      {planLimits.hasStatistics ? '✅' : '❌'}
+                      {planLimits.hasStatistics ? "✅" : "❌"}
                     </span>
                   </div>
                 </div>
@@ -518,72 +678,92 @@ const Settings: React.FC<SettingsProps> = () => {
                 {/* Uso mensual actual */}
                 {monthlyUsage && (
                   <div className="border-t border-slate-200 pt-4 mb-4">
-                    <h4 className="text-sm font-semibold text-slate-700 mb-3">Uso este mes:</h4>
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3">
+                      Uso este mes:
+                    </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="bg-white/50 rounded-lg p-3">
-                        <div className="text-xs text-slate-500 mb-1">Chat Personal</div>
+                        <div className="text-xs text-slate-500 mb-1">
+                          Chat Personal
+                        </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-semibold text-slate-800">
                             {monthlyUsage.personalChatMessages}
                           </span>
                           <span className="text-xs text-slate-500">
-                            /{planLimits.personalChatMessages === -1 ? '∞' : planLimits.personalChatMessages}
+                            /
+                            {planLimits.personalChatMessages === -1
+                              ? "∞"
+                              : planLimits.personalChatMessages}
                           </span>
                         </div>
                         {planLimits.personalChatMessages !== -1 && (
                           <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2">
-                            <div 
+                            <div
                               className="bg-purple-500 h-1.5 rounded-full transition-all duration-300"
-                              style={{ 
-                                width: `${Math.min(100, (monthlyUsage.personalChatMessages / planLimits.personalChatMessages) * 100)}%` 
+                              style={{
+                                width: `${Math.min(100, (monthlyUsage.personalChatMessages / planLimits.personalChatMessages) * 100)}%`,
                               }}
                             />
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="bg-white/50 rounded-lg p-3">
-                        <div className="text-xs text-slate-500 mb-1">Chat Personas</div>
+                        <div className="text-xs text-slate-500 mb-1">
+                          Chat Personas
+                        </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-semibold text-slate-800">
                             {monthlyUsage.personChatMessages}
                           </span>
                           <span className="text-xs text-slate-500">
-                            /{planLimits.personChatMessages === -1 ? '∞' : planLimits.personChatMessages}
+                            /
+                            {planLimits.personChatMessages === -1
+                              ? "∞"
+                              : planLimits.personChatMessages}
                           </span>
                         </div>
                         {planLimits.personChatMessages !== -1 && (
                           <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2">
-                            <div 
+                            <div
                               className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-                              style={{ 
-                                width: `${Math.min(100, (monthlyUsage.personChatMessages / planLimits.personChatMessages) * 100)}%` 
+                              style={{
+                                width: `${Math.min(100, (monthlyUsage.personChatMessages / planLimits.personChatMessages) * 100)}%`,
                               }}
                             />
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="bg-white/50 rounded-lg p-3">
-                        <div className="text-xs text-slate-500 mb-1">Estadísticas</div>
+                        <div className="text-xs text-slate-500 mb-1">
+                          Estadísticas
+                        </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-semibold text-slate-800">
                             {monthlyUsage.statisticsAccess}
                           </span>
                           <span className="text-xs text-slate-500">
-                            /{planLimits.statisticsAccess === -1 ? '∞' : planLimits.statisticsAccess === 0 ? '0' : planLimits.statisticsAccess}
+                            /
+                            {planLimits.statisticsAccess === -1
+                              ? "∞"
+                              : planLimits.statisticsAccess === 0
+                                ? "0"
+                                : planLimits.statisticsAccess}
                           </span>
                         </div>
-                        {planLimits.statisticsAccess > 0 && planLimits.statisticsAccess !== -1 && (
-                          <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2">
-                            <div 
-                              className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
-                              style={{ 
-                                width: `${Math.min(100, (monthlyUsage.statisticsAccess / planLimits.statisticsAccess) * 100)}%` 
-                              }}
-                            />
-                          </div>
-                        )}
+                        {planLimits.statisticsAccess > 0 &&
+                          planLimits.statisticsAccess !== -1 && (
+                            <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2">
+                              <div
+                                className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${Math.min(100, (monthlyUsage.statisticsAccess / planLimits.statisticsAccess) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                          )}
                       </div>
                     </div>
                     <p className="text-xs text-slate-500 mt-2">
@@ -596,9 +776,9 @@ const Settings: React.FC<SettingsProps> = () => {
 
             {/* Acciones */}
             <div className="flex flex-col sm:flex-row gap-3">
-              {currentPlan === 'free' ? (
+              {currentPlan === "free" ? (
                 <button
-                  onClick={() => router.push('/subscription')}
+                  onClick={() => router.push("/subscription")}
                   className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2"
                 >
                   <FiArrowUp className="w-4 h-4" />
@@ -609,38 +789,39 @@ const Settings: React.FC<SettingsProps> = () => {
                   <button
                     onClick={() => {
                       // Navegar a la página de suscripción sugiriendo el upgrade apropiado
-                      if (currentPlan === 'pro') {
-                        router.push('/subscription?plan=elite');
+                      if (currentPlan === "pro") {
+                        router.push("/subscription?plan=elite");
                       } else {
-                        router.push('/subscription');
+                        router.push("/subscription");
                       }
                     }}
                     className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
                   >
                     <FiArrowUp className="w-4 h-4" />
-                    {currentPlan === 'pro' ? 'Mejorar a Elite' : 'Cambiar Plan'}
+                    {currentPlan === "pro" ? "Mejorar a Elite" : "Cambiar Plan"}
                   </button>
-                  
-                  {userProfile?.subscription.status === 'active' && !userProfile.subscription.cancelAtPeriodEnd && (
-                    <button
-                      onClick={() => setShowCancelModal(true)}
-                      disabled={cancelLoading}
-                      className={`flex-1 font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 ${
-                        cancelLoading 
-                          ? 'bg-gray-400 cursor-not-allowed text-white' 
-                          : 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700'
-                      }`}
-                    >
-                      <FiX className="w-4 h-4" />
-                      Cancelar
-                    </button>
-                  )}
+
+                  {userProfile?.subscription.status === "active" &&
+                    !userProfile.subscription.cancelAtPeriodEnd && (
+                      <button
+                        onClick={() => setShowCancelModal(true)}
+                        disabled={cancelLoading}
+                        className={`flex-1 font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+                          cancelLoading
+                            ? "bg-gray-400 cursor-not-allowed text-white"
+                            : "bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700"
+                        }`}
+                      >
+                        <FiX className="w-4 h-4" />
+                        Cancelar
+                      </button>
+                    )}
                 </>
               )}
             </div>
-            
+
             {/* Información sobre cambio a plan gratuito */}
-            {currentPlan !== 'free' && (
+            {currentPlan !== "free" && (
               <div className="mt-4">
                 <details className="bg-gray-50 border border-gray-200 rounded-lg">
                   <summary className="p-3 cursor-pointer text-gray-700 font-medium text-sm hover:bg-gray-100 transition-colors">
@@ -648,65 +829,73 @@ const Settings: React.FC<SettingsProps> = () => {
                   </summary>
                   <div className="p-3 pt-0 text-sm text-gray-600">
                     <p className="mb-2">
-                      Para cambiar al plan gratuito, debes <strong>cancelar tu suscripción actual</strong>. 
-                      Tu plan pagado permanecerá activo hasta el final del período facturado.
+                      Para cambiar al plan gratuito, debes{" "}
+                      <strong>cancelar tu suscripción actual</strong>. Tu plan
+                      pagado permanecerá activo hasta el final del período
+                      facturado.
                     </p>
                     <p className="text-xs text-gray-500">
-                      Al cancelar, conservarás todas las funciones hasta la fecha de expiración, 
-                      después automáticamente pasarás al plan gratuito.
+                      Al cancelar, conservarás todas las funciones hasta la
+                      fecha de expiración, después automáticamente pasarás al
+                      plan gratuito.
                     </p>
                   </div>
                 </details>
               </div>
             )}
-            
+
             {userProfile?.subscription.cancelAtPeriodEnd && (
               <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                 <p className="text-yellow-800 text-sm text-center">
-                  <strong>⚠️ Suscripción cancelada:</strong> Tu plan actual estará activo hasta el{' '}
-                  {userProfile.subscription.currentPeriodEnd ? (
-                    (() => {
-                      const date = userProfile.subscription.currentPeriodEnd;
-                      
-                      let dateObj: Date;
-                      
-                      // Manejar Supabase Timestamp
-                      if (date && typeof date === 'object' && 'toDate' in date) {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        dateObj = (date as any).toDate();
-                      } 
-                      // Manejar Date object
-                      else if (date instanceof Date) {
-                        dateObj = date;
-                      } 
-                      // Manejar string/number
-                      else if (date) {
-                        dateObj = new Date(date);
-                      } 
-                      else {
-                        return 'fecha pendiente de confirmación';
-                      }
-                      
-                      // Verificar si la fecha es válida
-                      if (!isNaN(dateObj.getTime())) {
-                        const formattedDate = dateObj.toLocaleDateString('es-ES', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        });
-                        return formattedDate;
-                      } else {
-                        return 'fecha pendiente de confirmación';
-                      }
-                    })()
-                  ) : (
-                    'fecha pendiente de confirmación'
-                  )}
+                  <strong>⚠️ Suscripción cancelada:</strong> Tu plan actual
+                  estará activo hasta el{" "}
+                  {userProfile.subscription.currentPeriodEnd
+                    ? (() => {
+                        const date = userProfile.subscription.currentPeriodEnd;
+
+                        let dateObj: Date;
+
+                        // Manejar Supabase Timestamp
+                        if (
+                          date &&
+                          typeof date === "object" &&
+                          "toDate" in date
+                        ) {
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          dateObj = (date as any).toDate();
+                        }
+                        // Manejar Date object
+                        else if (date instanceof Date) {
+                          dateObj = date;
+                        }
+                        // Manejar string/number
+                        else if (date) {
+                          dateObj = new Date(date);
+                        } else {
+                          return "fecha pendiente de confirmación";
+                        }
+
+                        // Verificar si la fecha es válida
+                        if (!isNaN(dateObj.getTime())) {
+                          const formattedDate = dateObj.toLocaleDateString(
+                            "es-ES",
+                            {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            },
+                          );
+                          return formattedDate;
+                        } else {
+                          return "fecha pendiente de confirmación";
+                        }
+                      })()
+                    : "fecha pendiente de confirmación"}
                 </p>
               </div>
             )}
-            
+
             {cancelError && (
               <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4">
                 <p className="text-red-800 text-sm text-center">
@@ -723,29 +912,41 @@ const Settings: React.FC<SettingsProps> = () => {
                 <FiCalendar className="text-white text-xl" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-slate-800">Calendario</h2>
-                <p className="text-slate-600 text-sm">Integración con servicios externos</p>
+                <h2 className="text-xl font-semibold text-slate-800">
+                  Calendario
+                </h2>
+                <p className="text-slate-600 text-sm">
+                  Integración con servicios externos
+                </p>
               </div>
             </div>
-            
+
             <div className="space-y-4">
               <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-200/50 relative">
                 {/* Badge de "Próximamente" */}
                 <div className="absolute -top-2 -right-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg">
                   Próximamente
                 </div>
-                
+
                 <div className="flex items-center justify-between mb-3">
                   <div className="opacity-60">
-                    <h3 className="font-medium text-slate-800">Google Calendar</h3>
-                    <p className="text-slate-600 text-sm">Sincroniza eventos y recordatorios</p>
+                    <h3 className="font-medium text-slate-800">
+                      Google Calendar
+                    </h3>
+                    <p className="text-slate-600 text-sm">
+                      Sincroniza eventos y recordatorios
+                    </p>
                     <p className="text-amber-600 text-xs mt-1 font-medium">
                       🚧 Funcionalidad en desarrollo
                     </p>
                   </div>
-                  
+
                   <button
-                    onClick={() => alert('🚧 Función en desarrollo\n\nLa integración con Google Calendar estará disponible en una próxima actualización. ¡Mantente atento!')}
+                    onClick={() =>
+                      alert(
+                        "🚧 Función en desarrollo\n\nLa integración con Google Calendar estará disponible en una próxima actualización. ¡Mantente atento!",
+                      )
+                    }
                     className="px-4 py-2 bg-gradient-to-r from-slate-400 to-slate-500 text-white rounded-xl transition-all cursor-pointer hover:from-slate-500 hover:to-slate-600"
                   >
                     <div className="flex items-center space-x-2">
@@ -765,28 +966,39 @@ const Settings: React.FC<SettingsProps> = () => {
                 <FiMessageSquare className="text-white text-xl" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-slate-800">Sugerencias</h2>
-                <p className="text-slate-600 text-sm">Ayúdanos a mejorar SecondBrain</p>
+                <h2 className="text-xl font-semibold text-slate-800">
+                  Sugerencias
+                </h2>
+                <p className="text-slate-600 text-sm">
+                  Ayúdanos a mejorar SecondBrain
+                </p>
               </div>
             </div>
-            
+
             <div className="space-y-4">
               <div>
-                <label htmlFor="contactEmail" className="block text-sm font-medium text-slate-700 mb-2">
+                <label
+                  htmlFor="contactEmail"
+                  className="block text-sm font-medium text-slate-700 mb-2"
+                >
                   Tu email de contacto
                 </label>
                 <input
                   id="contactEmail"
                   type="email"
                   value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
+                  readOnly
+                  aria-readonly="true"
                   className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
                   placeholder="tu@email.com"
                 />
               </div>
-              
+
               <div>
-                <label htmlFor="suggestion" className="block text-sm font-medium text-slate-700 mb-2">
+                <label
+                  htmlFor="suggestion"
+                  className="block text-sm font-medium text-slate-700 mb-2"
+                >
                   Tu sugerencia
                 </label>
                 <textarea
@@ -798,9 +1010,9 @@ const Settings: React.FC<SettingsProps> = () => {
                   placeholder="Comparte tus ideas para mejorar la aplicación..."
                 />
               </div>
-              
+
               <button
-                onClick={() => handleSendFeedback('suggestion')}
+                onClick={() => handleSendFeedback("suggestion")}
                 disabled={feedbackLoading}
                 className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-70"
               >
@@ -826,28 +1038,39 @@ const Settings: React.FC<SettingsProps> = () => {
                 <FiAlertTriangle className="text-white text-xl" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-slate-800">Reportar Problema</h2>
-                <p className="text-slate-600 text-sm">¿Encontraste un error? Cuéntanos</p>
+                <h2 className="text-xl font-semibold text-slate-800">
+                  Reportar Problema
+                </h2>
+                <p className="text-slate-600 text-sm">
+                  ¿Encontraste un error? Cuéntanos
+                </p>
               </div>
             </div>
-            
+
             <div className="space-y-4">
               <div>
-                <label htmlFor="contactEmailProblem" className="block text-sm font-medium text-slate-700 mb-2">
+                <label
+                  htmlFor="contactEmailProblem"
+                  className="block text-sm font-medium text-slate-700 mb-2"
+                >
                   Tu email de contacto
                 </label>
                 <input
                   id="contactEmailProblem"
                   type="email"
                   value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
+                  readOnly
+                  aria-readonly="true"
                   className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                   placeholder="tu@email.com"
                 />
               </div>
-              
+
               <div>
-                <label htmlFor="problem" className="block text-sm font-medium text-slate-700 mb-2">
+                <label
+                  htmlFor="problem"
+                  className="block text-sm font-medium text-slate-700 mb-2"
+                >
                   Describe el problema
                 </label>
                 <textarea
@@ -859,9 +1082,9 @@ const Settings: React.FC<SettingsProps> = () => {
                   placeholder="Describe el problema que experimentaste, incluyendo los pasos para reproducirlo..."
                 />
               </div>
-              
+
               <button
-                onClick={() => handleSendFeedback('problem')}
+                onClick={() => handleSendFeedback("problem")}
                 disabled={feedbackLoading}
                 className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-70"
               >
@@ -887,15 +1110,20 @@ const Settings: React.FC<SettingsProps> = () => {
                 <FiTrash2 className="text-white text-xl" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-red-800">Zona Peligrosa</h2>
-                <p className="text-red-600 text-sm">Eliminar tu cuenta permanentemente</p>
+                <h2 className="text-xl font-semibold text-red-800">
+                  Zona Peligrosa
+                </h2>
+                <p className="text-red-600 text-sm">
+                  Eliminar tu cuenta permanentemente
+                </p>
               </div>
             </div>
-            
+
             {!showDeleteConfirm ? (
               <div className="text-center">
                 <p className="text-red-700 mb-4">
-                  Esta acción eliminará permanentemente tu cuenta y todos tus datos. Esta acción no se puede deshacer.
+                  Esta acción eliminará permanentemente tu cuenta y todos tus
+                  datos. Esta acción no se puede deshacer.
                 </p>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
@@ -908,7 +1136,8 @@ const Settings: React.FC<SettingsProps> = () => {
               <div className="space-y-4">
                 <div className="p-4 bg-red-100 border border-red-300 rounded-xl">
                   <p className="text-red-800 text-sm font-medium mb-2">
-                    ⚠️ Esta acción es irreversible. Para confirmar, escribe &quot;ELIMINAR&quot; en el campo de abajo:
+                    ⚠️ Esta acción es irreversible. Para confirmar, escribe
+                    &quot;ELIMINAR&quot; en el campo de abajo:
                   </p>
                   <input
                     type="text"
@@ -918,12 +1147,12 @@ const Settings: React.FC<SettingsProps> = () => {
                     placeholder="Escribe ELIMINAR"
                   />
                 </div>
-                
+
                 <div className="flex space-x-3 justify-center">
                   <button
                     onClick={() => {
                       setShowDeleteConfirm(false);
-                      setDeleteConfirmation('');
+                      setDeleteConfirmation("");
                     }}
                     className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors"
                   >
@@ -931,7 +1160,9 @@ const Settings: React.FC<SettingsProps> = () => {
                   </button>
                   <button
                     onClick={handleDeleteAccount}
-                    disabled={deleteLoading || deleteConfirmation !== 'ELIMINAR'}
+                    disabled={
+                      deleteLoading || deleteConfirmation !== "ELIMINAR"
+                    }
                     className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {deleteLoading ? (
@@ -940,7 +1171,7 @@ const Settings: React.FC<SettingsProps> = () => {
                         <span>Eliminando...</span>
                       </div>
                     ) : (
-                      'Confirmar Eliminación'
+                      "Confirmar Eliminación"
                     )}
                   </button>
                 </div>
@@ -956,8 +1187,9 @@ const Settings: React.FC<SettingsProps> = () => {
             <span className="text-slate-600 font-medium">SecondBrain v1.0</span>
           </div>
           <p className="text-slate-500 text-sm max-w-2xl mx-auto">
-            Tu privacidad es importante. Todos tus datos se almacenan de forma segura y solo tú tienes acceso a ellos. 
-            SecondBrain utiliza tecnologías de vanguardia para proteger tu información personal.
+            Tu privacidad es importante. Todos tus datos se almacenan de forma
+            segura y solo tú tienes acceso a ellos. SecondBrain utiliza
+            tecnologías de vanguardia para proteger tu información personal.
           </p>
         </div>
       </div>
@@ -981,15 +1213,22 @@ const Settings: React.FC<SettingsProps> = () => {
             <div className="space-y-3 mb-6 text-sm text-gray-700">
               <div className="flex items-start gap-2">
                 <span className="text-red-500 mt-0.5">•</span>
-                <span>Perderás acceso a las funciones premium al final del período actual</span>
+                <span>
+                  Perderás acceso a las funciones premium al final del período
+                  actual
+                </span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-red-500 mt-0.5">•</span>
-                <span>Tu plan se cambiará automáticamente al plan gratuito</span>
+                <span>
+                  Tu plan se cambiará automáticamente al plan gratuito
+                </span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-red-500 mt-0.5">•</span>
-                <span>Podrás reactivar tu suscripción en cualquier momento</span>
+                <span>
+                  Podrás reactivar tu suscripción en cualquier momento
+                </span>
               </div>
             </div>
 
@@ -1005,8 +1244,8 @@ const Settings: React.FC<SettingsProps> = () => {
                 disabled={cancelLoading}
                 className={`flex-1 px-4 py-3 rounded-xl font-medium transition-colors ${
                   cancelLoading
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : 'bg-red-600 text-white hover:bg-red-700'
+                    ? "bg-gray-400 text-white cursor-not-allowed"
+                    : "bg-red-600 text-white hover:bg-red-700"
                 }`}
               >
                 {cancelLoading ? (
@@ -1015,7 +1254,7 @@ const Settings: React.FC<SettingsProps> = () => {
                     Cancelando...
                   </div>
                 ) : (
-                  'Sí, cancelar'
+                  "Sí, cancelar"
                 )}
               </button>
             </div>
@@ -1041,20 +1280,22 @@ const Settings: React.FC<SettingsProps> = () => {
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
               <p className="text-yellow-800 text-sm text-center">
-                <strong>Tu plan actual seguirá activo hasta:</strong><br />
+                <strong>Tu plan actual seguirá activo hasta:</strong>
+                <br />
                 <span className="text-lg font-semibold">
-                  {cancelSuccess.cancelDate.toLocaleDateString('es-ES', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
+                  {cancelSuccess.cancelDate.toLocaleDateString("es-ES", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
                   })}
                 </span>
               </p>
             </div>
 
             <div className="text-center text-sm text-gray-600 mb-6">
-              Después de esa fecha, tu cuenta se cambiará automáticamente al plan gratuito.
+              Después de esa fecha, tu cuenta se cambiará automáticamente al
+              plan gratuito.
             </div>
 
             <button

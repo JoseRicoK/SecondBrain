@@ -52,6 +52,10 @@ export default defineConfig({
           functions: 90,
         },
         "secondbrain/src/lib/store.ts": { lines: 90, functions: 90 },
+        "secondbrain/src/lib/subscription-policy.ts": {
+          lines: 90,
+          functions: 90,
+        },
         "secondbrain/src/middleware/subscription.ts": {
           lines: 90,
           functions: 90,

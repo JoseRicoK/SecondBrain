@@ -15,9 +15,9 @@
 - `PeopleManager.tsx`: people list, details and editing, search, and `PersonChat`. Person details are dated entries grouped by category.
 - `PersonalChat.tsx` and `PersonalChatButton.tsx`: chat about the user's diary. `PersonChat.tsx`: chat scoped to a person.
 - `AudioRecorder.tsx`, `TranscriptionsList.tsx`: browser recording, transcription request, and entry association. Recording requires a current entry.
-- `StatisticsWrapper.tsx` dynamically loads `Statistics.tsx` without SSR; it uses mood/people/summary API routes and subscription checks.
+- `StatisticsWrapper.tsx` dynamically loads `Statistics.tsx` without SSR; it requests a bundled server report, with separately authorized mood/people graph reads. Regenerating a report consumes one access; changing a graph period consumes none. No personal statistics are cached in localStorage.
 - `Settings.tsx`, `UserHeader.tsx`, `WelcomeManager.tsx`/`WelcomeModal.tsx`: account settings, navigation, and first-use state.
-- `src/hooks/useSubscription.ts` and `src/middleware/subscription.ts`: effective plan, feature limits, and monthly usage. Keep displayed plan behavior consistent with these modules and the server routes.
+- `src/hooks/useSubscription.ts` and `src/middleware/subscription.ts`: effective plan, feature limits, and monthly usage; `src/lib/subscription-state.ts` shares one server snapshot across consumers and ignores obsolete identity requests. Keep displayed plan behavior consistent with these modules and the server routes.
 
 ## UI conventions
 
@@ -32,3 +32,7 @@ AI requests run on the server; model identifiers and reasoning baselines are cen
 Personal and person chats derive quota loading from `useSubscription.loading`: disable sending and show a loading status until it resolves. A missing usage result is a load failure, not an exhausted quota; keep those messages distinct. The API still checks real limits independently of these UI controls.
 
 `useDiaryStore` invalidates pending loads/saves when the selected date or request changes. Clear prior entries and audio on date changes. Only reuse an entry ID when both its owner and date match the current save. Keep the store error visible in the integrated diary and preserve drafts after failed persistence. `useSubscription` clears plan/usage on logout and ignores obsolete requests. The Auth provider also ignores profile responses from an earlier session after logout, account changes or unmount. Google-linked identities use the providers array consistently. Audio preview object URLs and microphone tracks must be released, and duration limits must use current recorder state rather than an old React closure. Follow [the test matrix](../../../../docs/TESTING.md) when changing these flows.
+
+Subscription state refreshes after successful/quota-limited cost-bearing requests, across tab notifications, on focus and every visible minute. Display the UTC reset time and loading/error states; a load failure never means zero consumption. Derive subscription details from the shared snapshot when rendering settings. Feedback reply email is the authenticated account email. Cancellation refreshes shared state without reloading the page.
+
+Statistics use a seven-day range including today; month/year exclude future diary dates. Guard asynchronous graph/report state against account switches and newer requests. A cached report may be reused for 30 minutes; explicit summary/citation refresh rebuilds the complete report. Keep this cost visible in the UI. Checkout remains visible but disabled when unavailable and lazily loads Stripe only after an enabled action. Existing subscriptions use the customer portal; checkout-return UI distinguishes payment confirmation from plan synchronization.

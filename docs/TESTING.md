@@ -64,3 +64,11 @@ Estas pruebas no certifican la configuración remota de Supabase, DNS, OAuth, SM
 6. Actualizar esta matriz y la skill canónica correspondiente en `.agents/skills/`. No guardar snapshots de datos personales ni secretos en fixtures o informes.
 
 La acción `.github/workflows/tests.yml` aplica estas comprobaciones en pull requests y pushes a `main` o `master`. No despliega la web. Los informes son artefactos temporales del trabajo de CI.
+
+## Suscripciones, estadísticas y correo
+
+La base local aplica también el esquema normalizado: comprueba backfill histórico, permisos de lectura/escritura/RPC, reservas y liberaciones idempotentes, caducidad, cambios de cuota, eventos duplicados/desordenados, cola de correo y cascadas. Abre 24 conexiones de PostgreSQL simultáneas: exactamente cinco deben reservar y confirmar mensajes en el plan gratuito. Usa `pg_isready` por TCP interno para esperar al servidor final del contenedor, no al servidor temporal de inicialización.
+
+Las APIs comprueban que todos los endpoints de estadísticas bloquean al plan gratuito, que un informe genera dos resultados con una sola reserva, que el caché no consume otra cuota y que las caídas liberan la reserva. Los hooks prueban estado compartido, deduplicación, cambios de cuenta y notificaciones de consumo. Checkout/portal/webhooks se simulan: no hay cobros. Se verifica una firma real con el SDK usando una clave ficticia. Las pruebas de correos comprueban HTML escapado, texto plano, variables de Supabase, remitente verificado, worker desactivado y reintentos simulados.
+
+`node scripts/build-email-previews.mjs` prepara vistas ficticias para revisión, sin enviar correo. Ver [SUBSCRIPTIONS.md](./SUBSCRIPTIONS.md) antes de publicar código que requiera el nuevo esquema o habilitar facturación/correo.

@@ -1,104 +1,78 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { updateUserSubscription, markFirstPaymentComplete, UserSubscription } from '@/lib/subscription-operations';
-import { getRequestUser } from '@/lib/api-auth';
-import { getStripeClient } from '@/lib/stripe-server';
-
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
-export async function POST(req: NextRequest) {
+import { NextResponse } from "next/server";
+import { getUserProfile } from "@/lib/subscription-operations";
+import { getRequestUser } from "@/lib/api-auth";
+import { getStripeClient } from "@/lib/stripe-server";
+import { stripeObjectId, stripeSubscriptionData } from "@/lib/stripe-billing";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export async function POST(request: Request) {
   try {
+    const user = await getRequestUser(request);
+    if (!user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { sessionId, userId } = await request.json();
+    if (userId !== user.uid)
+      return NextResponse.json({ error: "User mismatch" }, { status: 403 });
+    if (typeof sessionId !== "string" || !sessionId)
+      return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
     const stripe = getStripeClient();
-    if (!stripe) return NextResponse.json({ error: 'Stripe no está configurado' }, { status: 503 });
-    const user = await getRequestUser(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const { sessionId, userId } = await req.json();
-    if (user.uid !== userId) return NextResponse.json({ error: 'User mismatch' }, { status: 403 });
-
-    if (!sessionId || !userId) {
+    if (!stripe)
       return NextResponse.json(
-        { error: 'Missing sessionId or userId' },
-        { status: 400 }
+        { error: "Stripe no está configurado" },
+        { status: 503 },
       );
-    }
-
-    console.log('🔍 [Stripe Verify] Verificando sesión:', sessionId, 'para usuario:', userId);
-
-    // Obtener la sesión de checkout desde Stripe
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ['subscription']
-    });
-
-    console.log('📋 [Stripe Verify] Sesión obtenida:', {
-      id: session.id,
-      status: session.status,
-      payment_status: session.payment_status,
-      customer: session.customer,
-      subscription: typeof session.subscription === 'object' ? session.subscription?.id : session.subscription,
-      metadata: session.metadata
-    });
-
-    // Verificar que la sesión pertenece al usuario
-    const sessionUserId = session.metadata?.uid;
-    if (sessionUserId !== userId) {
-      console.error('❌ [Stripe Verify] Usuario no coincide:', { sessionUserId, userId });
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (session.metadata?.uid !== user.uid)
       return NextResponse.json(
-        { error: 'Session does not belong to user' },
-        { status: 403 }
+        { error: "Session does not belong to user" },
+        { status: 403 },
       );
-    }
-
-    if (session.payment_status !== 'paid') {
+    if (session.mode !== "subscription" || session.payment_status !== "paid")
       return NextResponse.json(
-        { error: 'Payment not completed' },
-        { status: 400 }
+        { error: "Payment not completed" },
+        { status: 400 },
       );
-    }
-
-    // Obtener el tipo de plan de los metadatos
-    const planType = session.metadata?.plan_type;
-    if (!planType || !['pro', 'elite'].includes(planType)) {
-      console.error('❌ [Stripe Verify] Plan type inválido:', planType);
+    const id = stripeObjectId(session.subscription);
+    if (!id)
       return NextResponse.json(
-        { error: 'Invalid plan type in session metadata' },
-        { status: 400 }
+        { error: "Subscription not found" },
+        { status: 409 },
       );
-    }
-
-    // Actualizar la suscripción en Supabase
-    const subscriptionData: Partial<UserSubscription> = {
-      plan: planType as 'pro' | 'elite',
-      status: 'active',
-      stripeCustomerId: session.customer as string,
-    };
-
-    // Si hay una suscripción, agregar más detalles
-    if (session.subscription && typeof session.subscription === 'object') {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const subscription = session.subscription as any;
-      subscriptionData.stripeSubscriptionId = subscription.id;
-      subscriptionData.currentPeriodEnd = new Date(subscription.current_period_end * 1000);
-      subscriptionData.cancelAtPeriodEnd = subscription.cancel_at_period_end;
-    }
-
-    await updateUserSubscription(userId, subscriptionData);
-
-    // Marcar que este usuario completó su primer pago
-    await markFirstPaymentComplete(userId);
-
-    console.log('✅ [Stripe Verify] Suscripción actualizada correctamente para usuario:', userId);
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Subscription updated successfully',
-      plan: planType,
-      status: 'active'
+    const subscription = await stripe.subscriptions.retrieve(id);
+    if (
+      stripeObjectId(subscription.customer) !==
+        stripeObjectId(session.customer) ||
+      (subscription.metadata.uid && subscription.metadata.uid !== user.uid)
+    )
+      return NextResponse.json(
+        { error: "Subscription owner mismatch" },
+        { status: 403 },
+      );
+    const snapshot = stripeSubscriptionData(subscription);
+    if (snapshot.status !== "active")
+      return NextResponse.json(
+        { error: "La suscripción todavía no está activa" },
+        { status: 409 },
+      );
+    const profile = await getUserProfile(user.uid);
+    const activated =
+      profile?.subscription.stripeSubscriptionId === subscription.id &&
+      profile.subscription.status === "active" &&
+      profile.subscription.plan === snapshot.plan;
+    // Never provision from a browser return. A delayed webhook will be retried by Stripe.
+    return NextResponse.json({
+      success: true,
+      activated,
+      plan: snapshot.plan,
+      status: snapshot.status,
+      message:
+        "Pago confirmado. El estado de tu plan se sincroniza mediante el webhook.",
     });
   } catch (error) {
-    console.error('❌ [Stripe Verify] Error verificando pago:', error);
+    console.error("Payment verification failed", error);
     return NextResponse.json(
-      { error: 'Error verifying payment', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { error: "Error verifying payment" },
+      { status: 500 },
     );
   }
 }

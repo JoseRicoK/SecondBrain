@@ -1,15 +1,21 @@
-'use client';
+"use client";
 
-import { authenticatedFetch } from '@/lib/authenticated-fetch';
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
-import { useSubscription } from '@/hooks/useSubscription';
-import { FaCrown, FaHeart, FaCheck, FaArrowLeft, FaTimes } from 'react-icons/fa';
-import { FiZap } from 'react-icons/fi';
-import { IconType } from 'react-icons';
-import CheckoutForm from '@/components/CheckoutForm';
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSupabaseAuthContext } from "@/contexts/SupabaseAuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
+import {
+  FaCrown,
+  FaHeart,
+  FaCheck,
+  FaArrowLeft,
+  FaTimes,
+} from "react-icons/fa";
+import { FiZap } from "react-icons/fi";
+import { IconType } from "react-icons";
+import CheckoutForm from "@/components/CheckoutForm";
 
 interface PlanData {
   name: string;
@@ -37,11 +43,10 @@ const basePlans = {
       { text: "💬 5 mensajes de chat personal por mes", included: true },
       { text: "👥 10 mensajes con personas por mes", included: true },
       { text: "📅 Navegación por fechas", included: true },
-      { text: "🎨 Estilización básica de texto", included: true },
+      { text: "🎨 Estilización con IA", included: true },
       { text: "👥 Extracción de personas", included: true },
       { text: "📊 Estadísticas avanzadas", included: false },
-      { text: "🎨 Estilización con IA avanzada", included: false }
-    ]
+    ],
   },
   pro: {
     name: "Pro",
@@ -53,13 +58,13 @@ const basePlans = {
       { text: "✨ Todo del plan Gratuito", included: true },
       { text: "💬 30 mensajes de chat personal por mes", included: true },
       { text: "👥 100 mensajes con personas por mes", included: true },
-      { text: "🎨 Estilización avanzada con IA", included: true },
-      { text: "📊 10 estadísticas avanzadas por mes", included: true },
-      { text: "🔍 Análisis inteligente mejorado", included: true },
+      { text: "🎨 Estilización con IA", included: true },
+      { text: "📊 10 informes de estadísticas por mes", included: true },
+      { text: "📈 Gráficas del estado de ánimo", included: true },
       { text: "💬 100 mensajes de chat personal por mes", included: false },
       { text: "👥 500 mensajes con personas por mes", included: false },
-      { text: "📊 Estadísticas ilimitadas", included: false }
-    ]
+      { text: "📊 Estadísticas ilimitadas", included: false },
+    ],
   },
   elite: {
     name: "Elite",
@@ -71,12 +76,10 @@ const basePlans = {
       { text: "⭐ Todo del plan Pro", included: true },
       { text: "💬 100 mensajes de chat personal por mes", included: true },
       { text: "👥 500 mensajes con personas por mes", included: true },
-      { text: "📊 Estadísticas avanzadas ilimitadas", included: true },
-      { text: "🧠 Análisis profundo con IA", included: true },
-      { text: "🏆 Soporte prioritario", included: true },
-      { text: "🚀 Funciones experimentales", included: true }
-    ]
-  }
+      { text: "📊 Informes de estadísticas ilimitados", included: true },
+      { text: "📈 Gráficas del estado de ánimo", included: true },
+    ],
+  },
 };
 
 function SubscriptionContent() {
@@ -84,7 +87,9 @@ function SubscriptionContent() {
   const searchParams = useSearchParams();
   const { user, loading } = useSupabaseAuthContext();
   const { currentPlan: userCurrentPlan, userProfile } = useSubscription();
-  const [selectedPlan, setSelectedPlan] = useState<keyof typeof basePlans | 'free'>('pro');
+  const [selectedPlan, setSelectedPlan] = useState<
+    keyof typeof basePlans | "free"
+  >("pro");
   const [showCheckout, setShowCheckout] = useState(false);
   const [plans, setPlans] = useState<Record<string, PlanData> | null>(null);
   const [plansLoading, setPlansLoading] = useState(true);
@@ -96,29 +101,54 @@ function SubscriptionContent() {
     const fetchPlanIds = async () => {
       try {
         setPlansLoading(true);
-        const response = await fetch('/api/subscription/plans');
-        
+        const response = await fetch("/api/subscription/plans");
+
         if (!response.ok) {
-          throw new Error('Error al cargar los planes');
+          throw new Error("Error al cargar los planes");
         }
-        
+
         const planIds = await response.json();
-        
+
         // Combinar los datos base con los priceId obtenidos de la API
         const fullPlans: Record<string, PlanData> = {};
         Object.entries(basePlans).forEach(([key, basePlan]) => {
           fullPlans[key] = {
             ...basePlan,
-            priceId: typeof planIds[key] === 'string' ? planIds[key] : ''
+            features: basePlan.features.map((feature) => {
+              const limit = planIds.limits?.[key];
+              if (!limit || !feature.included) return feature;
+              const formatLimit = (value: number) =>
+                value === -1 ? "Ilimitados" : String(value);
+              if (feature.text.includes("mensajes de chat personal"))
+                return {
+                  ...feature,
+                  text: `💬 ${formatLimit(limit.personalChatMessages)} mensajes de chat personal por mes`,
+                };
+              if (feature.text.includes("mensajes con personas"))
+                return {
+                  ...feature,
+                  text: `👥 ${formatLimit(limit.personChatMessages)} mensajes con personas por mes`,
+                };
+              if (
+                feature.text.includes("informes de estadísticas") ||
+                feature.text.includes("Informes de estadísticas")
+              )
+                return {
+                  ...feature,
+                  text: `📊 ${formatLimit(limit.statisticsAccess)} informes de estadísticas por mes`,
+                };
+              return feature;
+            }),
+            priceId: typeof planIds[key] === "string" ? planIds[key] : "",
           };
         });
-        
+
         setPlans(fullPlans);
         setCheckoutEnabled(planIds.checkoutEnabled === true);
         setPlansError(null);
       } catch (error) {
-        console.error('Error cargando planes:', error);
-        setPlansError('Error al cargar los planes');
+        console.error("Error cargando planes:", error);
+        setPlansError("Error al cargar los planes");
       } finally {
         setPlansLoading(false);
       }
@@ -130,7 +160,7 @@ function SubscriptionContent() {
   useEffect(() => {
     // Obtener el plan de la URL solo cuando los planes estén cargados
     if (plans) {
-      const planFromUrl = searchParams.get('plan') as keyof typeof basePlans;
+      const planFromUrl = searchParams.get("plan") as keyof typeof basePlans;
       if (planFromUrl && plans[planFromUrl]) {
         setSelectedPlan(planFromUrl);
       }
@@ -140,7 +170,7 @@ function SubscriptionContent() {
   // Redirigir si no está autenticado
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/');
+      router.push("/");
     }
   }, [user, loading, router]);
 
@@ -160,8 +190,12 @@ function SubscriptionContent() {
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center p-6">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Error al cargar los planes</h2>
-          <p className="text-gray-600 mb-4">{plansError || 'No se pudieron cargar los planes de suscripción'}</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            Error al cargar los planes
+          </h2>
+          <p className="text-gray-600 mb-4">
+            {plansError || "No se pudieron cargar los planes de suscripción"}
+          </p>
           <button
             onClick={() => window.location.reload()}
             className="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600 transition-colors"
@@ -191,16 +225,16 @@ function SubscriptionContent() {
             <FaArrowLeft className="w-5 h-5" />
             Volver a selección de plan
           </button>
-          
-          <CheckoutForm 
+
+          <CheckoutForm
             plan={{
               ...currentPlan,
               features: currentPlan.features
-                .filter(f => f.included)
-                .map(f => f.text)
+                .filter((f) => f.included)
+                .map((f) => f.text),
             }}
             userId={user.uid}
-            userEmail={user.email || ''}
+            userEmail={user.email || ""}
             displayName={user.displayName || undefined}
             enabled={checkoutEnabled}
           />
@@ -218,7 +252,7 @@ function SubscriptionContent() {
         <div className="absolute bottom-20 left-1/4 w-40 h-40 bg-blue-300 rounded-full blur-3xl"></div>
         <div className="absolute bottom-40 right-1/3 w-28 h-28 bg-indigo-300 rounded-full blur-2xl"></div>
       </div>
-      
+
       <div className="max-w-6xl mx-auto relative z-10">
         {/* Header Section */}
         <div className="text-center mb-16">
@@ -231,7 +265,8 @@ function SubscriptionContent() {
             </span>
           </h1>
           <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Descubre todo lo que SecondBrain puede hacer por ti. Comienza gratis o elige un plan premium para desbloquear todo el potencial.
+            Descubre todo lo que SecondBrain puede hacer por ti. Comienza gratis
+            o elige un plan premium para desbloquear todo el potencial.
           </p>
         </div>
 
@@ -240,17 +275,17 @@ function SubscriptionContent() {
           {Object.entries(plans).map(([key, plan]) => {
             const PlanIcon = plan.icon;
             const isSelected = selectedPlan === key;
-            const isPopular = key === 'pro';
-            
+            const isPopular = key === "pro";
+
             return (
               <div
                 key={key}
                 onClick={() => setSelectedPlan(key as keyof typeof basePlans)}
                 className={`relative cursor-pointer transition-all duration-300 rounded-3xl p-8 border-2 hover:-translate-y-2 hover:rotate-1 ${
-                  isSelected 
-                    ? 'border-purple-500 bg-white shadow-2xl -translate-y-1 rotate-1 ring-4 ring-purple-200' 
-                    : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-xl'
-                } ${isPopular ? 'md:transform md:-translate-y-2' : ''}`}
+                  isSelected
+                    ? "border-purple-500 bg-white shadow-2xl -translate-y-1 rotate-1 ring-4 ring-purple-200"
+                    : "border-gray-200 bg-white hover:border-purple-300 hover:shadow-xl"
+                } ${isPopular ? "md:transform md:-translate-y-2" : ""}`}
               >
                 {/* Popular Badge */}
                 {isPopular && (
@@ -262,7 +297,7 @@ function SubscriptionContent() {
                 )}
 
                 {/* Free Badge */}
-                {key === 'free' && (
+                {key === "free" && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">
                       💚 Gratis
@@ -271,7 +306,7 @@ function SubscriptionContent() {
                 )}
 
                 {/* Elite Badge */}
-                {key === 'elite' && (
+                {key === "elite" && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">
                       👑 Elite
@@ -281,15 +316,17 @@ function SubscriptionContent() {
 
                 <div className="text-center">
                   {/* Icon */}
-                  <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-r ${plan.color} flex items-center justify-center shadow-lg transition-transform duration-300 hover:rotate-12`}>
+                  <div
+                    className={`w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-r ${plan.color} flex items-center justify-center shadow-lg transition-transform duration-300 hover:rotate-12`}
+                  >
                     <PlanIcon className="w-10 h-10 text-white" />
                   </div>
-                  
+
                   {/* Plan Name */}
                   <h3 className="text-2xl font-bold text-gray-800 mb-2">
                     {plan.name}
                   </h3>
-                  
+
                   {/* Price */}
                   <div className="mb-6">
                     {plan.price === 0 ? (
@@ -307,12 +344,12 @@ function SubscriptionContent() {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Description */}
                   <p className="text-gray-600 mb-8 text-lg leading-relaxed">
                     {plan.description}
                   </p>
-                  
+
                   {/* Features List */}
                   <div className="text-left">
                     <ul className="space-y-4">
@@ -329,11 +366,13 @@ function SubscriptionContent() {
                               </div>
                             )}
                           </div>
-                          <span className={`text-sm leading-relaxed ${
-                            feature.included 
-                              ? 'text-gray-700 font-medium' 
-                              : 'text-gray-400 line-through'
-                          }`}>
+                          <span
+                            className={`text-sm leading-relaxed ${
+                              feature.included
+                                ? "text-gray-700 font-medium"
+                                : "text-gray-400 line-through"
+                            }`}
+                          >
                             {feature.text}
                           </span>
                         </li>
@@ -357,8 +396,9 @@ function SubscriptionContent() {
 
         {/* Action Section */}
         <div className="text-center">
-          {selectedPlan === 'free' ? (
-            userCurrentPlan !== 'free' && userProfile?.subscription.status === 'active' ? (
+          {selectedPlan === "free" ? (
+            userCurrentPlan !== "free" &&
+            userProfile?.subscription.status === "active" ? (
               // Usuario tiene plan pagado y quiere cancelar para ir a gratuito
               <div className="max-w-lg mx-auto">
                 <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl p-8 mb-8 shadow-lg">
@@ -367,55 +407,70 @@ function SubscriptionContent() {
                     Cancelar Suscripción
                   </h3>
                   <p className="text-amber-700 mb-6 leading-relaxed">
-                    Actualmente tienes el plan <strong className="bg-amber-200 px-2 py-1 rounded">{userCurrentPlan.toUpperCase()}</strong>. 
-                    Para cambiar al plan gratuito necesitas cancelar tu suscripción actual.
+                    Actualmente tienes el plan{" "}
+                    <strong className="bg-amber-200 px-2 py-1 rounded">
+                      {userCurrentPlan.toUpperCase()}
+                    </strong>
+                    . Para cambiar al plan gratuito necesitas cancelar tu
+                    suscripción actual.
                   </p>
                   <div className="bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl p-4 mb-6 border border-amber-200">
                     <p className="text-amber-800 text-sm leading-relaxed">
-                      📅 <strong>Importante:</strong> Conservarás todas las funciones de tu plan actual hasta 
-                      {userProfile.subscription.currentPeriodEnd ? 
-                        ` el ${new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString('es-ES')}` : 
-                        ' el final del período facturado'}. Después cambiarás automáticamente al plan gratuito.
+                      📅 <strong>Importante:</strong> Conservarás todas las
+                      funciones de tu plan actual hasta
+                      {userProfile.subscription.currentPeriodEnd
+                        ? ` el ${new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString("es-ES")}`
+                        : " el final del período facturado"}
+                      . Después cambiarás automáticamente al plan gratuito.
                     </p>
                   </div>
                 </div>
-                
+
                 <button
                   onClick={async () => {
                     const confirmCancel = confirm(
                       `¿Estás seguro de que quieres cancelar tu suscripción ${userCurrentPlan.toUpperCase()}?\n\n` +
-                      `• Conservarás el acceso completo hasta ${userProfile.subscription.currentPeriodEnd ? 
-                        new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString('es-ES') : 
-                        'el final del período facturado'}\n` +
-                      `• Después cambiarás automáticamente al plan gratuito\n` +
-                      `• No se realizarán más cobros\n\n` +
-                      `Esta acción no se puede deshacer.`
+                        `• Conservarás el acceso completo hasta ${
+                          userProfile.subscription.currentPeriodEnd
+                            ? new Date(
+                                userProfile.subscription.currentPeriodEnd,
+                              ).toLocaleDateString("es-ES")
+                            : "el final del período facturado"
+                        }\n` +
+                        `• Después cambiarás automáticamente al plan gratuito\n` +
+                        `• No se realizarán más cobros\n\n` +
+                        `Esta acción no se puede deshacer.`,
                     );
-                    
+
                     if (!confirmCancel) return;
-                    
+
                     try {
-                      const response = await authenticatedFetch('/api/stripe/cancel-subscription', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: user.uid })
-                      });
-                      
+                      const response = await authenticatedFetch(
+                        "/api/stripe/cancel-subscription",
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ userId: user.uid }),
+                        },
+                      );
+
                       if (response.ok) {
                         const data = await response.json();
                         alert(
                           `✅ Suscripción cancelada correctamente.\n\n` +
-                          `Tu plan ${userCurrentPlan.toUpperCase()} permanecerá activo hasta: ${new Date(data.cancelAt).toLocaleDateString('es-ES')}\n\n` +
-                          `Después cambiarás automáticamente al plan gratuito.`
+                            `Tu plan ${userCurrentPlan.toUpperCase()} permanecerá activo hasta: ${new Date(data.cancelAt).toLocaleDateString("es-ES")}\n\n` +
+                            `Después cambiarás automáticamente al plan gratuito.`,
                         );
-                        router.push('/dashboard');
+                        router.push("/dashboard");
                       } else {
                         const errorData = await response.json();
-                        alert(`❌ Error al cancelar suscripción: ${errorData.error}`);
+                        alert(
+                          `❌ Error al cancelar suscripción: ${errorData.error}`,
+                        );
                       }
                     } catch (error) {
-                      alert('❌ Error de conexión al cancelar suscripción');
-                      console.error('Error:', error);
+                      alert("❌ Error de conexión al cancelar suscripción");
+                      console.error("Error:", error);
                     }
                   }}
                   className="w-full inline-flex items-center justify-center gap-3 px-10 py-5 rounded-2xl bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 hover:rotate-1 group shadow-lg"
@@ -423,16 +478,16 @@ function SubscriptionContent() {
                   <IconComponent className="w-6 h-6 transition-transform duration-300 group-hover:rotate-12" />
                   Cancelar Suscripción y Cambiar a Gratuito
                 </button>
-                
+
                 <div className="mt-6 flex gap-4 justify-center">
                   <button
-                    onClick={() => router.push('/dashboard')}
+                    onClick={() => router.push("/dashboard")}
                     className="px-8 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-300 font-medium shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
                     Mantener Plan Actual
                   </button>
                   <button
-                    onClick={() => router.push('/dashboard?settings=true')}
+                    onClick={() => router.push("/dashboard?settings=true")}
                     className="px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:from-blue-600 hover:to-indigo-600 transition-all duration-300 font-medium shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
                     Gestionar en Settings
@@ -444,30 +499,41 @@ function SubscriptionContent() {
               <div className="max-w-md mx-auto">
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-3xl p-6 mb-6">
                   <div className="text-green-600 text-4xl mb-3">💚</div>
-                  <h3 className="text-xl font-bold text-green-800 mb-2">Plan Gratuito</h3>
+                  <h3 className="text-xl font-bold text-green-800 mb-2">
+                    Plan Gratuito
+                  </h3>
                   <p className="text-green-700 text-sm">
-                    ¡Perfecto para comenzar! Puedes actualizar en cualquier momento.
+                    ¡Perfecto para comenzar! Puedes actualizar en cualquier
+                    momento.
                   </p>
                 </div>
-                
+
                 <button
                   onClick={async () => {
                     try {
-                      const response = await authenticatedFetch('/api/subscription/update-manual', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: user.uid, planType: 'free' })
-                      });
-                      
+                      const response = await authenticatedFetch(
+                        "/api/subscription/update-manual",
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            userId: user.uid,
+                            planType: "free",
+                          }),
+                        },
+                      );
+
                       if (response.ok) {
-                        alert('✅ ¡Plan gratuito activado! Redirigiendo al dashboard...');
-                        window.location.href = '/dashboard';
+                        alert(
+                          "✅ ¡Plan gratuito activado! Redirigiendo al dashboard...",
+                        );
+                        window.location.href = "/dashboard";
                       } else {
-                        alert('❌ Error al activar el plan gratuito');
+                        alert("❌ Error al activar el plan gratuito");
                       }
                     } catch (error) {
-                      alert('❌ Error de conexión');
-                      console.error('Error:', error);
+                      alert("❌ Error de conexión");
+                      console.error("Error:", error);
                     }
                   }}
                   className={`inline-flex items-center gap-3 px-10 py-5 rounded-2xl text-white font-bold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-2xl hover:-translate-y-1 hover:rotate-1 group shadow-lg`}
@@ -477,7 +543,8 @@ function SubscriptionContent() {
                 </button>
               </div>
             )
-          ) : userCurrentPlan === selectedPlan && userProfile?.subscription.status === 'active' ? (
+          ) : userCurrentPlan === selectedPlan &&
+            userProfile?.subscription.status === "active" ? (
             // Usuario ya tiene este plan activo
             <div className="max-w-lg mx-auto">
               <div className="text-center p-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl border-2 border-blue-200 shadow-lg">
@@ -486,25 +553,26 @@ function SubscriptionContent() {
                   Ya tienes el plan {currentPlan.name}
                 </h3>
                 <p className="text-blue-600 mb-6 text-lg leading-relaxed">
-                  Tu suscripción está activa y funcionando perfectamente. ¡Disfruta de todas las funciones premium!
+                  Tu suscripción está activa y funcionando perfectamente.
+                  ¡Disfruta de todas las funciones premium!
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <button
-                    onClick={() => router.push('/dashboard')}
+                    onClick={() => router.push("/dashboard")}
                     className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
                     Ir al Dashboard
                   </button>
-                  {selectedPlan === 'pro' && (
+                  {selectedPlan === "pro" && (
                     <button
-                      onClick={() => setSelectedPlan('elite')}
+                      onClick={() => setSelectedPlan("elite")}
                       className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl hover:from-orange-600 hover:to-red-600 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1"
                     >
                       Mejorar a Elite 👑
                     </button>
                   )}
                   <button
-                    onClick={() => router.push('/dashboard?settings=true')}
+                    onClick={() => router.push("/dashboard?settings=true")}
                     className="px-8 py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-2xl hover:from-gray-700 hover:to-gray-800 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
                     Cancelar Suscripción
@@ -515,58 +583,70 @@ function SubscriptionContent() {
           ) : (
             <div className="max-w-md mx-auto">
               <div className="mb-6">
-                <div className={`inline-block p-4 bg-gradient-to-r ${currentPlan.color} rounded-2xl mb-4 shadow-lg`}>
+                <div
+                  className={`inline-block p-4 bg-gradient-to-r ${currentPlan.color} rounded-2xl mb-4 shadow-lg`}
+                >
                   <IconComponent className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                  {userCurrentPlan === 'free' ? (
+                  {userCurrentPlan === "free" ? (
                     <>¡Actualiza a {currentPlan.name}!</>
                   ) : (
                     <>Cambiar a {currentPlan.name}</>
                   )}
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  {userCurrentPlan === 'free' 
-                    ? 'Desbloquea todo el potencial de SecondBrain'
-                    : 'Cambia tu plan actual por uno que se ajuste mejor a tus necesidades'
-                  }
+                  {userCurrentPlan === "free"
+                    ? "Desbloquea todo el potencial de SecondBrain"
+                    : "Cambia tu plan actual por uno que se ajuste mejor a tus necesidades"}
                 </p>
               </div>
-              
-              {checkoutEnabled ? <button
-                onClick={() => {
-                  // Verificar downgrades no permitidos
-                  if (userCurrentPlan === 'elite' && selectedPlan === 'pro') {
-                    alert('No puedes cambiar de Elite a Pro directamente. Primero cancela tu suscripción actual desde Settings.');
-                    return;
-                  }
-                  setShowCheckout(true);
-                }}
-                className={`inline-flex items-center gap-3 px-10 py-5 rounded-2xl text-white font-bold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-2xl hover:-translate-y-1 hover:rotate-1 group shadow-lg`}
-              >
-                <IconComponent className="w-6 h-6 transition-transform duration-300 group-hover:rotate-12" />
-                {userCurrentPlan === 'free' ? (
-                  <>Comenzar con {currentPlan.name} - €{currentPlan.price}/mes</>
-                ) : (
-                  <>Cambiar a {currentPlan.name} - €{currentPlan.price}/mes</>
-                )}
-              </button> : <p className="rounded-2xl border border-purple-200 bg-purple-50 px-6 py-5 font-semibold text-purple-900">
-                Los pagos estarán disponibles próximamente. Puedes seguir usando el plan gratuito.
-              </p>}
+
+              {checkoutEnabled ? (
+                <button
+                  onClick={() => {
+                    // Verificar downgrades no permitidos
+                    if (userCurrentPlan === "elite" && selectedPlan === "pro") {
+                      alert(
+                        "No puedes cambiar de Elite a Pro directamente. Primero cancela tu suscripción actual desde Settings.",
+                      );
+                      return;
+                    }
+                    setShowCheckout(true);
+                  }}
+                  className={`inline-flex items-center gap-3 px-10 py-5 rounded-2xl text-white font-bold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-2xl hover:-translate-y-1 hover:rotate-1 group shadow-lg`}
+                >
+                  <IconComponent className="w-6 h-6 transition-transform duration-300 group-hover:rotate-12" />
+                  {userCurrentPlan === "free" ? (
+                    <>
+                      Comenzar con {currentPlan.name} - €{currentPlan.price}/mes
+                    </>
+                  ) : (
+                    <>
+                      Cambiar a {currentPlan.name} - €{currentPlan.price}/mes
+                    </>
+                  )}
+                </button>
+              ) : (
+                <p className="rounded-2xl border border-purple-200 bg-purple-50 px-6 py-5 font-semibold text-purple-900">
+                  Los pagos estarán disponibles próximamente. Puedes seguir
+                  usando el plan gratuito.
+                </p>
+              )}
             </div>
           )}
-          
+
           <div className="mt-8 max-w-2xl mx-auto">
             <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-200">
               <p className="text-sm text-gray-600 leading-relaxed">
-                {selectedPlan === 'free' 
-                  ? (userCurrentPlan !== 'free' && userProfile?.subscription.status === 'active' 
-                    ? '⚠️ Cancelar tu suscripción significa que cambiarás al plan gratuito al final de tu período de facturación actual.'
-                    : '✨ ¡Comienza gratis! Puedes actualizar en cualquier momento para desbloquear más funciones premium.')
-                  : '🔒 Política de cancelación flexible. Sin compromisos a largo plazo. Cancela en cualquier momento desde tu panel de configuración.'
-                }
+                {selectedPlan === "free"
+                  ? userCurrentPlan !== "free" &&
+                    userProfile?.subscription.status === "active"
+                    ? "⚠️ Cancelar tu suscripción significa que cambiarás al plan gratuito al final de tu período de facturación actual."
+                    : "✨ ¡Comienza gratis! Puedes actualizar en cualquier momento para desbloquear más funciones premium."
+                  : "🔒 Política de cancelación flexible. Sin compromisos a largo plazo. Cancela en cualquier momento desde tu panel de configuración."}
               </p>
-              {selectedPlan !== 'free' && (
+              {selectedPlan !== "free" && (
                 <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-500">
                   <span className="flex items-center gap-1">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -592,12 +672,16 @@ function SubscriptionContent() {
 
 export default function SubscriptionPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Cargando...</p>
-      </div>
-    </div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando...</p>
+          </div>
+        </div>
+      }
+    >
       <SubscriptionContent />
     </Suspense>
   );

@@ -1,0 +1,2 @@
+insert into auth.users(id) values('33333333-3333-4333-8333-333333333333');
+insert into public.profiles(uid,email,subscription) values('33333333-3333-4333-8333-333333333333','synthetic@test.invalid','{"plan":"pro","status":"active","stripeCustomerId":"cus_synthetic","stripeSubscriptionId":"sub_synthetic","currentPeriodEnd":"2027-01-01T00:00:00Z","cancelAtPeriodEnd":true,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-09-01T00:00:00Z","monthlyUsage":{"month":"2026-08","personalChatMessages":7,"personChatMessages":13,"statisticsAccess":2}}');

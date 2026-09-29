@@ -12,3 +12,5 @@ The site and app are separate workspaces with different Next and Tailwind versio
 ## SEO and regression checks
 
 `src/app/sitemap.ts` and `src/app/robots.ts` are the only sources for those metadata routes. Do not add `public/sitemap.xml` or `public/robots.txt`: static files override the generated endpoints and can hide newer pages. Preserve the social crawler rules in the TypeScript metadata source. Run the landing unit suite and all public pages at desktop/mobile widths using [docs/TESTING.md](../../../../docs/TESTING.md).
+
+Plan claims must match implemented quotas in `secondbrain/src/lib/subscription-policy.ts` and the server catalogue. All tiers use the same AI models; do not claim better model quality, priority support or experimental features without an implementation. Elite chat has finite monthly quotas; only statistics reports are unlimited. Prices and pricing structured-data copy use euros. Graph period changes consume no report access. Paid checkout availability is controlled by the app's explicit feature flag.

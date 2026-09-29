@@ -40,7 +40,12 @@ export function mockDatabase() {
       resolve().then(success, failure);
     return query;
   });
+  const rpc = vi.fn((name: string, args: any) => {
+    calls.push({ table: `rpc:${name}`, steps: [["args", args]] });
+    return Promise.resolve(results.shift() || { data: null, error: null });
+  });
   return {
+    rpc,
     from,
     calls,
     reply: (data: any = null, error: any = null) =>
@@ -49,6 +54,7 @@ export function mockDatabase() {
       calls.length = 0;
       results.length = 0;
       from.mockClear();
+      rpc.mockClear();
     },
   };
 }

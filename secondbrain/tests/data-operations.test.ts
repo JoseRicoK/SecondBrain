@@ -334,7 +334,6 @@ describe("diary, people, audio and mood persistence", () => {
     },
   );
   it.each([
-    ["all entries", () => ops.getDiaryEntriesByUserId("u"), []],
     ["people", () => ops.getPeopleByUserId("u"), []],
     ["save person", () => ops.savePerson(person), null],
     ["save audio", () => ops.saveAudioTranscription("e", "url", "text"), null],
@@ -345,15 +344,20 @@ describe("diary, people, audio and mood persistence", () => {
       null,
     ],
     ["read mood", () => ops.getMoodDataByPeriod("u", row.date, row.date), []],
-    [
-      "entry mood",
-      () => ops.getEntriesMoodDataByDateRange("u", row.date, row.date),
-      [],
-    ],
   ])("%s returns safe failure", async (_, run, fallback) => {
     db.reply(null, { message: "denied" });
     expect(await (run as Function)()).toEqual(fallback);
   });
+});
+it("diary reads fail explicitly so failed AI context loads do not consume quotas", async () => {
+  db.reply(null, new Error("offline"));
+  await expect(ops.getDiaryEntriesByUserId("u")).rejects.toThrow("offline");
+});
+it("chart database failures are distinguishable from an empty chart", async () => {
+  db.reply(null, new Error("offline"));
+  await expect(
+    ops.getEntriesMoodDataByDateRange("u", row.date, row.date),
+  ).rejects.toThrow("offline");
 });
 describe("authentication operations", () => {
   it("registers profile metadata and signs out pending verification", async () => {

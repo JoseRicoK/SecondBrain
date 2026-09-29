@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-import { AI_MODELS, CHAT_REASONING_EFFORT } from '@/lib/ai-models';
-import { getDiaryEntriesByUserId } from '@/lib/supabase-operations';
-import { getAuthenticatedUser } from '@/lib/api-auth';
-import { canSendPersonalChatMessage } from '@/middleware/subscription';
-import { getUserMonthlyUsage, incrementPersonalChatUsage } from '@/lib/subscription-operations';
+import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
+import { AI_MODELS, CHAT_REASONING_EFFORT } from "@/lib/ai-models";
+import { getDiaryEntriesByUserId } from "@/lib/supabase-operations";
+import { getAuthenticatedUser } from "@/lib/api-auth";
+import { reserveUsage, finishUsage } from "@/lib/subscription-operations";
 
 // Configurar OpenAI
 const openai = new OpenAI({
@@ -12,59 +11,83 @@ const openai = new OpenAI({
 });
 
 export async function POST(request: NextRequest) {
+  let reservationId: string | undefined;
+  let owner: string | undefined;
   try {
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "");
     const user = await getAuthenticatedUser(token);
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { userId, message, conversationHistory, userName, currentDate } = await request.json();
+    const { userId, message, conversationHistory, userName, currentDate } =
+      await request.json();
     if (user.uid !== userId) {
-      return NextResponse.json({ error: 'User mismatch' }, { status: 403 });
+      return NextResponse.json({ error: "User mismatch" }, { status: 403 });
     }
 
     if (!userId || !message) {
       return NextResponse.json(
-        { error: 'Se requiere el ID de usuario y el mensaje' },
-        { status: 400 }
+        { error: "Se requiere el ID de usuario y el mensaje" },
+        { status: 400 },
       );
     }
 
-    // Verificar límites de chat personal
-    const monthlyUsage = await getUserMonthlyUsage(userId);
-    const canSendMessage = await canSendPersonalChatMessage(userId, monthlyUsage.personalChatMessages);
-    
-    if (!canSendMessage) {
+    if (
+      typeof message !== "string" ||
+      !message.trim() ||
+      message.length > 12000 ||
+      (conversationHistory !== undefined &&
+        (!Array.isArray(conversationHistory) ||
+          conversationHistory.length > 50 ||
+          conversationHistory.some(
+            (item: any) =>
+              !["user", "assistant"].includes(item?.role) ||
+              typeof item?.content !== "string" ||
+              item.content.length > 12000,
+          )))
+    ) {
       return NextResponse.json(
-        { 
-          error: 'Límite de mensajes de chat personal alcanzado para este mes',
-          code: 'LIMIT_EXCEEDED',
-          currentUsage: monthlyUsage.personalChatMessages,
-          maxAllowed: monthlyUsage
-        },
-        { status: 429 }
+        { error: "Mensaje o historial no válido" },
+        { status: 400 },
       );
     }
+    owner = user.uid;
+    const reservation = await reserveUsage(owner, "personalChatMessages");
+    if (!reservation.allowed)
+      return NextResponse.json(
+        {
+          error: "Límite mensual alcanzado",
+          code: "LIMIT_EXCEEDED",
+          currentUsage: reservation.currentUsage,
+          maxAllowed: reservation.limit,
+        },
+        { status: 429 },
+      );
+    if (!reservation.id) throw new Error("Reserva de cuota no disponible");
+    reservationId = reservation.id;
 
     // Get user display name from frontend
-    const userDisplayName = userName || 'Usuario';
-    
-    console.log('Personal chat request - User name:', userDisplayName);
-    console.log('Personal chat request - Current date:', currentDate);
+    const userDisplayName = userName || "Usuario";
+
+    console.log("Personal chat request - User name:", userDisplayName);
+    console.log("Personal chat request - Current date:", currentDate);
 
     // Obtener todas las entradas del diario del usuario
     const diaryEntries = await getDiaryEntriesByUserId(userId);
-    
+
     // Construir el contexto del usuario con todas sus entradas
-    const userContext = buildUserContext(diaryEntries, userId, { name: userDisplayName, email: null });
+    const userContext = buildUserContext(diaryEntries, userId, {
+      name: userDisplayName,
+      email: null,
+    });
     const messages = [
       {
-        role: 'system' as const,
+        role: "system" as const,
         content: `Eres un asistente personal inteligente especializado en análisis de vida personal y crecimiento personal. Estás ayudando a ${userName} a analizar, reflexionar y obtener insights sobre su vida basándote en todas las entradas de su diario personal.
 
-FECHA Y HORA ACTUAL (España): ${currentDate || 'No disponible'}
+FECHA Y HORA ACTUAL (España): ${currentDate || "No disponible"}
 
 ${userContext}
 
@@ -91,14 +114,14 @@ INSTRUCCIONES:
 - Responde en español
 - Si no tienes información suficiente sobre algo específico, sugiere qué sería útil registrar
 - Aprovecha la información temporal para mostrar evolución y cambios
-- Haz referencias específicas a eventos y fechas del diario cuando sea relevante`
+- Haz referencias específicas a eventos y fechas del diario cuando sea relevante`,
       },
       // Incluir historial de conversación si existe
       ...(conversationHistory || []),
       {
-        role: 'user' as const,
-        content: message
-      }
+        role: "user" as const,
+        content: message,
+      },
     ];
 
     // Llamar a la API de OpenAI
@@ -113,31 +136,38 @@ INSTRUCCIONES:
     const response = completion.choices[0]?.message?.content;
 
     if (!response) {
-      throw new Error('No se recibió respuesta del modelo');
+      throw new Error("No se recibió respuesta del modelo");
     }
 
     // Incrementar contador de uso solo si fue exitoso
-    await incrementPersonalChatUsage(userId);
+    await finishUsage(owner, reservationId, true);
+    reservationId = undefined;
 
     return NextResponse.json({
       response,
       entriesAnalyzed: diaryEntries.length,
-      userName: userDisplayName
+      userName: userDisplayName,
     });
-
   } catch (error) {
-    console.error('Error en chat personal:', error);
-    
+    if (owner && reservationId) {
+      try {
+        await finishUsage(owner, reservationId, false);
+      } catch (releaseError) {
+        console.error("Error liberando reserva de cuota", releaseError);
+      }
+    }
+    console.error("Error en chat personal:", error);
+
     if (error instanceof Error) {
       return NextResponse.json(
         { error: `Error del chat: ${error.message}` },
-        { status: 500 }
+        { status: 500 },
       );
     }
-    
+
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
+      { error: "Error interno del servidor" },
+      { status: 500 },
     );
   }
 }
@@ -152,15 +182,15 @@ function buildUserContext(
     mood?: string;
     tags?: string[];
     mentioned_people?: string[];
-  }>, 
+  }>,
   userId: string,
-  userInfo: { name: string; email: string | null }
+  userInfo: { name: string; email: string | null },
 ): string {
   const userName = userInfo.name;
   let context = `CONTEXTO DEL USUARIO:\n`;
   context += `- Nombre: ${userName}\n`;
   context += `- ID: ${userId}\n\n`;
-  
+
   if (diaryEntries.length === 0) {
     context += "No hay entradas de diario disponibles para analizar.";
     return context;
@@ -168,18 +198,19 @@ function buildUserContext(
 
   context += `RESUMEN GENERAL:\n`;
   context += `- Total de entradas analizadas: ${diaryEntries.length}\n`;
-  
+
   // Ordenar entradas por fecha (más reciente primero)
-  const sortedEntries = diaryEntries.sort((a, b) => 
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  const sortedEntries = diaryEntries.sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
 
   // Obtener rango de fechas
   const firstEntry = sortedEntries[sortedEntries.length - 1];
   const lastEntry = sortedEntries[0];
-  const firstDate = new Date(firstEntry.created_at).toLocaleDateString('es-ES');
-  const lastDate = new Date(lastEntry.created_at).toLocaleDateString('es-ES');
-  
+  const firstDate = new Date(firstEntry.created_at).toLocaleDateString("es-ES");
+  const lastDate = new Date(lastEntry.created_at).toLocaleDateString("es-ES");
+
   context += `- Período cubierto: desde ${firstDate} hasta ${lastDate}\n\n`;
 
   context += `ENTRADAS DEL DIARIO (ordenadas por fecha, más recientes primero):\n\n`;
@@ -189,19 +220,19 @@ function buildUserContext(
   const entriesToInclude = sortedEntries.slice(0, maxEntries);
 
   entriesToInclude.forEach((entry, index) => {
-    const date = new Date(entry.created_at).toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    const date = new Date(entry.created_at).toLocaleDateString("es-ES", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
-    
+
     context += `${index + 1}. FECHA: ${date}\n`;
     if (entry.content && entry.content.trim()) {
       context += `   CONTENIDO: ${entry.content.trim()}\n`;
     }
     if (entry.mentioned_people && entry.mentioned_people.length > 0) {
-      context += `   PERSONAS MENCIONADAS: ${entry.mentioned_people.join(', ')}\n`;
+      context += `   PERSONAS MENCIONADAS: ${entry.mentioned_people.join(", ")}\n`;
     }
     context += `\n`;
   });

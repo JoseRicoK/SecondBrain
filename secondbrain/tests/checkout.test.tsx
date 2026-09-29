@@ -52,6 +52,7 @@ it("enabled checkout sends plan and redirects to returned session", async () => 
     .click(screen.getByRole("button", { name: "Suscribirse a Pro" }));
   expect(mock.redirect).toHaveBeenCalledWith({ sessionId: "cs_test" });
   expect(JSON.parse(mock.fetch.mock.calls[0][1].body)).toEqual({
+    requestId: expect.any(String),
     planType: "pro",
     userId: "u",
     userEmail: "u@test.invalid",
@@ -81,4 +82,19 @@ it("missing publishable key keeps checkout off", async () => {
     screen.getByRole("button", { name: "Pagos disponibles próximamente" }),
   ).toBeDisabled();
   expect(mock.load).not.toHaveBeenCalled();
+});
+
+it("a failed checkout retry reuses the same attempt to avoid duplicate sessions", async () => {
+  mock.fetch.mockRejectedValueOnce(new Error("Error de red"));
+  const Component = (await import("@/components/CheckoutForm")).default;
+  render(
+    <Component plan={plan} userId="u" userEmail="u@test.invalid" enabled />,
+  );
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Suscribirse a Pro" }));
+  expect(await screen.findByText("Error de red")).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Suscribirse a Pro" }));
+  const bodies = mock.fetch.mock.calls.map((call) => JSON.parse(call[1].body));
+  expect(bodies[0].requestId).toBe(bodies[1].requestId);
+  expect(mock.redirect).toHaveBeenCalledWith({ sessionId: "cs_test" });
 });

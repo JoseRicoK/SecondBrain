@@ -23,6 +23,8 @@ const mock = vi.hoisted(() => {
       "createUserProfile",
       "updateUserSubscription",
       "getUserMonthlyUsage",
+      "reserveUsage",
+      "finishUsage",
       "incrementPersonalChatUsage",
       "incrementPersonChatUsage",
       "incrementStatisticsAccess",
@@ -34,6 +36,7 @@ const mock = vi.hoisted(() => {
       "canSendPersonChatMessage",
       "canAccessStatistics",
     ]),
+    snapshot: vi.fn(),
     responses: vi.fn(),
     chat: vi.fn(),
     transcription: vi.fn(),
@@ -43,14 +46,20 @@ const mock = vi.hoisted(() => {
     client: vi.fn(),
     enabled: vi.fn(),
     stripe: {
+      prices: { retrieve: vi.fn() },
       customers: { create: vi.fn() },
+      billingPortal: { sessions: { create: vi.fn() } },
       checkout: { sessions: { create: vi.fn(), retrieve: vi.fn() } },
       subscriptions: { update: vi.fn(), retrieve: vi.fn() },
       webhooks: { constructEvent: vi.fn() },
+      invoices: { retrieve: vi.fn() },
     },
   };
 });
 vi.mock("@/lib/api-auth", () => mock.auth);
+vi.mock("@/lib/subscription-snapshot", () => ({
+  getSubscriptionSnapshot: mock.snapshot,
+}));
 vi.mock("@/lib/supabase-operations", () => mock.data);
 vi.mock("@/lib/subscription-operations", () => mock.subscriptions);
 vi.mock("@/middleware/subscription", () => mock.policy);
@@ -112,9 +121,11 @@ const subscription = {
   id: "sub_test",
   customer: "cus_test",
   status: "active",
-  current_period_end: 1800000000,
+  metadata: { uid: "u" },
   cancel_at_period_end: false,
-  items: { data: [{ price: { id: "price_pro" } }] },
+  items: {
+    data: [{ current_period_end: 1800000000, price: { id: "price_pro" } }],
+  },
 };
 beforeEach(() => {
   for (const group of [mock.auth, mock.data, mock.subscriptions, mock.policy])
@@ -136,6 +147,32 @@ beforeEach(() => {
   ])
     fn.mockReset();
   db.reset();
+  mock.snapshot.mockReset();
+  mock.snapshot.mockImplementation(async () => {
+    const p = await mock.subscriptions.getUserProfile("u");
+    if (!p) throw new Error("Profile not found");
+    return {
+      subscription: p.subscription,
+      isFirstLogin: false,
+      currentPlan: p.subscription.plan,
+      planLimits: {
+        hasStatistics: p.subscription.plan !== "free",
+        statisticsAccess: 10,
+      },
+      monthlyUsage: usage,
+    };
+  });
+  db.rpc.mockResolvedValue({ data: true, error: null });
+  mock.subscriptions.reserveUsage.mockResolvedValue({
+    allowed: true,
+    id: "reservation",
+    limit: 30,
+    currentUsage: 2,
+  });
+  mock.stripe.invoices.retrieve.mockReset();
+  mock.stripe.invoices.retrieve.mockResolvedValue({
+    parent: { subscription_details: { subscription: "sub_test" } },
+  });
   mock.database.mockReturnValue({
     ...db,
     auth: { admin: { deleteUser: mock.deleteUser } },
@@ -169,10 +206,22 @@ beforeEach(() => {
   mock.deleteUser.mockResolvedValue({ error: null });
   mock.client.mockReturnValue(mock.stripe);
   mock.enabled.mockReturnValue(true);
+  mock.stripe.prices.retrieve.mockReset();
+  mock.stripe.prices.retrieve.mockImplementation(async (id: string) => ({
+    active: true,
+    currency: "eur",
+    unit_amount: id === "price_elite" ? 1999 : 999,
+    recurring: { interval: "month", interval_count: 1 },
+  }));
+  mock.stripe.billingPortal.sessions.create.mockReset();
+  mock.stripe.billingPortal.sessions.create.mockResolvedValue({
+    url: "https://billing.stripe.com/p/session/fixture",
+  });
   mock.stripe.customers.create.mockResolvedValue({ id: "cus_test" });
   mock.stripe.checkout.sessions.create.mockResolvedValue({ id: "cs_test" });
   mock.stripe.checkout.sessions.retrieve.mockResolvedValue({
     id: "cs_test",
+    mode: "subscription",
     payment_status: "paid",
     metadata: { uid: "u", plan_type: "pro" },
     customer: "cus_test",
@@ -280,8 +329,11 @@ describe("AI, audio and statistics", () => {
   it.each(["personal-chat", "chat-person"])(
     "%s enforces usage before OpenAI and does not increment",
     async (path) => {
-      mock.policy.canSendPersonalChatMessage.mockResolvedValue(false);
-      mock.policy.canSendPersonChatMessage.mockResolvedValue(false);
+      mock.subscriptions.reserveUsage.mockResolvedValue({
+        allowed: false,
+        currentUsage: 5,
+        limit: 5,
+      });
       const result = await invoke(path, {
         userId: "u",
         message: "Hola",
@@ -323,13 +375,11 @@ describe("AI, audio and statistics", () => {
         role: "user",
         content: "Hola",
       });
-      expect(
-        mock.subscriptions[
-          path === "personal-chat"
-            ? "incrementPersonalChatUsage"
-            : "incrementPersonChatUsage"
-        ],
-      ).toHaveBeenCalledWith("u");
+      expect(mock.subscriptions.finishUsage).toHaveBeenCalledWith(
+        "u",
+        "reservation",
+        true,
+      );
     },
   );
   it.each(["personal-chat", "chat-person"])(
@@ -595,42 +645,108 @@ describe("AI, audio and statistics", () => {
     ).toBe(400);
   });
   it.each(["statistics/summary", "statistics/quote"])(
-    "%s has an empty-data fallback without AI",
+    "%s reads cached reports without direct AI calls",
     async (path) => {
-      const result = await invoke(path, {}, "GET");
-      expect(result.status).toBe(200);
+      db.reply({
+        report: {
+          weekSummary: "Resumen guardado",
+          instagramQuote: "Cita guardada",
+        },
+      });
+      expect((await invoke(path, {}, "GET")).status).toBe(200);
       expect(mock.responses).not.toHaveBeenCalled();
     },
   );
-  it.each([
-    ["statistics/summary", "getEntriesByDateRange", "weekSummary"],
-    ["statistics/quote", "getDiaryEntriesByUserId", "instagramQuote"],
-  ])("%s handles AI success and outage fallback", async (path, repo, key) => {
-    mock.data[repo].mockResolvedValue([
-      { date: "2026-09-29", content: "Hoy tuve un buen día" },
+  it.each(["statistics/summary", "statistics/quote"])(
+    "%s requires a previously generated report",
+    async (path) => {
+      expect((await invoke(path, {}, "GET")).status).toBe(409);
+      expect(mock.responses).not.toHaveBeenCalled();
+    },
+  );
+  it("ranks people using distinct diary mentions per entry instead of drifted counters", async () => {
+    mock.data.getDiaryEntriesByUserId.mockResolvedValue([
+      { mentioned_people: ["Ana", "Ana", "Luis"] },
+      { mentioned_people: ["Ana"] },
     ]);
-    expect(await (await invoke(path, {}, "GET")).json()).toMatchObject({
-      [key]: "Texto de prueba",
-    });
+    expect(await (await invoke("statistics/people", {}, "GET")).json()).toEqual(
+      {
+        topPeople: [
+          { name: "Ana", count: 2 },
+          { name: "Luis", count: 1 },
+        ],
+      },
+    );
+    expect(mock.data.getDiaryEntriesByUserId).toHaveBeenCalledWith("u");
+  });
+  it.each(["summary", "quote", "mood", "people"])(
+    "free users cannot bypass the %s gate directly",
+    async (section) => {
+      mock.subscriptions.getUserProfile.mockResolvedValue(profile("free"));
+      expect((await invoke(`statistics/${section}`, {}, "GET")).status).toBe(
+        403,
+      );
+      expect(mock.responses).not.toHaveBeenCalled();
+    },
+  );
+  it("bundles two AI outputs into one quota reservation and one atomic report commit", async () => {
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    mock.data.getDiaryEntriesByUserId.mockResolvedValue([
+      {
+        date: today,
+        content: "Hoy tuve un buen día",
+        mentioned_people: ["Ana"],
+      },
+    ]);
+    expect((await invoke("statistics/report", {})).status).toBe(200);
+    expect(mock.responses).toHaveBeenCalledTimes(2);
+    expect(mock.subscriptions.reserveUsage).toHaveBeenCalledWith(
+      "u",
+      "statisticsAccess",
+    );
+    expect(db.rpc).toHaveBeenCalledWith(
+      "complete_statistics_report",
+      expect.objectContaining({ p_user_id: "u", p_id: "reservation" }),
+    );
     expect(mock.responses.mock.calls[0][0]).toMatchObject({
       model: "gpt-6-luna",
       reasoning: { effort: "low" },
     });
-    expect(mock.responses.mock.calls[0][0]).not.toHaveProperty("temperature");
-    mock.responses.mockRejectedValue(new Error("offline"));
-    expect((await invoke(path, {}, "GET")).status).toBe(200);
   });
-  it("ranks people by mentions, excludes zero, and caps at 20", async () => {
-    mock.data.getPeopleByUserId.mockResolvedValue(
-      Array.from({ length: 25 }, (_, i) => ({
-        name: `Persona ${i}`,
-        mention_count: i,
-      })),
+  it("a cached complete report consumes no new access", async () => {
+    db.reply({
+      report: { weekSummary: "cached" },
+      generated_at: new Date().toISOString(),
+    });
+    expect(await (await invoke("statistics/report", {})).json()).toMatchObject({
+      cached: true,
+      weekSummary: "cached",
+    });
+    expect(mock.subscriptions.reserveUsage).not.toHaveBeenCalled();
+  });
+  it("failed generation releases the quota and never publishes a report", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    mock.data.getDiaryEntriesByUserId.mockResolvedValue([
+      { date: today, content: "Hola" },
+    ]);
+    mock.responses.mockRejectedValue(new Error("provider down"));
+    expect((await invoke("statistics/report", { refresh: true })).status).toBe(
+      500,
     );
-    const body = await (await invoke("statistics/people", {}, "GET")).json();
-    expect(body.topPeople).toHaveLength(20);
-    expect(body.topPeople[0]).toEqual({ name: "Persona 24", count: 24 });
-    expect(mock.data.getPeopleByUserId).toHaveBeenCalledWith("u");
+    expect(mock.subscriptions.finishUsage).toHaveBeenCalledWith(
+      "u",
+      "reservation",
+      false,
+    );
+    expect(db.rpc).not.toHaveBeenCalledWith(
+      "complete_statistics_report",
+      expect.anything(),
+    );
   });
   it.each(["week", "month", "year"])(
     "mood period %s sorts real scores without fabricating empty data",
@@ -673,22 +789,45 @@ describe("AI, audio and statistics", () => {
     ).toBe(400);
     expect(mock.data.getEntriesMoodDataByDateRange).not.toHaveBeenCalled();
   });
-  it("statistics access enforces the quota and increments successful access", async () => {
-    mock.policy.canAccessStatistics.mockResolvedValue(false);
+  it("statistics quota is enforced before AI", async () => {
+    mock.subscriptions.reserveUsage.mockResolvedValue({
+      allowed: false,
+      currentUsage: 10,
+      limit: 10,
+    });
     expect((await invoke("statistics/access", { userId: "u" })).status).toBe(
       429,
     );
-    expect(mock.subscriptions.incrementStatisticsAccess).not.toHaveBeenCalled();
-    mock.policy.canAccessStatistics.mockResolvedValue(true);
-    expect(
-      await (await invoke("statistics/access", { userId: "u" })).json(),
-    ).toMatchObject({ canAccess: true, currentUsage: 5 });
-    expect(mock.subscriptions.incrementStatisticsAccess).toHaveBeenCalledWith(
-      "u",
-    );
+    expect(mock.responses).not.toHaveBeenCalled();
   });
 });
 describe("account and feedback", () => {
+  it("feedback cannot spoof another sender", async () => {
+    expect(
+      (
+        await invoke("send-feedback", {
+          type: "problem",
+          message: "Hola",
+          userEmail: "other@test.invalid",
+        })
+      ).status,
+    ).toBe(403);
+    expect(mock.sendEmail).not.toHaveBeenCalled();
+  });
+  it("feedback rate is checked before delivery", async () => {
+    db.rpc.mockResolvedValue({ data: false, error: null });
+    expect(
+      (
+        await invoke("send-feedback", {
+          type: "problem",
+          message: "Hola",
+          userEmail: "u@test.invalid",
+        })
+      ).status,
+    ).toBe(429);
+    expect(mock.sendEmail).not.toHaveBeenCalled();
+  });
+
   it("deletes only the authenticated account even with a forged body", async () => {
     expect((await invoke("account", { userId: "other" })).status).toBe(200);
     expect(mock.deleteUser).toHaveBeenCalledWith("u");
@@ -792,7 +931,6 @@ describe("subscription maintenance", () => {
       expect.objectContaining({
         plan: "free",
         cancelAtPeriodEnd: false,
-        stripeSubscriptionId: undefined,
       }),
     );
   });
@@ -820,21 +958,8 @@ describe("subscription maintenance", () => {
       expect(db.calls).toHaveLength(0);
     },
   );
-  it("cron expires only eligible periods and preserves other profile data", async () => {
-    db.reply([
-      {
-        uid: "old",
-        subscription: {
-          plan: "pro",
-          status: "active",
-          cancelAtPeriodEnd: true,
-          currentPeriodEnd: "2020-01-01",
-          monthlyUsage: usage,
-        },
-      },
-      { uid: "future", subscription: { currentPeriodEnd: "2099-01-01" } },
-    ]);
-    db.reply();
+  it("cron updates only normalized eligible subscriptions in one filtered query", async () => {
+    db.reply([{ user_id: "old" }]);
     const result = await (
       await load("subscription/expire-subscriptions")
     ).POST(
@@ -842,19 +967,18 @@ describe("subscription maintenance", () => {
         authorization: "Bearer cron_fixture",
       }),
     );
-    expect(await result.json()).toMatchObject({ processed: 2, expired: 1 });
-    expect(db.calls[1].steps).toContainEqual(["eq", "uid", "old"]);
-    expect(db.calls[1].steps[0][1].subscription).toMatchObject({
-      plan: "free",
-      status: "canceled",
-      monthlyUsage: usage,
-    });
-  });
-  it("cron reports a write failure instead of counting it as expired", async () => {
-    db.reply([
-      { uid: "old", subscription: { currentPeriodEnd: "2020-01-01" } },
+    expect(await result.json()).toMatchObject({ expired: 1 });
+    expect(db.calls[0].table).toBe("subscriptions");
+    expect(db.calls[0].steps).toContainEqual([
+      "eq",
+      "cancel_at_period_end",
+      true,
     ]);
-    db.reply(null, new Error("database down"));
+    expect(db.calls[0].steps).toContainEqual(["eq", "status", "active"]);
+    expect(db.calls[0].steps[0][1]).not.toHaveProperty("stripe_customer_id");
+  });
+  it("cron reports write failures", async () => {
+    db.reply(null, new Error("down"));
     expect(
       (
         await (
@@ -869,6 +993,108 @@ describe("subscription maintenance", () => {
   });
 });
 describe("Stripe checkout and cancellation without charges", () => {
+  it("mismatched Stripe currency cannot create a charge", async () => {
+    mock.stripe.prices.retrieve.mockResolvedValue({
+      active: true,
+      currency: "usd",
+      unit_amount: 999,
+      recurring: { interval: "month", interval_count: 1 },
+    });
+    expect(
+      (
+        await invoke("stripe/create-checkout-session", {
+          userId: "u",
+          userEmail: "u@test.invalid",
+          planType: "pro",
+          requestId: "11111111-1111-4111-8111-111111111111",
+        })
+      ).status,
+    ).toBe(500);
+    expect(mock.stripe.checkout.sessions.create).not.toHaveBeenCalled();
+  });
+  it("a paid return waits for the database webhook state without granting itself a plan", async () => {
+    mock.subscriptions.getUserProfile.mockResolvedValue(
+      profile("free", { status: "inactive" }),
+    );
+    expect(
+      await (
+        await invoke("stripe/verify-payment", {
+          userId: "u",
+          sessionId: "cs_test",
+        })
+      ).json(),
+    ).toMatchObject({ success: true, activated: false });
+    expect(mock.subscriptions.updateUserSubscription).not.toHaveBeenCalled();
+  });
+  it("existing subscriptions use the customer portal instead of creating a second charge", async () => {
+    mock.subscriptions.getUserProfile.mockResolvedValue(
+      profile("pro", { stripeCustomerId: "cus_existing" }),
+    );
+    expect(
+      await (
+        await invoke("stripe/create-checkout-session", {
+          userId: "u",
+          userEmail: "u@test.invalid",
+          planType: "elite",
+          requestId: "11111111-1111-4111-8111-111111111111",
+        })
+      ).json(),
+    ).toEqual({ portalUrl: "https://billing.stripe.com/p/session/fixture" });
+    expect(mock.stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    expect(mock.stripe.billingPortal.sessions.create).toHaveBeenCalledWith({
+      customer: "cus_existing",
+      return_url: "http://localhost:3100/subscription",
+      locale: "es",
+    });
+  });
+  it("disabled portal never contacts Stripe", async () => {
+    mock.enabled.mockReturnValue(false);
+    expect((await invoke("stripe/create-portal-session")).status).toBe(503);
+    expect(mock.stripe.billingPortal.sessions.create).not.toHaveBeenCalled();
+  });
+  it("portal derives the customer from the authenticated owner, ignoring forged body IDs", async () => {
+    mock.subscriptions.getUserProfile.mockResolvedValue(
+      profile("pro", { stripeCustomerId: "cus_own" }),
+    );
+    expect(
+      (
+        await invoke("stripe/create-portal-session", {
+          userId: "other",
+          customer: "cus_foreign",
+        })
+      ).status,
+    ).toBe(200);
+    expect(mock.stripe.billingPortal.sessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({ customer: "cus_own" }),
+    );
+  });
+  it("canceling a manual subscription preserves its existing paid date", async () => {
+    const end = new Date("2099-01-01");
+    mock.subscriptions.getUserProfile.mockResolvedValue(
+      profile("pro", {
+        stripeSubscriptionId: undefined,
+        currentPeriodEnd: end,
+      }),
+    );
+    expect(
+      (await invoke("stripe/cancel-subscription", { userId: "u" })).status,
+    ).toBe(200);
+    expect(mock.subscriptions.updateUserSubscription).toHaveBeenCalledWith(
+      "u",
+      { cancelAtPeriodEnd: true, currentPeriodEnd: end },
+    );
+    expect(mock.stripe.subscriptions.update).not.toHaveBeenCalled();
+  });
+  it("manual cancellation never invents a missing paid month", async () => {
+    mock.subscriptions.getUserProfile.mockResolvedValue(
+      profile("pro", { stripeSubscriptionId: undefined }),
+    );
+    expect(
+      (await invoke("stripe/cancel-subscription", { userId: "u" })).status,
+    ).toBe(409);
+    expect(mock.subscriptions.updateUserSubscription).not.toHaveBeenCalled();
+  });
+
   it("plans exposes configured prices and payment availability", async () => {
     expect(
       await (await invoke("subscription/plans", {}, "GET")).json(),
@@ -903,10 +1129,17 @@ describe("Stripe checkout and cancellation without charges", () => {
   it.each(["pro", "elite"])(
     "creates %s checkout using trusted return URLs",
     async (planType) => {
+      mock.subscriptions.getUserProfile.mockResolvedValue(
+        profile("free", {
+          status: "inactive",
+          stripeSubscriptionId: undefined,
+        }),
+      );
       const result = await invoke("stripe/create-checkout-session", {
         userId: "u",
         userEmail: "u@test.invalid",
         planType,
+        requestId: "11111111-1111-4111-8111-111111111111",
         successUrl: "https://attacker.invalid",
         cancelUrl: "https://attacker.invalid",
       });
@@ -920,17 +1153,25 @@ describe("Stripe checkout and cancellation without charges", () => {
           cancel_url: "http://localhost:3100/subscription",
           metadata: expect.objectContaining({ uid: "u", plan_type: planType }),
         }),
+        expect.objectContaining({
+          idempotencyKey: expect.stringContaining("secondbrain-checkout-u-"),
+        }),
       );
     },
   );
   it("reuses the stored Stripe customer", async () => {
     mock.subscriptions.getUserProfile.mockResolvedValue(
-      profile("pro", { stripeCustomerId: "cus_existing" }),
+      profile("free", {
+        status: "inactive",
+        stripeSubscriptionId: undefined,
+        stripeCustomerId: "cus_existing",
+      }),
     );
     await invoke("stripe/create-checkout-session", {
       userId: "u",
       userEmail: "u@test.invalid",
       planType: "pro",
+      requestId: "11111111-1111-4111-8111-111111111111",
     });
     expect(mock.stripe.customers.create).not.toHaveBeenCalled();
     expect(mock.stripe.checkout.sessions.create.mock.calls[0][0].customer).toBe(
@@ -986,7 +1227,7 @@ describe("Stripe checkout and cancellation without charges", () => {
       (await invoke("stripe/cancel-subscription", { userId: "u" })).status,
     ).toBe(404);
   });
-  it("verifies paid session and stores subscription identity", async () => {
+  it("verifies current paid Stripe state without provisioning from the browser", async () => {
     expect(
       (
         await invoke("stripe/verify-payment", {
@@ -995,18 +1236,8 @@ describe("Stripe checkout and cancellation without charges", () => {
         })
       ).status,
     ).toBe(200);
-    expect(mock.subscriptions.updateUserSubscription).toHaveBeenCalledWith(
-      "u",
-      expect.objectContaining({
-        plan: "pro",
-        status: "active",
-        stripeCustomerId: "cus_test",
-        stripeSubscriptionId: "sub_test",
-      }),
-    );
-    expect(mock.subscriptions.markFirstPaymentComplete).toHaveBeenCalledWith(
-      "u",
-    );
+    expect(mock.subscriptions.updateUserSubscription).not.toHaveBeenCalled();
+    expect(mock.subscriptions.markFirstPaymentComplete).not.toHaveBeenCalled();
   });
   it.each(["paid", "unpaid"])(
     "foreign %s checkout is rejected without exposing its session",
@@ -1044,19 +1275,20 @@ describe("Stripe checkout and cancellation without charges", () => {
 describe("signed Stripe events", () => {
   const webhook = async (type: string, object: any) => {
     mock.stripe.webhooks.constructEvent.mockReturnValue({
+      id: "evt_fixture",
+      created: 1800000000,
       type,
       data: { object },
     });
-    return invoke("stripe/webhook");
+    return (await load("stripe/webhook")).POST(
+      request("stripe/webhook", {}, "POST", { "stripe-signature": "fixture" }),
+    );
   };
-  it("rejects invalid/missing signature before updating subscriptions", async () => {
-    mock.stripe.webhooks.constructEvent.mockImplementation(() => {
-      throw new Error("bad signature");
-    });
+  it("rejects missing signatures", async () => {
     expect((await invoke("stripe/webhook")).status).toBe(400);
-    expect(mock.subscriptions.updateUserSubscription).not.toHaveBeenCalled();
+    expect(db.rpc).not.toHaveBeenCalled();
   });
-  it("validates an actual signed payload with the Stripe SDK, rejects tampering", async () => {
+  it("validates a real signature and rejects a tampered payload", async () => {
     const sdk = new Stripe("sk_test_fixture");
     mock.stripe.webhooks.constructEvent.mockImplementation(
       sdk.webhooks.constructEvent.bind(sdk.webhooks),
@@ -1082,19 +1314,28 @@ describe("signed Stripe events", () => {
     expect((await send(body)).status).toBe(200);
     expect((await send(body + " ")).status).toBe(400);
   });
-  it("checkout completed activates a known paid plan", async () => {
+  it("checkout provisions only through a signed paid subscription event", async () => {
     expect(
       (
         await webhook("checkout.session.completed", {
+          mode: "subscription",
+          payment_status: "paid",
           customer: "cus_test",
           subscription: "sub_test",
-          metadata: { uid: "u", plan_type: "pro" },
+          metadata: { uid: "u" },
         })
       ).status,
     ).toBe(200);
-    expect(mock.subscriptions.updateUserSubscription).toHaveBeenCalledWith(
-      "u",
-      expect.objectContaining({ plan: "pro", status: "active" }),
+    expect(db.rpc).toHaveBeenCalledWith(
+      "apply_billing_event",
+      expect.objectContaining({
+        p_id: "evt_fixture",
+        p_user_id: "u",
+        p_subscription: expect.objectContaining({
+          plan: "pro",
+          status: "active",
+        }),
+      }),
     );
   });
   it.each([
@@ -1106,8 +1347,19 @@ describe("signed Stripe events", () => {
     "incomplete_expired",
     "trialing",
     "paused",
-  ])("maps Stripe subscription status %s", async (status) => {
-    await webhook("customer.subscription.updated", { ...subscription, status });
+  ])("maps current provider status %s", async (status) => {
+    mock.stripe.subscriptions.retrieve.mockResolvedValue({
+      ...subscription,
+      status,
+    });
+    expect(
+      (
+        await webhook("customer.subscription.updated", {
+          id: "sub_test",
+          status: "obsolete",
+        })
+      ).status,
+    ).toBe(200);
     const expected =
       status === "active"
         ? "active"
@@ -1116,45 +1368,56 @@ describe("signed Stripe events", () => {
           : ["canceled", "unpaid"].includes(status)
             ? "canceled"
             : "inactive";
-    expect(mock.subscriptions.updateUserSubscription).toHaveBeenCalledWith(
-      "u",
-      expect.objectContaining({ status: expected, plan: "pro" }),
-    );
-  });
-  it("deleted subscription falls back to free", async () => {
-    await webhook("customer.subscription.deleted", subscription);
-    expect(mock.subscriptions.updateUserSubscription).toHaveBeenCalledWith(
-      "u",
-      { plan: "free", status: "canceled", cancelAtPeriodEnd: false },
+    expect(db.rpc).toHaveBeenCalledWith(
+      "apply_billing_event",
+      expect.objectContaining({
+        p_subscription: expect.objectContaining({
+          status: expected,
+          plan: expected === "canceled" ? "free" : "pro",
+        }),
+      }),
     );
   });
   it.each([
-    ["invoice.payment_succeeded", "active"],
-    ["invoice.payment_failed", "past_due"],
-  ])("%s updates the owner payment state", async (type, status) => {
-    await webhook(type, { customer: "cus_test", subscription: "sub_test" });
-    expect(mock.subscriptions.updateUserSubscription).toHaveBeenCalledWith(
-      "u",
-      expect.objectContaining({ status }),
-    );
-  });
-  it("ignores unknown customer or unknown price without writing", async () => {
+    "invoice.paid",
+    "invoice.payment_succeeded",
+    "invoice.payment_failed",
+  ])(
+    "%s re-reads current subscription rather than trusting a stale invoice",
+    async (type) => {
+      expect((await webhook(type, { id: "in_test" })).status).toBe(200);
+      expect(mock.stripe.invoices.retrieve).toHaveBeenCalledWith("in_test");
+      expect(mock.stripe.subscriptions.retrieve).toHaveBeenCalledWith(
+        "sub_test",
+      );
+      expect(db.rpc.mock.calls[0][1].p_subscription.status).toBe("active");
+    },
+  );
+  it("unknown owner and prices fail without writing a plan", async () => {
     mock.subscriptions.findUserByStripeCustomerId.mockResolvedValue(null);
-    await webhook("customer.subscription.updated", subscription);
-    expect(mock.subscriptions.updateUserSubscription).not.toHaveBeenCalled();
-    mock.subscriptions.findUserByStripeCustomerId.mockResolvedValue("u");
-    await webhook("customer.subscription.updated", {
-      ...subscription,
-      items: { data: [{ price: { id: "unknown" } }] },
-    });
-    expect(mock.subscriptions.updateUserSubscription).not.toHaveBeenCalled();
-  });
-  it("returns a retryable error on persistence failure", async () => {
-    mock.subscriptions.updateUserSubscription.mockRejectedValue(
-      new Error("database down"),
-    );
     expect(
-      (await webhook("customer.subscription.deleted", subscription)).status,
+      (await webhook("customer.subscription.updated", { id: "sub_test" }))
+        .status,
+    ).toBe(500);
+    expect(db.rpc).not.toHaveBeenCalled();
+    mock.subscriptions.findUserByStripeCustomerId.mockResolvedValue("u");
+    mock.stripe.subscriptions.retrieve.mockResolvedValue({
+      ...subscription,
+      items: {
+        data: [{ current_period_end: 1800000000, price: { id: "unknown" } }],
+      },
+    });
+    expect(
+      (await webhook("customer.subscription.updated", { id: "sub_test" }))
+        .status,
+    ).toBe(500);
+    expect(db.rpc).not.toHaveBeenCalled();
+  });
+  it("database failures request provider retry", async () => {
+    db.rpc.mockResolvedValue({ data: null, error: new Error("down") });
+    expect(
+      (await webhook("customer.subscription.deleted", { id: "sub_test" }))
+        .status,
     ).toBe(500);
   });
 });

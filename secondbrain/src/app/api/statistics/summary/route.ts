@@ -1,84 +1,33 @@
-import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
-import { AI_MODELS, TEXT_REASONING_EFFORT } from '@/lib/ai-models';
-import { getAuthenticatedUser } from '@/lib/api-auth';
-import { getEntriesByDateRange } from '@/lib/supabase-operations';
-import { format, subDays } from 'date-fns';
-import { es } from 'date-fns/locale';
-
-// Inicializar el cliente de OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
+import { NextResponse } from "next/server";
+import { getRequestUser } from "@/lib/api-auth";
+import {
+  requireStatisticsPlan,
+  readStatisticsReport,
+} from "@/lib/statistics-service";
 export async function GET(request: Request) {
   try {
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    const user = await getAuthenticatedUser(token);
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const userId = user.uid;
-    const now = new Date();
-    const sevenDaysAgo = subDays(now, 7);
-
-    // Obtener entradas de los últimos 7 días
-    const weekEntries = await getEntriesByDateRange(userId, format(sevenDaysAgo, 'yyyy-MM-dd'), format(now, 'yyyy-MM-dd'));
-    
-    let weekSummary = "No hay entradas suficientes para generar un resumen de la semana.";
-    
-    if (weekEntries && weekEntries.length > 0) {
-      const entriesText = weekEntries.map(entry => 
-        `${format(new Date(entry.date), "EEEE d 'de' MMMM", { locale: es })}: ${entry.content}`
-      ).join('\n\n');
-
-      const summaryPrompt = `
-        Crea un resumen conciso y fluido de la semana basado en las siguientes entradas de diario de los últimos 7 días.
-        
-        INSTRUCCIONES IMPORTANTES:
-        - Máximo 120 palabras
-        - Texto corrido EN PÁRRAFO ÚNICO, sin listas, numeraciones, viñetas o secciones
-        - NO uses estructuras como "1. Eventos importantes" o "• Celebraciones"
-        - Enfoque positivo y motivador
-        - Incluye eventos principales, emociones y relaciones importantes en un texto fluido
-        - Termina con una perspectiva optimista para la semana que viene
-        - Escribe en segunda persona (tú/tu)
-        - Evita ser repetitivo o redundante
-        
-        Entradas del diario:
-        ${entriesText}
-        
-        Resumen fluido de la semana (máximo 120 palabras en párrafo único):
-      `;
-
-      try {
-        const summaryCompletion = await openai.responses.create({
-          model: AI_MODELS.text,
-          input: `Eres un asistente especializado en análisis de diarios personales y desarrollo personal.\n\n${summaryPrompt}`,
-          reasoning: { effort: TEXT_REASONING_EFFORT },
-          text: { verbosity: "low" }
-        });
-
-        const summaryText = (summaryCompletion as any).output_text 
-          || ((summaryCompletion as any).output?.[0]?.content?.[0]?.text) 
-          || weekSummary;
-        weekSummary = summaryText;
-      } catch (error) {
-        console.error('Error generando resumen semanal:', error);
-      }
-    }
-    
-    return NextResponse.json({ weekSummary });
-
-  } catch (error) {
-    console.error('Error en API de resumen semanal:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    const user = await getRequestUser(request);
+    if (!user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!(await requireStatisticsPlan(user.uid)))
+      return NextResponse.json({ error: "Plan requerido" }, { status: 403 });
+    const cached = await readStatisticsReport(user.uid);
+    if (!cached)
+      return NextResponse.json(
+        {
+          error: "Genera un informe desde estadísticas",
+          code: "REPORT_REQUIRED",
+        },
+        { status: 409 },
+      );
     return NextResponse.json(
-      { error: `Error al generar resumen: ${errorMessage}` },
-      { status: 500 }
+      { weekSummary: cached.report.weekSummary },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "No se pudo cargar el informe" },
+      { status: 500 },
     );
   }
 }

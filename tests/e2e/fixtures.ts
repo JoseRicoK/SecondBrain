@@ -1,3 +1,4 @@
+import { PLAN_LIMITS } from "../../secondbrain/src/lib/subscription-policy";
 import { test as base, expect, type Page } from "@playwright/test";
 export { expect };
 export const uid = "32985906-abdf-477d-8ef3-84bba3b80c25";
@@ -205,6 +206,16 @@ export const test = base.extend<{ backend: Backend }>({
           return respond(selected[0] || null);
         return respond(selected);
       }
+      if (url.pathname === "/api/subscription/plans") {
+        backend.calls.push({ path: url.pathname, method, body: null });
+        return respond({
+          free: null,
+          pro: null,
+          elite: null,
+          limits: PLAN_LIMITS,
+          checkoutEnabled: false,
+        });
+      }
       if (url.pathname.startsWith("/api/") && req.headers().authorization) {
         let body: any = {};
         try {
@@ -215,13 +226,19 @@ export const test = base.extend<{ backend: Backend }>({
           return respond({
             subscription: backend.tables.profiles[0].subscription,
             isFirstLogin: false,
-          });
-        if (url.pathname === "/api/subscription/plans")
-          return respond({
-            free: null,
-            pro: null,
-            elite: null,
-            checkoutEnabled: false,
+            currentPlan: backend.tables.profiles[0].subscription.plan,
+            planLimits:
+              PLAN_LIMITS[
+                backend.tables.profiles[0].subscription
+                  .plan as keyof typeof PLAN_LIMITS
+              ],
+            monthlyUsage: backend.tables.profiles[0].subscription.monthlyUsage,
+            resetAt: new Date(
+              new Date().getFullYear(),
+              new Date().getMonth() + 1,
+              1,
+            ).toISOString(),
+            needsUpgrade: false,
           });
         if (url.pathname === "/api/stylize")
           return backend.aiError
@@ -256,15 +273,46 @@ export const test = base.extend<{ backend: Backend }>({
               )
             : backend.aiError
               ? respond({ error: "IA no disponible" }, 500)
-              : respond({
+              : (backend.tables.profiles[0].subscription.monthlyUsage[
+                  url.pathname === "/api/personal-chat"
+                    ? "personalChatMessages"
+                    : "personChatMessages"
+                ]++,
+                respond({
                   response: "Puedes reflexionar sobre tus relaciones.",
                   entriesAnalyzed: 1,
-                });
-        if (url.pathname === "/api/statistics/access")
-          return respond(
-            { canAccess: !backend.limit, currentUsage: 2 },
-            backend.limit ? 429 : 200,
-          );
+                }));
+        if (
+          url.pathname === "/api/statistics/report" ||
+          url.pathname === "/api/statistics/access"
+        ) {
+          if (backend.tables.profiles[0].subscription.plan === "free")
+            return respond(
+              {
+                error: "Las estadísticas requieren un plan de pago",
+                code: "STATISTICS_LIMIT_EXCEEDED",
+              },
+              403,
+            );
+          if (backend.limit)
+            return respond(
+              {
+                error: "Límite de estadísticas alcanzado",
+                code: "STATISTICS_LIMIT_EXCEEDED",
+              },
+              429,
+            );
+          backend.tables.profiles[0].subscription.monthlyUsage
+            .statisticsAccess++;
+          return respond({
+            weekSummary: "Has dedicado tiempo a tus amistades.",
+            instagramQuote: "Cada día es una oportunidad.",
+            topPeople: [{ name: "Ana", count: 3 }],
+            moodData: [
+              { date, happiness: 80, stress: 10, tranquility: 70, sadness: 0 },
+            ],
+          });
+        }
         if (url.pathname === "/api/statistics/summary")
           return respond({
             weekSummary: "Has dedicado tiempo a tus amistades.",
