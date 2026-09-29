@@ -1,5 +1,7 @@
 'use client';
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
+
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
@@ -32,7 +34,7 @@ function DashboardContent() {
         try {
           console.log('🔍 Verificando pago con sessionId:', sessionId, 'para usuario:', user.uid);
           
-          const response = await fetch('/api/stripe/verify-payment', {
+          const response = await authenticatedFetch('/api/stripe/verify-payment', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

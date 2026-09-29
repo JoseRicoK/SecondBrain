@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserProfile } from '@/lib/subscription-operations';
+import { getRequestUser } from '@/lib/api-auth';
 
-export async function GET(req: NextRequest) {
+async function status(req: NextRequest, userId: string | null) {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
+    const user = await getRequestUser(req);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (userId !== user.uid) return NextResponse.json({ error: 'User mismatch' }, { status: 403 });
 
     if (!userId) {
       return NextResponse.json(
@@ -33,4 +35,13 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(req: NextRequest) {
+  return status(req, new URL(req.url).searchParams.get('userId'));
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({}));
+  return status(req, body.userId || null);
 }

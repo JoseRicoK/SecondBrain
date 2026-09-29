@@ -161,6 +161,11 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           <p className="text-gray-600 mt-2">
             {isLogin ? 'Inicia sesión en tu cuenta' : 'Crea una cuenta nueva'}
           </p>
+          {isLogin && (
+            <p className="text-sm text-gray-500 mt-2">
+              Si tu cuenta venía de Firebase y usabas contraseña, pulsa «Olvidé mi contraseña» para crear una nueva.
+            </p>
+          )}
           {selectedPlan && (
             <div className="mt-3 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg">
               <p className="text-sm text-purple-700">

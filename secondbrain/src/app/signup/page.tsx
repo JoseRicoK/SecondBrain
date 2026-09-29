@@ -1,5 +1,7 @@
 'use client';
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
+
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
@@ -23,7 +25,7 @@ function SignupContent() {
     if (planToUse) {
       try {
         // Verificar el plan actual del usuario
-        const response = await fetch('/api/subscription/status', {
+        const response = await authenticatedFetch('/api/subscription/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: authenticatedUser.uid })

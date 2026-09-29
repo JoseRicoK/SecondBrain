@@ -1,5 +1,7 @@
 'use client';
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
+
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
@@ -30,7 +32,7 @@ export default function DashboardPage() {
       // Esperar un poco para que el webhook procese el pago
       setTimeout(async () => {
         try {
-          const response = await fetch(`/api/subscription/status?userId=${user.uid}`);
+          const response = await authenticatedFetch(`/api/subscription/status?userId=${user.uid}`);
           const data = await response.json();
           
           if (response.ok) {

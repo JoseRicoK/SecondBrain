@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { updateUserSubscription, markFirstPaymentComplete, UserSubscription } from '@/lib/subscription-operations';
+import { getRequestUser } from '@/lib/api-auth';
+import { getStripeClient } from '@/lib/stripe-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20' as any,
-});
-
 export async function POST(req: NextRequest) {
   try {
+    const stripe = getStripeClient();
+    if (!stripe) return NextResponse.json({ error: 'Stripe no está configurado' }, { status: 503 });
+    const user = await getRequestUser(req);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { sessionId, userId } = await req.json();
+    if (user.uid !== userId) return NextResponse.json({ error: 'User mismatch' }, { status: 403 });
 
     if (!sessionId || !userId) {
       return NextResponse.json(

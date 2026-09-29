@@ -1,5 +1,7 @@
 'use client';
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
+
 import { useState, useEffect } from 'react';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import { 
@@ -77,7 +79,7 @@ export function useSubscription() {
   // Función para verificar y actualizar suscripciones expiradas
   const checkAndUpdateExpiredSubscription = async (userId: string) => {
     try {
-      const response = await fetch('/api/subscription/status', {
+      const response = await authenticatedFetch('/api/subscription/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })
@@ -102,7 +104,7 @@ export function useSubscription() {
           if (periodEndDate <= now && subscription.plan !== 'free') {
             console.log('⏰ [useSubscription] Suscripción expirada, cambiando a plan gratuito');
             
-            await fetch('/api/subscription/update-manual', {
+            await authenticatedFetch('/api/subscription/update-manual', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 

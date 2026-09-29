@@ -23,7 +23,7 @@ export function getDatabaseClient() {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY es obligatoria para las operaciones de base de datos del servidor');
   }
 
-  return createClient(supabaseUrl, serviceRoleKey, {
+  return createClient(supabaseUrl!, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }

@@ -3,7 +3,7 @@ import Header from '../../components/Header'
 import AnimatedBackground from '../../components/AnimatedBackground'
 import CtaSection from '../../components/CtaSection'
 import Link from 'next/link'
-import { Mail, HelpCircle, MessageSquare, Brain, FileQuestion, Shield } from 'lucide-react'
+import { Mail, HelpCircle, Brain, FileQuestion, Shield } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Soporte | SecondBrain',

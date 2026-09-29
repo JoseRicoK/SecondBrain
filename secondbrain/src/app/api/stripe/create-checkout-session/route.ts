@@ -1,17 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { createUserProfile, getUserProfile, updateUserSubscription } from '@/lib/subscription-operations';
+import { getRequestUser } from '@/lib/api-auth';
+import { getStripeClient, isCheckoutEnabled } from '@/lib/stripe-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20' as any,
-});
-
 export async function POST(req: NextRequest) {
   try {
+    if (!isCheckoutEnabled()) {
+      return NextResponse.json({ error: 'Los pagos todavía no están disponibles' }, { status: 503 });
+    }
+    const stripe = getStripeClient();
+    if (!stripe) return NextResponse.json({ error: 'Los pagos todavía no están disponibles' }, { status: 503 });
+    const user = await getRequestUser(req);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { planType, userId, userEmail, displayName, successUrl, cancelUrl } = await req.json();
+    if (user.uid !== userId || user.email?.toLowerCase() !== String(userEmail).toLowerCase()) {
+      return NextResponse.json({ error: 'User mismatch' }, { status: 403 });
+    }
+    void successUrl; void cancelUrl;
 
     if (!planType || !userId || !userEmail) {
       return NextResponse.json(
@@ -79,7 +87,6 @@ export async function POST(req: NextRequest) {
     // Crear la sesión de checkout
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      payment_method_types: ['card'],
       line_items: [
         {
           price: priceId,
@@ -92,8 +99,8 @@ export async function POST(req: NextRequest) {
         plan_type: planType,
         user_email: userEmail,
       },
-      success_url: successUrl || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/subscription`,
+      success_url: `${req.nextUrl.origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.nextUrl.origin}/subscription`,
       subscription_data: {
         metadata: {
           uid: userId, // Cambiado de userId a uid para consistencia

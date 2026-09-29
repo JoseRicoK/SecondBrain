@@ -1,5 +1,7 @@
 'use client';
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
+
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Sidebar from '@/components/Sidebar';
 import PersonalChat from '@/components/PersonalChat';
@@ -428,7 +430,7 @@ export default function Home() {
       
       try {
         // Obtener el perfil del usuario para verificar su plan actual
-        const response = await fetch('/api/subscription/status', {
+        const response = await authenticatedFetch('/api/subscription/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: authenticatedUser.uid })

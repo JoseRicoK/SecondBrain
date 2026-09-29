@@ -1,7 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { Brain, ArrowLeft } from 'lucide-react';
+import { Brain } from 'lucide-react';
 import Link from 'next/link';
 import Header from '../../components/Header';
 import PricingSection from '../../components/PricingSection';

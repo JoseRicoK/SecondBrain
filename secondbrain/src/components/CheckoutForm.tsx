@@ -1,9 +1,12 @@
 'use client';
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
+
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 interface CheckoutFormProps {
   plan: {
@@ -18,13 +21,15 @@ interface CheckoutFormProps {
   userId: string;
   userEmail: string;
   displayName?: string;
+  enabled: boolean;
 }
 
-export default function CheckoutForm({ plan, userId, userEmail, displayName }: CheckoutFormProps) {
+export default function CheckoutForm({ plan, userId, userEmail, displayName, enabled }: CheckoutFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleCheckout = async () => {
+    if (!enabled || !stripePromise) return;
     try {
       setIsLoading(true);
       setError(null);
@@ -49,7 +54,7 @@ export default function CheckoutForm({ plan, userId, userEmail, displayName }: C
       });
 
       // Crear la sesión de checkout
-      const response = await fetch('/api/stripe/create-checkout-session', {
+      const response = await authenticatedFetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,9 +127,9 @@ export default function CheckoutForm({ plan, userId, userEmail, displayName }: C
 
       <button
         onClick={handleCheckout}
-        disabled={isLoading}
+        disabled={isLoading || !enabled || !stripePromise}
         className={`w-full py-4 px-6 rounded-xl text-white font-semibold text-lg transition-all duration-300 ${
-          isLoading 
+          isLoading || !enabled || !stripePromise
             ? 'bg-gray-400 cursor-not-allowed' 
             : `bg-gradient-to-r ${plan.color} hover:shadow-xl hover:scale-105 transform`
         }`}
@@ -134,14 +139,16 @@ export default function CheckoutForm({ plan, userId, userEmail, displayName }: C
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
             Procesando...
           </div>
+        ) : !enabled || !stripePromise ? (
+          'Pagos disponibles próximamente'
         ) : (
           `Suscribirse a ${plan.name}`
         )}
       </button>
       
-      <p className="text-xs text-gray-500 mt-4 text-center">
+      {enabled && <p className="text-xs text-gray-500 mt-4 text-center">
         Pago seguro procesado por Stripe. Cancela en cualquier momento.
-      </p>
+      </p>}
     </div>
   );
 }

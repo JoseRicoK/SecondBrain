@@ -30,6 +30,7 @@ function toAppUser(user: { id: string; email?: string; email_confirmed_at?: stri
     displayName: String(user.user_metadata.display_name || user.user_metadata.full_name || user.email?.split('@')[0] || ''),
     emailVerified: Boolean(user.email_confirmed_at),
     providerData: [{ providerId: provider }],
+    photoURL: String(user.user_metadata.avatar_url || user.user_metadata.picture || '') || null,
     getIdToken: async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session?.access_token) throw new Error('No hay una sesión activa');
@@ -66,7 +67,9 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         setLoading(false);
         return;
       }
-      const provider = String(session.user.app_metadata.provider || 'email');
+      const providers = session.user.app_metadata.providers;
+      const provider = Array.isArray(providers) && providers.includes('google')
+        ? 'google' : String(session.user.app_metadata.provider || 'email');
       if (!session.user.email_confirmed_at && provider !== 'google') {
         await supabase.auth.signOut();
         setLoading(false);

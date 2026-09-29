@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import React, { useState } from 'react';
 import { FiCalendar, FiCheck, FiLink, FiUser, FiTrash2, FiMessageSquare, FiMail, FiAlertTriangle, FiSave, FiEye, FiEyeOff, FiLogOut, FiCreditCard, FiArrowUp, FiX } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
@@ -139,8 +140,7 @@ const Settings: React.FC<SettingsProps> = () => {
         throw new Error('Por favor escribe tu mensaje');
       }
 
-      // Enviar el feedback usando fetch directo
-      const response = await fetch('/api/send-feedback', {
+      const response = await authenticatedFetch('/api/send-feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,8 +148,7 @@ const Settings: React.FC<SettingsProps> = () => {
         body: JSON.stringify({
           type,
           message: text.trim(),
-          userEmail: contactEmail,
-          timestamp: new Date().toISOString()
+          userEmail: contactEmail
         }),
       });
 
@@ -184,7 +183,7 @@ const Settings: React.FC<SettingsProps> = () => {
     setCancelSuccess(null);
 
     try {
-      const response = await fetch('/api/stripe/cancel-subscription', {
+      const response = await authenticatedFetch('/api/stripe/cancel-subscription', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

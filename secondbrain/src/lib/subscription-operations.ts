@@ -34,8 +34,7 @@ export async function createUserProfile(uid: string, userData: Partial<UserProfi
   const database = getDatabaseClient();
   const existing = await getUserProfile(uid);
   if (!existing) {
-    const subscription = userData.subscription || defaultSubscription();
-    const { error } = await database.from('profiles').insert({ uid, email: userData.email || '', display_name: userData.displayName || '', is_google_user: userData.isGoogleUser || false, subscription: serialize(subscription) });
+    const { error } = await database.from('profiles').insert({ uid, email: userData.email || '', display_name: userData.displayName || '', is_google_user: userData.isGoogleUser || false });
     if (error) throw error;
     return;
   }

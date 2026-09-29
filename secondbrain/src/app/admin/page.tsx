@@ -1,5 +1,7 @@
 'use client';
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
+
 import { useState } from 'react';
 import { FaCrown, FaUserPlus, FaSearch } from 'react-icons/fa';
 
@@ -27,7 +29,7 @@ export default function AdminPage() {
     setResult('');
 
     try {
-      const response = await fetch('/api/subscription/update-manual', {
+      const response = await authenticatedFetch('/api/subscription/update-manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -61,7 +63,7 @@ export default function AdminPage() {
     setResult('');
 
     try {
-      const response = await fetch('/api/stripe/cancel-subscription', {
+      const response = await authenticatedFetch('/api/stripe/cancel-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: cancelUserId.trim() })

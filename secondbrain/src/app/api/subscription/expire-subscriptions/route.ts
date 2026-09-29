@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
     const database = getDatabaseClient();
     const { data, error } = await database.from('profiles').select('uid, subscription').eq('subscription->>cancelAtPeriodEnd', 'true').eq('subscription->>status', 'active');

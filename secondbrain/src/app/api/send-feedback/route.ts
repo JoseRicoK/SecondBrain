@@ -1,23 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { getRequestUser } from '@/lib/api-auth';
 
 interface FeedbackRequest {
   type: 'suggestion' | 'problem';
   message: string;
   userEmail: string;
-  timestamp: string;
 }
 
 // Inicializar Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, character => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+}[character] || character));
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getRequestUser(request);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const body: FeedbackRequest = await request.json();
-    const { type, message, userEmail, timestamp } = body;
+    const { type, message, userEmail } = body;
 
     // Validar los datos recibidos
-    if (!type || !message || !userEmail) {
+    if (!['suggestion', 'problem'].includes(type) || typeof message !== 'string' || !message.trim() || message.length > 5000 || typeof userEmail !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
       return NextResponse.json(
         { error: 'Faltan datos requeridos' },
         { status: 400 }
@@ -37,6 +42,9 @@ export async function POST(request: NextRequest) {
     const emailSubject = type === 'suggestion' 
       ? '💡 Nueva Sugerencia - SecondBrain'
       : '🐛 Reporte de Problema - SecondBrain';
+    const safeEmail = escapeHtml(userEmail);
+    const safeMessage = escapeHtml(message.trim());
+    const sentAt = new Date().toLocaleString('es-ES');
       
     const emailHtml = `
     <!DOCTYPE html>
@@ -55,14 +63,14 @@ export async function POST(request: NextRequest) {
       </div>
       
       <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-        <p><strong>De:</strong> ${userEmail}</p>
-        <p><strong>Fecha:</strong> ${new Date(timestamp).toLocaleString('es-ES')}</p>
+        <p><strong>De:</strong> ${safeEmail}</p>
+        <p><strong>Fecha:</strong> ${sentAt}</p>
         <p><strong>Tipo:</strong> ${type === 'suggestion' ? 'Sugerencia' : 'Problema reportado'}</p>
       </div>
       
       <div style="background: white; padding: 20px; border-left: 4px solid ${type === 'suggestion' ? '#4CAF50' : '#f44336'}; margin-bottom: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
         <h3 style="margin-top: 0; color: #333;">Mensaje:</h3>
-        <p style="line-height: 1.6; color: #555; white-space: pre-wrap;">${message}</p>
+        <p style="line-height: 1.6; color: #555; white-space: pre-wrap;">${safeMessage}</p>
       </div>
       
       <div style="text-align: center; color: #666; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px;">
@@ -75,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     // Enviar el email usando Resend
     const { data, error } = await resend.emails.send({
-      from: 'SecondBrain <feedback@resend.dev>', // Usar el dominio predeterminado de Resend para testing
+      from: 'SecondBrain <feedback@secondbrainapp.com>',
       to: ['josemariark@gmail.com'],
       subject: emailSubject,
       html: emailHtml,

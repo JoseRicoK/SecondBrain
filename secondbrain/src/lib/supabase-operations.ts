@@ -10,6 +10,7 @@ export interface SupabaseUser {
   displayName: string | null;
   emailVerified: boolean;
   providerData: { providerId: string }[];
+  photoURL: string | null;
   getIdToken: () => Promise<string>;
 }
 
@@ -70,13 +71,16 @@ const iso = (value: string | null | undefined) => value || new Date().toISOStrin
 const dateOnly = (value: string) => value.split('T')[0];
 
 function toSupabaseUser(user: User): SupabaseUser {
-  const provider = user.app_metadata.provider || 'email';
+  const providers = user.app_metadata.providers;
+  const provider = Array.isArray(providers) && providers.includes('google')
+    ? 'google' : user.app_metadata.provider || 'email';
   return {
     uid: user.id,
     email: user.email ?? null,
     displayName: user.user_metadata?.display_name || user.user_metadata?.full_name || null,
     emailVerified: Boolean(user.email_confirmed_at),
     providerData: [{ providerId: provider === 'google' ? 'google.com' : provider }],
+    photoURL: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
     getIdToken: async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session?.access_token) throw new Error('No hay una sesión activa');
@@ -225,7 +229,7 @@ export async function saveExtractedPersonInfo(personName: string, information: R
   const { data, error } = await getDatabaseClient().from('people').select('*').eq('user_id', userId).eq('name', personName).maybeSingle();
   if (error) { console.error('Error al buscar persona:', error); return null; }
   const current = data ? person(data) : { user_id: userId, name: personName, details: {} };
-  const details = current.details || {};
+  const details: Record<string, PersonDetailCategory> = current.details || {};
   const date = entryDate || new Date().toISOString().slice(0, 10);
   for (const [rawKey, rawValue] of Object.entries(information)) {
     if (!rawValue) continue;

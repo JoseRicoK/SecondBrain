@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { updateUserSubscription, getUserProfile } from '@/lib/subscription-operations';
+import { getRequestUser } from '@/lib/api-auth';
+import { getStripeClient } from '@/lib/stripe-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20' as any,
-});
-
 export async function POST(req: NextRequest) {
   try {
+    const user = await getRequestUser(req);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { userId } = await req.json();
+    if (user.uid !== userId) return NextResponse.json({ error: 'User mismatch' }, { status: 403 });
 
     if (!userId) {
       return NextResponse.json(
@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
       currentPeriodEndDate = new Date();
       currentPeriodEndDate.setMonth(currentPeriodEndDate.getMonth() + 1);
     } else {
+      const stripe = getStripeClient();
+      if (!stripe) return NextResponse.json({ error: 'Stripe no está configurado' }, { status: 503 });
       // Intentar cancelar en Stripe si tenemos una suscripción real
       try {
         const canceledSubscription = await stripe.subscriptions.update(
@@ -66,19 +68,20 @@ export async function POST(req: NextRequest) {
           throw new Error('No se pudo obtener la fecha de expiración de Stripe');
         }
       } catch (stripeError) {
-        console.warn('⚠️ [Cancel Subscription] Error con Stripe:', stripeError);
-        
-        // En caso de error con Stripe, calcular fecha manualmente
-        currentPeriodEndDate = new Date();
-        currentPeriodEndDate.setMonth(currentPeriodEndDate.getMonth() + 1);
+        console.error('❌ [Cancel Subscription] Error con Stripe:', stripeError);
+        return NextResponse.json(
+          { error: 'No se pudo confirmar la cancelación en Stripe. Inténtalo de nuevo.' },
+          { status: 502 }
+        );
       }
     }
 
     // Verificar que la fecha sea válida
     if (!currentPeriodEndDate || isNaN(currentPeriodEndDate.getTime())) {
-      // Fallback: un mes desde ahora
-      currentPeriodEndDate = new Date();
-      currentPeriodEndDate.setMonth(currentPeriodEndDate.getMonth() + 1);
+      return NextResponse.json(
+        { error: 'No se pudo confirmar la fecha de cancelación' },
+        { status: 502 }
+      );
     }
 
     // Actualizar en Supabase que está marcada para cancelación

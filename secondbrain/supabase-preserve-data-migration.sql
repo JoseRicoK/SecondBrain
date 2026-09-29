@@ -1,3 +1,8 @@
+-- OBSOLETO Y PELIGROSO: este script fusiona datos de distintos usuarios.
+-- La migración válida está en supabase/migrations/ y scripts/migrate-firebase-to-supabase.mjs.
+-- Se conserva solo como referencia histórica y debe fallar si se ejecuta entero.
+do $$ begin raise exception 'Migración obsoleta: usa el flujo Firebase a Supabase documentado'; end $$;
+
 create extension if not exists "pgcrypto";
 
 -- Sustituye este valor por el UUID de tu usuario en Authentication > Users.

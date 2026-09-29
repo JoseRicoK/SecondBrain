@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { updateUserSubscription, findUserByStripeCustomerId, markFirstPaymentComplete } from '@/lib/subscription-operations';
+import { getStripeClient } from '@/lib/stripe-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20' as any,
-});
-
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
-
 export async function POST(req: NextRequest) {
+  const stripe = getStripeClient();
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!stripe || !endpointSecret) {
+    return NextResponse.json({ error: 'Stripe no está configurado' }, { status: 503 });
+  }
   const body = await req.text();
   const sig = req.headers.get('stripe-signature')!;
 
@@ -78,7 +78,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
   // Si hay una suscripción, obtener los detalles
   if (session.subscription) {
-    const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+    const subscription = await getStripeClient()!.subscriptions.retrieve(session.subscription as string);
     
     await updateUserSubscription(uid, {
       plan: planType,
@@ -160,7 +160,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
 
   // Actualizar la fecha de fin del período actual
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const subscription = await stripe.subscriptions.retrieve((invoice as any).subscription as string);
+  const subscription = await getStripeClient()!.subscriptions.retrieve((invoice as any).subscription as string);
   
   await updateUserSubscription(uid, {
     status: 'active',

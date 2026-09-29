@@ -1,5 +1,7 @@
 'use client';
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
+
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
@@ -87,6 +89,7 @@ function SubscriptionContent() {
   const [plans, setPlans] = useState<Record<string, PlanData> | null>(null);
   const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState<string | null>(null);
+  const [checkoutEnabled, setCheckoutEnabled] = useState(false);
 
   // Cargar los plan IDs desde la API
   useEffect(() => {
@@ -106,11 +109,12 @@ function SubscriptionContent() {
         Object.entries(basePlans).forEach(([key, basePlan]) => {
           fullPlans[key] = {
             ...basePlan,
-            priceId: planIds[key] || `price_${key}_monthly` // El plan free tendrá null como priceId
+            priceId: typeof planIds[key] === 'string' ? planIds[key] : ''
           };
         });
         
         setPlans(fullPlans);
+        setCheckoutEnabled(planIds.checkoutEnabled === true);
         setPlansError(null);
       } catch (error) {
         console.error('Error cargando planes:', error);
@@ -198,6 +202,7 @@ function SubscriptionContent() {
             userId={user.uid}
             userEmail={user.email || ''}
             displayName={user.displayName || undefined}
+            enabled={checkoutEnabled}
           />
         </div>
       </div>
@@ -390,7 +395,7 @@ function SubscriptionContent() {
                     if (!confirmCancel) return;
                     
                     try {
-                      const response = await fetch('/api/stripe/cancel-subscription', {
+                      const response = await authenticatedFetch('/api/stripe/cancel-subscription', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ userId: user.uid })
@@ -448,7 +453,7 @@ function SubscriptionContent() {
                 <button
                   onClick={async () => {
                     try {
-                      const response = await fetch('/api/subscription/update-manual', {
+                      const response = await authenticatedFetch('/api/subscription/update-manual', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ userId: user.uid, planType: 'free' })
@@ -528,7 +533,7 @@ function SubscriptionContent() {
                 </p>
               </div>
               
-              <button
+              {checkoutEnabled ? <button
                 onClick={() => {
                   // Verificar downgrades no permitidos
                   if (userCurrentPlan === 'elite' && selectedPlan === 'pro') {
@@ -545,7 +550,9 @@ function SubscriptionContent() {
                 ) : (
                   <>Cambiar a {currentPlan.name} - €{currentPlan.price}/mes</>
                 )}
-              </button>
+              </button> : <p className="rounded-2xl border border-purple-200 bg-purple-50 px-6 py-5 font-semibold text-purple-900">
+                Los pagos estarán disponibles próximamente. Puedes seguir usando el plan gratuito.
+              </p>}
             </div>
           )}
           
