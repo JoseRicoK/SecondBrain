@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { AI_MODELS, TEXT_REASONING_EFFORT } from '@/lib/ai-models';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { getPeopleByUserId, Person, PersonDetailCategory, saveExtractedPersonInfo, incrementPersonMentionCount, updateEntryMoodData } from '@/lib/supabase-operations';
+import { getPeopleByUserId, getEntryByIdForUser, Person, PersonDetailCategory, saveExtractedPersonInfo, incrementPersonMentionCount, updateEntryMoodData } from '@/lib/supabase-operations';
 
 // Inicializar el cliente de OpenAI
 const openai = new OpenAI({
@@ -59,6 +60,12 @@ export async function POST(request: Request) {
         { error: 'Se requiere la fecha de la entrada' },
         { status: 400 }
       );
+    }
+
+    if (entryId) {
+      const entry = await getEntryByIdForUser(entryId, user.uid);
+      if (!entry) return NextResponse.json({ error: 'Entrada no encontrada' }, { status: 404 });
+      if (entry.date !== entryDate) return NextResponse.json({ error: 'La fecha no coincide con la entrada' }, { status: 400 });
     }
 
     // Usar la fecha proporcionada (siempre debe venir del frontend)
@@ -303,11 +310,11 @@ export async function POST(request: Request) {
     }
 
     const extractCompletion = await openai.responses.create({
-      model: "gpt-5-mini",
+      model: AI_MODELS.text,
       input: `Eres un asistente especializado en extraer información estructurada sobre personas.\n\n${extractPrompt}`,
-      reasoning: { effort: "minimal" } as any,
-      text: { verbosity: "low" } as any
-    } as any);
+      reasoning: { effort: TEXT_REASONING_EFFORT },
+      text: { verbosity: "low" }
+    });
 
     let peopleExtracted: PersonExtracted[] = [];
 
@@ -444,11 +451,11 @@ export async function POST(request: Request) {
         `;
 
         const moodCompletion = await openai.responses.create({
-          model: "gpt-5-mini",
+          model: AI_MODELS.text,
           input: `Eres un psicólogo experto en análisis de estados emocionales en textos. Tu objetivo es detectar con precisión y sensibilidad las emociones humanas, especialmente en situaciones de conflicto, estrés, tristeza o alegría. Sé perceptivo a las sutilezas emocionales y evalúa cada emoción de forma independiente según su intensidad real en el contexto.\n\n${moodAnalysisPrompt}`,
-          reasoning: { effort: "minimal" } as any,
-          text: { verbosity: "low" } as any
-        } as any);
+          reasoning: { effort: TEXT_REASONING_EFFORT },
+          text: { verbosity: "low" }
+        });
 
         let moodText = (moodCompletion as any).output_text 
           || ((moodCompletion as any).output?.[0]?.content?.[0]?.text) 

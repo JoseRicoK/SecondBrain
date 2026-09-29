@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { AI_MODELS, TEXT_REASONING_EFFORT } from '@/lib/ai-models';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
 // Inicializar el cliente de OpenAI
@@ -79,11 +80,11 @@ export async function POST(request: Request) {
 
     // Llamada a OpenAI (Responses API) para estilizar el texto
     const stylizeCompletion = await openai.responses.create({
-      model: "gpt-5-mini",
+      model: AI_MODELS.text,
       input: `Eres un asistente especializado en mejorar la escritura de diarios personales.\n\n${stylizePrompt}`,
-      reasoning: { effort: "minimal" } as any,
-      text: { verbosity: "low" } as any
-    } as any);
+      reasoning: { effort: TEXT_REASONING_EFFORT },
+      text: { verbosity: "low" }
+    });
 
     const stylizedText = (stylizeCompletion as any).output_text 
       || ((stylizeCompletion as any).output?.[0]?.content?.[0]?.text) 

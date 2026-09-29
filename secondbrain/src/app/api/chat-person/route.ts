@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { AI_MODELS, CHAT_REASONING_EFFORT } from '@/lib/ai-models';
 import { Person } from '@/lib/supabase-operations';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { canSendPersonChatMessage } from '@/middleware/subscription';
 import { getUserMonthlyUsage, incrementPersonChatUsage } from '@/lib/subscription-operations';
 
-// Configurar OpenAI con GPT-4.1 mini
+// Configurar OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -88,9 +89,10 @@ INSTRUCCIONES:
 
     // Llamar a la API de OpenAI
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini-2025-04-14', // GPT-4.1 mini más reciente - optimizado para grandes cantidades de datos
+      model: AI_MODELS.text,
+      reasoning_effort: CHAT_REASONING_EFFORT,
       messages: messages,
-      max_tokens: 2000, // Aumentado para aprovechar mejor las capacidades del modelo
+      max_completion_tokens: 2000, // Aumentado para aprovechar mejor las capacidades del modelo
       temperature: 0.7,
     });
 

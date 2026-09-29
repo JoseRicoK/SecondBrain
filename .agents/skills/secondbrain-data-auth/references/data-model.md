@@ -27,3 +27,7 @@ RLS scopes rows to `auth.uid()` or, for transcriptions, the entry owner. Inspect
 Email/password, Google OAuth, email verification, password reset, and account deletion use Supabase Auth. The reset helper sends an explicit `redirectTo` based on the current origin. A Google-linked account may have `email` as its primary provider while `app_metadata.providers` includes `google`; use that provider array when deciding whether Google is available.
 
 For a new private route: authenticate first; validate payload shape and size; derive or check the owner from the verified token; fetch only owner-scoped resources; enforce plan/usage on the server when it has a cost; return no personal data in logs or error details. Webhooks instead verify the provider signature using the raw body.
+
+## Ownership and regression checks
+
+Account deletion calls `POST /api/account` with the current bearer token; the server derives the account ID. AI extraction with an entry ID calls `getEntryByIdForUser` before model or database writes, and requires the entry date to match. Verify Stripe session ownership before returning payment status and never include another session in an error response. Background expiry must check write errors before counting a profile as expired. Run the API/data suites and local PostgreSQL security tests described in [docs/TESTING.md](../../../../docs/TESTING.md); simulated browser responses do not establish RLS.

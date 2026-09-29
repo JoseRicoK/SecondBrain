@@ -15,6 +15,9 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url);
     const moodPeriod = (url.searchParams.get('moodPeriod') || 'week') as 'week' | 'month' | 'year';
+    if (!['week', 'month', 'year'].includes(moodPeriod)) {
+      return NextResponse.json({ error: 'Periodo no válido' }, { status: 400 });
+    }
     const userId = user.uid;
     const now = new Date();
 

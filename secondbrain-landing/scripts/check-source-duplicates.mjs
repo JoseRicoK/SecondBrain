@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const ignored = new Set(['.git', '.next', '.vercel', 'node_modules', 'out', 'build', 'coverage']);
+const ignored = new Set(['.git', '.next', '.next-test', '.vercel', 'node_modules', 'out', 'build', 'coverage']);
 const duplicates = [];
 
 async function scan(directory) {

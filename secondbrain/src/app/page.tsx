@@ -26,7 +26,8 @@ export default function Home() {
     fetchCurrentEntry, 
     currentDate,
     currentEntry, 
-    isLoading, 
+    isLoading,
+    error: storeError,
     isEditing: storeIsEditing,
     saveCurrentEntry, 
     toggleEditMode: storeToggleEditMode
@@ -284,7 +285,7 @@ export default function Home() {
       };
 
       recorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
+        const audioBlob = new Blob(audioChunks.current, { type: recorder.mimeType || audioChunks.current[0]?.type || 'audio/webm' });
         setAudioBlob(audioBlob);
         console.log('📝 DIARY: Grabación completada');
         
@@ -750,10 +751,10 @@ export default function Home() {
                   {/* Contenido principal mejorado con fondo unificado */}
                   <div className="flex-1 bg-gradient-to-r from-indigo-50 to-purple-50 overflow-y-auto">
                     {/* Mensajes de error mejorados */}
-                    {error && (
+                    {(error || storeError) && (
                       <div className="mx-4 mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center space-x-3">
                         <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        <span>{error}</span>
+                        <span>{error || storeError}</span>
                       </div>
                     )}
                     

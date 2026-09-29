@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useDiaryStore } from '@/lib/store';
 import { FaMicrophone, FaStop, FaPlay, FaPause } from 'react-icons/fa';
 import { saveAudioTranscription } from '@/lib/supabase-operations';
@@ -12,6 +12,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
   const { currentEntry, fetchTranscriptions } = useDiaryStore();
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,12 +21,32 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (!audioBlob) { setAudioUrl(null); return; }
+    const url = URL.createObjectURL(audioBlob);
+    setAudioUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [audioBlob]);
+
+  useEffect(() => () => {
+    if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.onstop = null;
+      recorder.ondataavailable = null;
+      recorder.stop();
+    }
+    streamRef.current?.getTracks().forEach(track => track.stop());
+  }, []);
   
   // Iniciar grabación
   const startRecording = async () => {
     const MAX_RECORDING_DURATION = 5 * 60 * 1000; // 5 minutos
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -37,18 +58,21 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
       };
       
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || audioChunksRef.current[0]?.type || 'audio/webm' });
         setAudioBlob(audioBlob);
         
         // Detener los tracks de audio
         stream.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       };
       
       mediaRecorder.start();
       setIsRecording(true);
       setError(null);
       recordingTimeoutRef.current = setTimeout(() => {
-        stopRecording();
+        if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+        setIsRecording(false);
+        recordingTimeoutRef.current = null;
       }, MAX_RECORDING_DURATION);
     } catch (err) {
       console.error('Error al iniciar la grabación:', err);
@@ -118,11 +142,12 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
       const data = await response.json();
       
       // Guardar la transcripción en Supabase
-      await saveAudioTranscription(
+      const saved = await saveAudioTranscription(
         currentEntry.id,
         data.audioUrl,
         data.text
       );
+      if (!saved) throw new Error('No se pudo guardar la transcripción');
       
       // Actualizar la lista de transcripciones
       fetchTranscriptions();
@@ -196,10 +221,10 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
         </div>
         
         {/* Elemento de audio oculto para reproducción */}
-        {audioBlob && (
+        {audioUrl && (
           <audio
             ref={audioPlayerRef}
-            src={URL.createObjectURL(audioBlob)}
+            src={audioUrl}
             onEnded={() => setIsPlaying(false)}
             className="hidden"
           />

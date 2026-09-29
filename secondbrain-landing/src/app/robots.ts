@@ -35,6 +35,11 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: ['/api/'],
       },
+      ...['facebookexternalhit', 'Twitterbot', 'LinkedInBot', 'WhatsApp'].map(userAgent => ({
+        userAgent,
+        allow: '/',
+        disallow: ['/api/', '/_next/', '/admin/'],
+      })),
     ],
     sitemap: 'https://secondbrainapp.com/sitemap.xml',
   }

@@ -11,6 +11,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  distDir: process.env.SECOND_BRAIN_TEST_BUILD === '1' ? '.next-test' : '.next',
   images: {
     remotePatterns: [
       {

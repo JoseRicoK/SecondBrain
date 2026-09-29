@@ -8,3 +8,7 @@
 - `src/app/globals.css`: active global styles. Other similarly named CSS files are present; verify imports before editing.
 
 The site and app are separate workspaces with different Next and Tailwind versions. The public domain is `secondbrainapp.com`; CTAs target `app.secondbrainapp.com`. Verify both destinations in the deployed environment after changing navigation or sign-up flows.
+
+## SEO and regression checks
+
+`src/app/sitemap.ts` and `src/app/robots.ts` are the only sources for those metadata routes. Do not add `public/sitemap.xml` or `public/robots.txt`: static files override the generated endpoints and can hide newer pages. Preserve the social crawler rules in the TypeScript metadata source. Run the landing unit suite and all public pages at desktop/mobile widths using [docs/TESTING.md](../../../../docs/TESTING.md).

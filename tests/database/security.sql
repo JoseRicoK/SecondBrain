@@ -1,0 +1,68 @@
+insert into auth.users values ('11111111-1111-4111-8111-111111111111'), ('22222222-2222-4222-8222-222222222222');
+insert into profiles(uid, email) select id, id::text || '@test.invalid' from auth.users;
+insert into diary_entries(id, user_id, date, content) values
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','11111111-1111-4111-8111-111111111111','2026-09-29','A privado'),
+  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','22222222-2222-4222-8222-222222222222','2026-09-29','B privado');
+insert into people(user_id, name) select id, 'Ana' from auth.users;
+insert into mood_data(user_id, date) select id, '2026-09-29' from auth.users;
+insert into audio_transcriptions(entry_id, audio_url, transcription) select id, 'fixture', 'Privado' from diary_entries;
+
+set local role anon;
+select test.raises('select * from profiles','42501','anonymous profile read denied');
+select test.raises('select * from diary_entries','42501','anonymous diary read denied');
+select test.raises('select * from people','42501','anonymous people read denied');
+select test.raises('select * from mood_data','42501','anonymous mood read denied');
+select test.raises('select * from audio_transcriptions','42501','anonymous audio read denied');
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',true);
+select test.ok((select count(*) = 1 from profiles),'A sees only own profile');
+select test.ok((select count(*) = 1 from diary_entries),'A sees only own diary');
+select test.ok((select count(*) = 1 from people),'A sees only own people');
+select test.ok((select count(*) = 1 from mood_data),'A sees only own mood');
+select test.ok((select count(*) = 1 from audio_transcriptions),'A sees only own audio through parent ownership');
+select test.ok((select count(*) = 0 from diary_entries where user_id='22222222-2222-4222-8222-222222222222'),'explicit foreign diary filter is empty');
+select test.raises($$insert into diary_entries(user_id,date) values ('22222222-2222-4222-8222-222222222222','2026-09-28')$$,'42501','foreign diary insert denied');
+select test.raises($$insert into people(user_id,name) values ('22222222-2222-4222-8222-222222222222','Intruso')$$,'42501','foreign people insert denied');
+select test.raises($$insert into mood_data(user_id,date) values ('22222222-2222-4222-8222-222222222222','2026-09-28')$$,'42501','foreign mood insert denied');
+select test.raises($$insert into audio_transcriptions(entry_id,audio_url,transcription) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','x','x')$$,'42501','foreign audio parent insert denied');
+select test.raises($$update diary_entries set user_id='22222222-2222-4222-8222-222222222222' where id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'$$,'42501','owner transfer denied');
+select test.raises($$update audio_transcriptions set entry_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'$$,'42501','audio parent transfer denied');
+select test.raises($$update profiles set subscription='{"plan":"elite","status":"active"}'$$,'42501','client cannot self-grant paid subscription');
+select test.raises('update profiles set has_completed_first_payment=true','42501','client cannot forge completed payment');
+select test.raises($$insert into profiles(uid,subscription) values ('11111111-1111-4111-8111-111111111111','{"plan":"elite"}')$$,'42501','client cannot insert paid subscription');
+select test.raises('delete from profiles','42501','client cannot bypass account deletion API');
+with changed as (update diary_entries set content='intruso' where id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' returning *) select test.ok((select count(*)=0 from changed),'foreign update changes zero rows');
+with removed as (delete from people where user_id='22222222-2222-4222-8222-222222222222' returning *) select test.ok((select count(*)=0 from removed),'foreign delete changes zero rows');
+update profiles set display_name='Nombre nuevo' where uid=auth.uid();
+select test.ok((select display_name='Nombre nuevo' from profiles),'own permitted profile update succeeds');
+insert into diary_entries(user_id,date,content) values (auth.uid(),'2026-09-28','Propio');
+select test.ok((select count(*)=2 from diary_entries),'own diary insert succeeds');
+update diary_entries set content='Actualizado' where date='2026-09-28';
+select test.ok((select content='Actualizado' from diary_entries where date='2026-09-28'),'own diary update succeeds');
+delete from diary_entries where date='2026-09-28';
+select test.ok((select count(*)=1 from diary_entries),'own diary deletion succeeds');
+select test.raises($$insert into diary_entries(user_id,date) values (auth.uid(),'2026-09-29')$$,'23505','same owner/date diary is unique');
+select test.raises($$insert into people(user_id,name) values (auth.uid(),'Ana')$$,'23505','same owner/name person is unique');
+select test.raises($$insert into mood_data(user_id,date) values (auth.uid(),'2026-09-29')$$,'23505','same owner/date mood is unique');
+select test.ok((select count(*)=1 from people where name='Ana'),'different owners can share person names');
+select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',true);
+select test.ok((select content='B privado' from diary_entries),'B still sees unchanged own content');
+select test.ok((select count(*)=1 from audio_transcriptions),'B audio remains isolated');
+reset role;
+
+set local role service_role;
+update profiles set subscription='{"plan":"pro","status":"active"}' where uid='11111111-1111-4111-8111-111111111111';
+select test.ok((select subscription->>'plan'='pro' from profiles where uid='11111111-1111-4111-8111-111111111111'),'service role can maintain billing');
+reset role;
+select test.raises($$insert into diary_entries(user_id,date) values ('33333333-3333-4333-8333-333333333333','2026-09-29')$$,'23503','orphan diary owner denied by FK');
+select test.raises($$insert into audio_transcriptions(entry_id,audio_url,transcription) values ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','x','x')$$,'23503','orphan audio parent denied by FK');
+delete from auth.users where id='11111111-1111-4111-8111-111111111111';
+select test.ok((select count(*)=1 from profiles),'account deletion cascades profiles');
+select test.ok((select count(*)=1 from diary_entries),'account deletion cascades diary');
+select test.ok((select count(*)=1 from people),'account deletion cascades people');
+select test.ok((select count(*)=1 from mood_data),'account deletion cascades mood');
+select test.ok((select count(*)=1 from audio_transcriptions),'account deletion cascades dependent audio');
+select count(*) as passed_database_checks from test.results;
+rollback;

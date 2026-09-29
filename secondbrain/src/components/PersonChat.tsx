@@ -21,7 +21,8 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
   const { user } = useAuth();
   const { 
     planLimits, 
-    monthlyUsage, 
+    monthlyUsage,
+    loading: subscriptionLoading,
     checkCanSendPersonChatMessage,
     refreshMonthlyUsage 
   } = useSubscription();
@@ -57,7 +58,11 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
   }, [isOpen, person.name, messages.length]);
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || isLoading || subscriptionLoading) return;
+    if (!monthlyUsage) {
+      setError('No se pudo comprobar tu cuota de mensajes. Recarga la página para reintentarlo.');
+      return;
+    }
 
     // Verificar límites antes de enviar
     const canSend = await checkCanSendPersonChatMessage();
@@ -255,6 +260,10 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
           </div>
         )}
 
+        {subscriptionLoading && (
+          <p role="status" className="px-4 py-2 text-sm text-slate-500">Cargando cuota de mensajes…</p>
+        )}
+
         {/* Input */}
         <div className="p-4 border-t border-white/30 bg-white/50 rounded-b-xl backdrop-blur-sm">
           <div className="flex space-x-2">
@@ -266,11 +275,11 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
               onKeyPress={handleKeyPress}
               placeholder={`Pregunta algo sobre ${person.name}...`}
               className="flex-1 px-3 py-2 border border-white/30 rounded-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 outline-none text-sm bg-white/80 backdrop-blur-sm shadow-sm"
-              disabled={isLoading}
+              disabled={isLoading || subscriptionLoading}
             />
             <button
               onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isLoading}
+              disabled={!inputMessage.trim() || isLoading || subscriptionLoading}
               title="Enviar mensaje"
               aria-label="Enviar mensaje"
               className="px-4 py-2 bg-purple-500/90 text-white rounded-lg hover:bg-purple-600/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all backdrop-blur-sm shadow-lg flex items-center space-x-1"

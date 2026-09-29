@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
     for (const profile of data || []) {
       const subscription = profile.subscription as Record<string, unknown>;
       if (subscription.currentPeriodEnd && new Date(String(subscription.currentPeriodEnd)) <= new Date()) {
-        await database.from('profiles').update({ subscription: { ...subscription, plan: 'free', status: 'canceled', cancelAtPeriodEnd: false, stripeCustomerId: null, stripeSubscriptionId: null, updatedAt: new Date().toISOString() } }).eq('uid', profile.uid);
+        const { error: updateError } = await database.from('profiles').update({ subscription: { ...subscription, plan: 'free', status: 'canceled', cancelAtPeriodEnd: false, stripeCustomerId: null, stripeSubscriptionId: null, updatedAt: new Date().toISOString() } }).eq('uid', profile.uid);
+        if (updateError) throw updateError;
         expired++;
       }
     }

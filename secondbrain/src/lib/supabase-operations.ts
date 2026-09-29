@@ -117,6 +117,12 @@ export async function getEntryByDate(date: string, userId: string): Promise<Diar
   return data ? entry(data) : null;
 }
 
+export async function getEntryByIdForUser(entryId: string, userId: string): Promise<DiaryEntry | null> {
+  const { data, error } = await getDatabaseClient().from('diary_entries').select('*').eq('id', entryId).eq('user_id', userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? entry(data) : null;
+}
+
 export async function saveEntry(value: Partial<DiaryEntry>): Promise<DiaryEntry | null> {
   const database = getDatabaseClient();
   const now = new Date().toISOString();
@@ -211,7 +217,7 @@ export async function resetUserPassword(email: string) {
 export async function deleteUserAccount(): Promise<void> {
   const { data } = await supabase.auth.getSession();
   if (!data.session?.access_token) throw new Error('No hay usuario autenticado');
-  const response = await fetch('/api/account/delete', { method: 'POST', headers: { Authorization: `Bearer ${data.session.access_token}` } });
+  const response = await fetch('/api/account', { method: 'POST', headers: { Authorization: `Bearer ${data.session.access_token}` } });
   if (!response.ok) throw new Error((await response.json()).error || 'No se pudo eliminar la cuenta');
   await supabase.auth.signOut();
 }

@@ -38,13 +38,6 @@ export async function POST(req: NextRequest) {
       metadata: session.metadata
     });
 
-    if (session.payment_status !== 'paid') {
-      return NextResponse.json(
-        { error: 'Payment not completed', session },
-        { status: 400 }
-      );
-    }
-
     // Verificar que la sesión pertenece al usuario
     const sessionUserId = session.metadata?.uid;
     if (sessionUserId !== userId) {
@@ -52,6 +45,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Session does not belong to user' },
         { status: 403 }
+      );
+    }
+
+    if (session.payment_status !== 'paid') {
+      return NextResponse.json(
+        { error: 'Payment not completed' },
+        { status: 400 }
       );
     }
 

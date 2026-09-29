@@ -27,12 +27,20 @@ export function useSubscription() {
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   useEffect(() => {
+    let canceled = false;
     async function updateSubscriptionInfo() {
       if (loading || !user) {
+        if (!user) {
+          setCurrentPlan('free');
+          setPlanLimits(PLAN_LIMITS.free);
+          setMonthlyUsage(null);
+          setNeedsUpgrade(false);
+        }
         setSubscriptionLoading(false);
         return;
       }
 
+      setSubscriptionLoading(true);
       try {
         // Verificar si hay suscripciones expiradas antes de obtener el plan efectivo
         await checkAndUpdateExpiredSubscription(user.uid);
@@ -41,11 +49,13 @@ export function useSubscription() {
         const upgradeNeeded = await needsSubscriptionUpgrade(user.uid);
         const usage = await getUserMonthlyUsage(user.uid);
         
+        if (canceled) return;
         setCurrentPlan(effectivePlan);
         setPlanLimits(PLAN_LIMITS[effectivePlan]);
         setMonthlyUsage(usage);
         setNeedsUpgrade(upgradeNeeded);
       } catch (error) {
+        if (canceled) return;
         console.error('❌ [useSubscription] Error obteniendo info de suscripción:', error);
         // En caso de error, asumir plan gratuito
         setCurrentPlan('free');
@@ -53,11 +63,12 @@ export function useSubscription() {
         setMonthlyUsage(null);
         setNeedsUpgrade(false);
       } finally {
-        setSubscriptionLoading(false);
+        if (!canceled) setSubscriptionLoading(false);
       }
     }
 
     updateSubscriptionInfo();
+    return () => { canceled = true; };
   }, [loading, user, userProfile]);
 
   // Funciones de verificación

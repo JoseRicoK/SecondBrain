@@ -24,3 +24,11 @@
 - UI copy is primarily Spanish. Preserve keyboard, focus, and touch behavior, especially the mobile sidebar, people panel, calendar, and modal flows.
 - Styles use Tailwind utility classes plus `src/app/globals.css` and CSS modules for PeopleManager, PersonalChat, Statistics, and WelcomeModal. Reuse the established palette and responsive breakpoints rather than adding a parallel design system.
 - Assets live under `public/`; `next.config.ts` permits Google profile images and sets CSP/security headers. Review CSP when adding an external API, frame, font, or image host.
+
+## State and regression checks
+
+AI requests run on the server; model identifiers and reasoning baselines are centralized in `src/lib/ai-models.ts`. Both audio recorder paths retain `MediaRecorder.mimeType` (or the emitted chunk's type) when creating the Blob. The transcription route assigns a matching filename without converting the recording bytes. See the operations integration reference for model/API compatibility.
+
+Personal and person chats derive quota loading from `useSubscription.loading`: disable sending and show a loading status until it resolves. A missing usage result is a load failure, not an exhausted quota; keep those messages distinct. The API still checks real limits independently of these UI controls.
+
+`useDiaryStore` invalidates pending loads/saves when the selected date or request changes. Clear prior entries and audio on date changes. Only reuse an entry ID when both its owner and date match the current save. Keep the store error visible in the integrated diary and preserve drafts after failed persistence. `useSubscription` clears plan/usage on logout and ignores obsolete requests. The Auth provider also ignores profile responses from an earlier session after logout, account changes or unmount. Google-linked identities use the providers array consistently. Audio preview object URLs and microphone tracks must be released, and duration limits must use current recorder state rather than an old React closure. Follow [the test matrix](../../../../docs/TESTING.md) when changing these flows.

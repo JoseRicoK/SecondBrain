@@ -31,7 +31,8 @@ export const PersonalChat: React.FC<PersonalChatProps> = ({
   const { user } = useAuth();
   const { 
     planLimits, 
-    monthlyUsage, 
+    monthlyUsage,
+    loading: subscriptionLoading,
     checkCanSendPersonalChatMessage,
     refreshMonthlyUsage 
   } = useSubscription();
@@ -116,7 +117,11 @@ Puedo ayudarte a:
   }, [isOpen, messages.length, userName]);
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || isLoading || subscriptionLoading) return;
+    if (!monthlyUsage) {
+      setError('No se pudo comprobar tu cuota de mensajes. Recarga la página para reintentarlo.');
+      return;
+    }
 
     // Verificar límites antes de enviar
     const canSend = await checkCanSendPersonalChatMessage();
@@ -350,6 +355,10 @@ Puedo ayudarte a:
             </div>
           )}
 
+          {subscriptionLoading && (
+            <p role="status" className="px-4 py-2 text-sm text-slate-500">Cargando cuota de mensajes…</p>
+          )}
+
           {/* Input - Área fija en la parte inferior */}
           <div className={`p-3 md:p-4 border-t border-slate-200 bg-white md:rounded-b-xl ${styles.inputArea}`}>
             <div className="flex w-full">
@@ -372,11 +381,11 @@ Puedo ayudarte a:
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck="false"
-                disabled={isLoading}
+                disabled={isLoading || subscriptionLoading}
               />
               <button
                 onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || isLoading}
+                disabled={!inputMessage.trim() || isLoading || subscriptionLoading}
                 title="Enviar mensaje"
                 aria-label="Enviar mensaje"
                 className="ml-2 px-3 md:px-4 py-3 md:py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1 flex-shrink-0"

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { AI_MODELS } from '@/lib/ai-models';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
 // Configuración de OpenAI
@@ -28,9 +29,9 @@ export async function POST(request: Request) {
 
     // Procesar el formulario con el archivo de audio
     const formData = await request.formData();
-    const audioFile = formData.get('file') as File;
+    const audioFile = formData.get('file');
 
-    if (!audioFile) {
+    if (!(audioFile instanceof File)) {
       return NextResponse.json(
         { error: 'No audio file provided' },
         { status: 400 }
@@ -46,32 +47,36 @@ export async function POST(request: Request) {
       );
     }
 
+    if (audioFile.size > 25 * 1024 * 1024) {
+      return NextResponse.json({ error: 'El archivo de audio supera el máximo de 25 MB.' }, { status: 413 });
+    }
+
     // Convertir File a Buffer para enviarlo a OpenAI
     const arrayBuffer = await audioFile.arrayBuffer();
     const audioBase64 = Buffer.from(arrayBuffer).toString('base64');
     const audioUrl = `data:${audioFile.type};base64,${audioBase64}`;
     
-    // Crear un archivo temporal para la transcripción
-    const tempFileName = `whisper-${Date.now()}.mp3`; // Cambiamos a .mp3 que funciona mejor con Whisper
-    const transcriptionFile = new File([new Uint8Array(arrayBuffer)], tempFileName, { 
-      type: 'audio/mpeg' // Forzamos el tipo a MP3 que es mejor soportado
-    });
-    
-    console.log('⭐ API: Enviando audio a Whisper, tamaño:', arrayBuffer.byteLength, 'bytes');
-    
-    // Usar el modelo más reciente con más opciones para mejor calidad
+    // Preserve the actual container. Renaming WebM/WAV bytes does not convert them.
+    const extensions: Record<string, string> = {
+      'audio/webm': 'webm', 'video/webm': 'webm',
+      'audio/wav': 'wav', 'audio/x-wav': 'wav',
+      'audio/mp4': 'm4a', 'video/mp4': 'mp4', 'audio/x-m4a': 'm4a',
+      'audio/mpeg': 'mp3', 'audio/mp3': 'mp3',
+    };
+    const extension = extensions[audioFile.type.split(';')[0].toLowerCase()];
+    const transcriptionFile = extension
+      ? new File([audioFile], `recording.${extension}`, { type: audioFile.type })
+      : audioFile;
+
     const response = await openai.audio.transcriptions.create({
       file: transcriptionFile,
-      model: 'whisper-1', // Modelo más reciente de Whisper
-      language: 'es', // Especificamos español
-      prompt: 'Transcribe literalmente lo que se dice en español', // Prompt para guiar la transcripción
-      temperature: 0.0, // Menor temperatura para transcripción más precisa
-      response_format: 'json'
+      model: AI_MODELS.transcription,
+      languages: ['es'],
+      prompt: 'Una entrada de diario personal. Conserva los nombres propios y las palabras originales.',
     });
 
     // Extraer el texto transcrito
     const transcription = response.text;
-    console.log('✅ API: Transcripción completada:', transcription);
 
     if (!transcription || transcription.trim() === '') {
       return NextResponse.json(

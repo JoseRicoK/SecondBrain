@@ -36,125 +36,76 @@ const getTodayFormatted = (): string => {
 };
 
 export const useDiaryStore = create<DiaryState>((set, get) => {
-  const initialDate = getTodayFormatted();
-  
+  // Invalidate pending work when another date, account or request is selected.
+  let revision = 0;
   return {
-    // Estado inicial - siempre usamos la fecha actual
-    currentDate: initialDate,
-    currentEntry: null,
-    isLoading: false,
-    isEditing: false,
-    transcriptions: [],
-    error: null,
-    dateManuallySelected: false, // Inicialmente no se ha seleccionado manualmente
-    
-    // Acciones
-    setCurrentDate: (date: string, manuallySelected = false) => {
-      const currentState = get();
-      // Solo loguear si la fecha realmente cambió
-      if (currentState.currentDate !== date) {
-        console.log('🏪 Store: setCurrentDate llamado con:', date, 'manual:', manuallySelected);
-      }
-      set({ currentDate: date, dateManuallySelected: manuallySelected });
+    currentDate: getTodayFormatted(), currentEntry: null, isLoading: false,
+    isEditing: false, transcriptions: [], error: null, dateManuallySelected: false,
+    setCurrentDate: (date, manuallySelected = false) => {
+      if (get().currentDate !== date) {
+        revision++;
+        set({ currentDate: date, dateManuallySelected: manuallySelected,
+          currentEntry: null, transcriptions: [], error: null, isEditing: true, isLoading: false });
+      } else set({ dateManuallySelected: manuallySelected });
     },
-  
-  fetchCurrentEntry: async (userId: string) => {
-    const { currentDate } = get();
-    set({ isLoading: true, error: null });
-    
-    try {
-      const entry = await getEntryByDate(currentDate, userId);
-      set({ 
-        currentEntry: entry,
-        isEditing: !entry, // Si no hay entrada, activamos modo edición
-      });
-      
-      // Si hay una entrada, cargamos las transcripciones
-      if (entry) {
-        try {
-          const transcriptions = await getTranscriptionsByEntryId(entry.id);
-          set({ transcriptions });
-        } catch (error) {
-          console.error('Error fetching transcriptions:', error);
-          set({ transcriptions: [] });
+    fetchCurrentEntry: async (userId) => {
+      const currentDate = get().currentDate;
+      const request = ++revision;
+      const isCurrent = () => revision === request && get().currentDate === currentDate;
+      set({ isLoading: true, error: null, currentEntry: null, transcriptions: [] });
+      try {
+        const entry = await getEntryByDate(currentDate, userId);
+        if (!isCurrent()) return;
+        set({ currentEntry: entry, isEditing: !entry });
+        if (entry) {
+          try {
+            const transcriptions = await getTranscriptionsByEntryId(entry.id);
+            if (isCurrent()) set({ transcriptions });
+          } catch {
+            if (isCurrent()) set({ transcriptions: [] });
+          }
         }
-      } else {
-        set({ transcriptions: [] });
+      } catch {
+        if (isCurrent()) set({ error: 'No se pudo cargar la entrada del diario' });
+      } finally {
+        if (isCurrent()) set({ isLoading: false });
       }
-    } catch (error) {
-      console.error('Error fetching entry:', error);
-      set({ error: 'No se pudo cargar la entrada del diario' });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-  
-  saveCurrentEntry: async (content: string, userId: string, mentionedPeople?: string[]) => {
-    const { currentDate, currentEntry } = get();
-    set({ isLoading: true, error: null });
-    
-    console.log('⭐ Store: Guardando entrada para fecha:', currentDate);
-    console.log('⭐ Store: Contenido:', content);
-    console.log('⭐ Store: Usuario:', userId);
-    console.log('⭐ Store: Entrada actual:', currentEntry);
-    console.log('⭐ Store: Personas mencionadas:', mentionedPeople);
-    
-    try {
-      // Preparamos los datos para guardar
+    },
+    saveCurrentEntry: async (content, userId, mentionedPeople) => {
+      const { currentDate, currentEntry } = get();
+      const request = ++revision;
+      const isCurrent = () => revision === request && get().currentDate === currentDate;
+      set({ isLoading: true, error: null });
       const entryData: Partial<DiaryEntry> = {
-        date: currentDate,
-        content,
-        user_id: userId,
-        mentioned_people: mentionedPeople
+        date: currentDate, content, user_id: userId, mentioned_people: mentionedPeople,
       };
-      
-      // Si hay una entrada existente, incluimos su ID
-      if (currentEntry?.id) {
+      if (currentEntry?.id && currentEntry.date === currentDate && currentEntry.user_id === userId) {
         entryData.id = currentEntry.id;
-      };
-      
-      
-      console.log('⭐ Store: Datos a guardar:', entryData);
-      
-      // Guardamos la entrada
-      const updatedEntry = await saveEntry(entryData);
-      
-      if (updatedEntry) {
-        console.log('✅ Store: Entrada guardada correctamente:', updatedEntry);
-        set({ 
-          currentEntry: updatedEntry,
-          isEditing: false
-        });
-      } else {
-        console.error('❌ Store: No se pudo guardar la entrada');
-        set({ error: 'No se pudo guardar la entrada del diario' });
       }
-    } catch (error) {
-      console.error('❌ Store: Error saving entry:', error);
-      set({ error: 'No se pudo guardar la entrada del diario' });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-  
-  toggleEditMode: () => {
-    set((state) => ({ isEditing: !state.isEditing }));
-  },
-  
-  fetchTranscriptions: async () => {
-    const { currentEntry } = get();
-    
-    if (!currentEntry) return;
-    
-    try {
-      const transcriptions = await getTranscriptionsByEntryId(currentEntry.id);
-      set({ transcriptions });
-    } catch (error) {
-      console.error('Error fetching transcriptions:', error);
-      set({ error: 'No se pudieron cargar las transcripciones' });
-    }
-  },
-  
-  resetError: () => set({ error: null })
+      try {
+        const updatedEntry = await saveEntry(entryData);
+        if (!isCurrent()) return;
+        if (updatedEntry) set({ currentEntry: updatedEntry, isEditing: false });
+        else set({ error: 'No se pudo guardar la entrada del diario' });
+      } catch {
+        if (isCurrent()) set({ error: 'No se pudo guardar la entrada del diario' });
+      } finally {
+        if (isCurrent()) set({ isLoading: false });
+      }
+    },
+    toggleEditMode: () => set(state => ({ isEditing: !state.isEditing })),
+    fetchTranscriptions: async () => {
+      const entry = get().currentEntry;
+      const request = revision;
+      if (!entry) return;
+      const isCurrent = () => revision === request && get().currentEntry?.id === entry.id;
+      try {
+        const transcriptions = await getTranscriptionsByEntryId(entry.id);
+        if (isCurrent()) set({ transcriptions });
+      } catch {
+        if (isCurrent()) set({ error: 'No se pudieron cargar las transcripciones' });
+      }
+    },
+    resetError: () => set({ error: null }),
   };
 });
