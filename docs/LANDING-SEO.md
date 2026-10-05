@@ -22,7 +22,7 @@ El primer CTA abre registro, sin tarjeta; el secundario explica el flujo. Una en
 
 Precios usa euros, cuotas del catálogo y disponibilidad del backend. Mientras el cobro está desactivado, Pro/Elite indican que no pueden contratarse y sus CTAs permiten empezar gratis. Cuando el backend verifique esquema y configuración y permita contratar, los enlaces preservan el plan elegido. Un catálogo desactualizado nunca autoriza un pago: el servidor vuelve a comprobarlo.
 
-No se han añadido analytics de terceros, píxeles ni cookies de marketing. Para medir conversión tras aprobar un sistema de medición, distinguir CTA pulsado, registro iniciado y cuenta confirmada; no enviar texto del diario ni datos personales a eventos. Search Console deberá verificar propiedad, sitemap e indexación después del despliegue. No se ha enviado el nuevo sitemap ni publicado este contenido.
+No se han añadido analytics de terceros, píxeles ni cookies de marketing. Para medir conversión tras aprobar un sistema de medición, distinguir CTA pulsado, registro iniciado y cuenta confirmada; no enviar texto del diario ni datos personales a eventos. El 5 de octubre de 2026 se publicó LumaDiary, se verificó la propiedad de dominio `lumadiary.com` en Search Console y se envió `https://www.lumadiary.com/sitemap.xml`. La primera lectura mostró un error de recuperación, aunque el sitemap público responde HTTP 200 con XML válido. El envío no demuestra procesamiento ni indexación: comprobar ambos en Search Console, junto con el cambio de dirección desde la propiedad anterior.
 
 ## Velocidad y verificación
 
