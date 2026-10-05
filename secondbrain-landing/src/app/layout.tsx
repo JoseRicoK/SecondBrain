@@ -28,7 +28,13 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  icons: { icon: "/favicon.ico", apple: "/brand/icon-180.png" },
+  icons: {
+    icon: [
+      { url: "/brand/icon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/brand/icon-16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: "/brand/icon-180.png",
+  },
 };
 export const viewport: Viewport = {
   width: "device-width",

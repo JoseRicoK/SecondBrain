@@ -31,7 +31,7 @@ for (const workspace of ['secondbrain', 'secondbrain-landing']) {
   for (const [index, size] of sizes.entries()) {
     await writeFile(new URL(`icon-${size}.png`, publicDir), images[index]);
   }
-  await writeFile(new URL(`../${workspace}/src/app/favicon.ico`, import.meta.url), favicon);
+  await writeFile(new URL(`../${workspace}/public/favicon.ico`, import.meta.url), favicon);
   // Keep old public URLs working for cached pages.
   const legacy = workspace === 'secondbrain'
     ? ['image/Logo-simple-SecondBrain.png', 'image/Logo-simple-SecondBrain-morado.png', 'image/Logo-entero-SecondBrain.png']
