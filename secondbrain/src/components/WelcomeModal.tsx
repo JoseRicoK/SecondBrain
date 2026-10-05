@@ -85,7 +85,7 @@ export default function WelcomeModal({ userId, userName, planName, onClose }: We
 
             {/* Título */}
             <h2 className="text-3xl font-bold text-gray-800 mb-4">
-              {planName && planName !== 'free' ? '¡Bienvenido a SecondBrain Premium! 🎉' : '¡Bienvenido a SecondBrain! 🎉'}
+              {planName && planName !== 'free' ? '¡Bienvenido a LumaDiary Premium! 🎉' : '¡Bienvenido a LumaDiary! 🎉'}
             </h2>
 
             {/* Mensaje personalizado */}

@@ -30,7 +30,7 @@ const schema = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "@id": SITE_URL + "/#app",
-  name: "SecondBrain",
+  name: "LumaDiary",
   url: SITE_URL,
   applicationCategory: "LifestyleApplication",
   operatingSystem: "Web",

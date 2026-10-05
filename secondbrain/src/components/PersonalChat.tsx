@@ -97,8 +97,8 @@ export const PersonalChat: React.FC<PersonalChatProps> = ({
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const welcomeMessage = userName !== 'Usuario' 
-        ? `¡Hola ${userName}! Soy tu asistente personal de SecondBrain.`
-        : '¡Hola! Soy tu asistente personal de SecondBrain.';
+        ? `¡Hola ${userName}! Soy tu asistente personal de LumaDiary.`
+        : '¡Hola! Soy tu asistente personal de LumaDiary.';
       
       setMessages([{
         role: 'assistant',

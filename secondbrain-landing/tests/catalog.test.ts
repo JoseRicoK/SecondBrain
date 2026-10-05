@@ -64,7 +64,7 @@ it("successful public response uses a 60 second cache and edited limits", async 
 it("each metadata helper resolves a distinct canonical and social URL", () => {
   const metadata = pageMetadata("Guía", "Descripción", "/diario-de-voz");
   expect(metadata.alternates?.canonical).toBe(
-    "https://www.secondbrainapp.com/diario-de-voz",
+    "https://www.lumadiary.com/diario-de-voz",
   );
   expect(metadata.openGraph?.url).toBe(metadata.alternates?.canonical);
 });

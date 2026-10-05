@@ -45,20 +45,20 @@ export default function ProductPreview() {
             <i />
             <i />
           </div>
-          <span>Tu espacio en SecondBrain</span>
+          <span>Tu espacio en LumaDiary</span>
           <span className="window-lock">● Privado</span>
         </div>
         <div className="product-topbar">
           <span className="product-brand">
             <Brain size={23} />
-            SecondBrain
+            LumaDiary
           </span>
           <span className="demo-user">A</span>
         </div>
         <div
           className="product-switcher"
           role="group"
-          aria-label="Explorar la demo de SecondBrain"
+          aria-label="Explorar la demo de LumaDiary"
         >
           {views.map(({ id, label, icon: Icon }) => (
             <button

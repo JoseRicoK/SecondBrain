@@ -25,7 +25,7 @@ export default function TwitterImage() {
         }}
       >
         <div style={{ fontSize: 26, opacity: 0.85, marginBottom: 10 }}>Diario Personal con IA</div>
-        <div>SecondBrain</div>
+        <div>LumaDiary</div>
         <div style={{ fontSize: 22, marginTop: 14, opacity: 0.9 }}>Tu Segundo Cerebro Digital</div>
       </div>
     ),

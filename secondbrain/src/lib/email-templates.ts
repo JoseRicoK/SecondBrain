@@ -7,7 +7,7 @@ export const escapeEmailHtml = (value: string) =>
       ]!,
   );
 export function emailLayout(title: string, preheader: string, content: string) {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeEmailHtml(title)}</title></head><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#1e293b"><span style="display:none;max-height:0;overflow:hidden">${escapeEmailHtml(preheader)}</span><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:16px"><tr><td style="padding:28px 24px;background:#6d28d9;color:#fff;font-size:24px;font-weight:bold;border-radius:16px 16px 0 0">SecondBrain</td></tr><tr><td style="padding:28px 24px;font-size:16px;line-height:1.65"><h1 style="margin:0 0 20px;font-size:24px">${escapeEmailHtml(title)}</h1>${content}</td></tr><tr><td style="padding:20px 24px;font-size:13px;color:#64748b;border-top:1px solid #e2e8f0">SecondBrain · Tu diario personal<br><a href="https://secondbrainapp.com/soporte" style="color:#64748b">Centro de ayuda</a></td></tr></table></td></tr></table></body></html>`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeEmailHtml(title)}</title></head><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#1e293b"><span style="display:none;max-height:0;overflow:hidden">${escapeEmailHtml(preheader)}</span><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:16px"><tr><td style="padding:28px 24px;background:#6d28d9;color:#fff;font-size:24px;font-weight:bold;border-radius:16px 16px 0 0">LumaDiary</td></tr><tr><td style="padding:28px 24px;font-size:16px;line-height:1.65"><h1 style="margin:0 0 20px;font-size:24px">${escapeEmailHtml(title)}</h1>${content}</td></tr><tr><td style="padding:20px 24px;font-size:13px;color:#64748b;border-top:1px solid #e2e8f0">LumaDiary · Tu diario personal<br><a href="https://lumadiary.com/soporte" style="color:#64748b">Centro de ayuda</a></td></tr></table></td></tr></table></body></html>`;
 }
 export function feedbackEmail(
   type: "suggestion" | "problem",
@@ -22,11 +22,11 @@ export function feedbackEmail(
   });
   const html = emailLayout(
     title,
-    "Un usuario ha enviado un mensaje desde SecondBrain.",
+    "Un usuario ha enviado un mensaje desde LumaDiary.",
     `<p><strong>De:</strong> ${escapeEmailHtml(email)}<br><strong>Fecha:</strong> ${escapeEmailHtml(timestamp)}</p><p style="white-space:pre-wrap;overflow-wrap:anywhere">${escapeEmailHtml(message)}</p>`,
   );
   return {
-    subject: `${title} - SecondBrain`,
+    subject: `${title} - LumaDiary`,
     html,
     text: `${title}\nDe: ${email}\nFecha: ${timestamp}\n\n${message}`,
   };
@@ -35,28 +35,28 @@ export const AUTH_EMAILS = {
   recovery: {
     title: "Restablece tu contraseña",
     intro:
-      "Hemos recibido una solicitud para cambiar tu contraseña de SecondBrain.",
+      "Hemos recibido una solicitud para cambiar tu contraseña de LumaDiary.",
     action: "Elegir una nueva contraseña",
   },
   confirmation: {
     title: "Confirma tu correo",
     intro:
-      "Ya casi está. Confirma tu dirección de correo para empezar a usar SecondBrain.",
+      "Ya casi está. Confirma tu dirección de correo para empezar a usar LumaDiary.",
     action: "Confirmar correo",
   },
   invite: {
-    title: "Te han invitado a SecondBrain",
-    intro: "Acepta la invitación para crear tu cuenta de SecondBrain.",
+    title: "Te han invitado a LumaDiary",
+    intro: "Acepta la invitación para crear tu cuenta de LumaDiary.",
     action: "Aceptar invitación",
   },
   magic_link: {
-    title: "Accede a SecondBrain",
+    title: "Accede a LumaDiary",
     intro: "Usa este enlace para iniciar sesión en tu cuenta.",
     action: "Iniciar sesión",
   },
   email_change: {
     title: "Confirma el cambio de correo",
-    intro: "Confirma la nueva dirección de correo de tu cuenta de SecondBrain.",
+    intro: "Confirma la nueva dirección de correo de tu cuenta de LumaDiary.",
     action: "Confirmar cambio",
   },
   reauthentication: {
@@ -73,7 +73,7 @@ export function authEmail(kind: keyof typeof AUTH_EMAILS) {
       ? '<p style="font-family:monospace;font-size:32px;letter-spacing:6px">{{ .Token }}</p>'
       : `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#6d28d9;border-radius:8px"><a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 24px;color:#fff;font-size:16px;font-weight:bold;text-decoration:none">${config.action}</a></td></tr></table><p style="font-size:14px;overflow-wrap:anywhere">Si el botón no funciona, abre este enlace:<br><a href="{{ .ConfirmationURL }}">{{ .ConfirmationURL }}</a></p>`;
   return {
-    subject: `${config.title} - SecondBrain`,
+    subject: `${config.title} - LumaDiary`,
     html: emailLayout(
       config.title,
       config.intro,
@@ -102,12 +102,12 @@ export function billingEmail(
     : undefined;
   const message = `${status === "past_due" ? "Revisa tu método de pago desde la gestión de suscripción." : status === "canceled" ? "Tu cuenta continúa disponible con el plan gratuito. Tu diario se conserva." : `Tu plan es ${plan.toUpperCase()}.`}${date ? ` ${cancelAtPeriodEnd ? "Conservas el acceso hasta" : "Fin del período actual:"} ${date}.` : ""}`;
   return {
-    subject: `${title} - SecondBrain`,
+    subject: `${title} - LumaDiary`,
     html: emailLayout(
       title,
       message,
-      `<p>${escapeEmailHtml(message)}</p><p><a href="https://app.secondbrainapp.com/subscription" style="color:#6d28d9">Ver mi suscripción</a></p>`,
+      `<p>${escapeEmailHtml(message)}</p><p><a href="https://app.lumadiary.com/subscription" style="color:#6d28d9">Ver mi suscripción</a></p>`,
     ),
-    text: `${title}\n\n${message}\n\nVer mi suscripción: https://app.secondbrainapp.com/subscription`,
+    text: `${title}\n\n${message}\n\nVer mi suscripción: https://app.lumadiary.com/subscription`,
   };
 }

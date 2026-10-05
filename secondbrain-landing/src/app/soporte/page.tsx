@@ -6,7 +6,7 @@ import { Mail, HelpCircle, FileQuestion, Shield } from "lucide-react";
 
 export const metadata = pageMetadata(
   "Soporte y ayuda",
-  "Ayuda para registrar tu cuenta, usar tu diario y gestionar la suscripción de SecondBrain.",
+  "Ayuda para registrar tu cuenta, usar tu diario y gestionar la suscripción de LumaDiary.",
   "/soporte",
 );
 

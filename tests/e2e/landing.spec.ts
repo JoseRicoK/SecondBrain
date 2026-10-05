@@ -16,7 +16,7 @@ for (const path of [
     const response = await page.goto(path);
     expect(response?.status()).toBe(200);
     await expect(page.locator("h1").first()).toBeVisible();
-    await expect(page).toHaveTitle(/SecondBrain/);
+    await expect(page).toHaveTitle(/LumaDiary/);
     expect(
       await page.locator('meta[name="description"]').getAttribute("content"),
     ).toBeTruthy();
@@ -36,7 +36,7 @@ test("header navigation reaches pricing and links to the private app", async ({
     .first()
     .click();
   await expect(page).toHaveURL(/\/precios$/);
-  const appLinks = page.locator('a[href="https://app.secondbrainapp.com"]');
+  const appLinks = page.locator('a[href="https://app.lumadiary.com"]');
   expect(await appLinks.count()).toBeGreaterThan(0);
 });
 test("FAQ opens and closes answers", async ({ page, backend }) => {
@@ -61,7 +61,7 @@ test("SEO endpoints include every public page and block private paths", async ({
   expect(sitemap.status()).toBe(200);
   const xml = await sitemap.text();
   for (const path of ["/precios", "/soporte", "/privacidad", "/terminos"])
-    expect(xml).toContain(`https://www.secondbrainapp.com${path}`);
+    expect(xml).toContain(`https://www.lumadiary.com${path}`);
   const robots = await request.get("/robots.txt");
   expect(await robots.text()).toContain("Disallow: /api/");
 });
@@ -81,7 +81,7 @@ test("pricing shows euros, current quotas and an honest disabled checkout", asyn
   expect(await paid.count()).toBe(2);
   for (const link of await paid.all())
     expect(await link.getAttribute("href")).toBe(
-      "https://app.secondbrainapp.com/signup?plan=free",
+      "https://app.lumadiary.com/signup?plan=free",
     );
 });
 test("native FAQ is exclusive, keyboard operable and closes", async ({
@@ -114,7 +114,7 @@ test("initial HTML includes visible copy and every page has its own canonical", 
     const response = await request.get(path);
     const html = await response.text();
     expect(html).toContain(
-      'rel="canonical" href="https://www.secondbrainapp.com' +
+      'rel="canonical" href="https://www.lumadiary.com' +
         (path === "/" ? "" : path) +
         '"',
     );
@@ -172,7 +172,7 @@ test("product mockup switches every view with keyboard without provider calls", 
 }) => {
   await page.goto("/");
   const demo = page.getByRole("group", {
-    name: "Explorar la demo de SecondBrain",
+    name: "Explorar la demo de LumaDiary",
   });
   for (const [label, heading] of [
     ["Voz", "A veces, es más fácil contarlo."],

@@ -49,7 +49,7 @@ it.each(Object.keys(AUTH_EMAILS) as Array<keyof typeof AUTH_EMAILS>)(
   "auth %s uses Spanish HTML and valid provider placeholders",
   (kind) => {
     const email = authEmail(kind);
-    expect(email.subject).toContain("SecondBrain");
+    expect(email.subject).toContain("LumaDiary");
     expect(email.html).toContain('lang="es"');
     expect(email.html).toContain('role="presentation"');
     expect(email.html).toContain(
@@ -78,7 +78,7 @@ it.each([
   "billing %s/%s has actionable content and no private diary",
   (status, cancel) => {
     const email = billingEmail("pro", status, cancel, "2026-12-01");
-    expect(email.html).toContain("https://app.secondbrainapp.com/subscription");
+    expect(email.html).toContain("https://app.lumadiary.com/subscription");
     expect(email.text).toBeTruthy();
   },
 );

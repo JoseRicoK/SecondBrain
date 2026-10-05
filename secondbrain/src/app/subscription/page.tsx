@@ -266,7 +266,7 @@ function SubscriptionContent() {
             </span>
           </h1>
           <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Descubre todo lo que SecondBrain puede hacer por ti. Comienza gratis
+            Descubre todo lo que LumaDiary puede hacer por ti. Comienza gratis
             o elige un plan premium para desbloquear todo el potencial.
           </p>
         </div>
@@ -612,7 +612,7 @@ function SubscriptionContent() {
                 </h3>
                 <p className="text-gray-600 mb-6">
                   {userCurrentPlan === "free"
-                    ? "Desbloquea todo el potencial de SecondBrain"
+                    ? "Desbloquea todo el potencial de LumaDiary"
                     : "Cambia tu plan actual por uno que se ajuste mejor a tus necesidades"}
                 </p>
               </div>

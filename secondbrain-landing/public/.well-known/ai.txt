@@ -1,7 +1,7 @@
-# AI Crawler Policy for SecondBrain
+# AI Crawler Policy for LumaDiary
 User-agent: *
 Allow: /
 Disallow: /api/
-Sitemap: https://secondbrainapp.com/sitemap.xml
-Website: https://secondbrainapp.com
+Sitemap: https://www.lumadiary.com/sitemap.xml
+Website: https://www.lumadiary.com
 Contact: mailto:hello@secondbrainapp.com

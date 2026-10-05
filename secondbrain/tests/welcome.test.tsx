@@ -34,14 +34,14 @@ beforeEach(() => {
 it("does not show premium welcome without a checkout session", () => {
   mock.params = new URLSearchParams();
   render(<WelcomeManager />);
-  expect(screen.queryByText(/Bienvenido a SecondBrain Premium/)).toBeNull();
+  expect(screen.queryByText(/Bienvenido a LumaDiary Premium/)).toBeNull();
 });
 it("shows paid welcome and marks it as seen on close", async () => {
   render(<WelcomeManager />);
   await act(() => {
     vi.advanceTimersByTime(500);
   });
-  expect(screen.getByText(/Bienvenido a SecondBrain Premium/)).toBeVisible();
+  expect(screen.getByText(/Bienvenido a LumaDiary Premium/)).toBeVisible();
   await act(async () => {
     fireEvent.click(screen.getByTitle("Cerrar modal de bienvenida"));
   });
@@ -50,7 +50,7 @@ it("shows paid welcome and marks it as seen on close", async () => {
   });
   expect(mock.complete).toHaveBeenCalledWith("u");
   expect(mock.seen).toHaveBeenCalledWith("u");
-  expect(screen.queryByText(/Bienvenido a SecondBrain Premium/)).toBeNull();
+  expect(screen.queryByText(/Bienvenido a LumaDiary Premium/)).toBeNull();
 });
 it("can close even when saving welcome completion fails", async () => {
   mock.complete.mockRejectedValue(new Error("offline"));
@@ -63,5 +63,5 @@ it("can close even when saving welcome completion fails", async () => {
   await act(() => {
     vi.advanceTimersByTime(300);
   });
-  expect(screen.queryByText(/Bienvenido a SecondBrain Premium/)).toBeNull();
+  expect(screen.queryByText(/Bienvenido a LumaDiary Premium/)).toBeNull();
 });

@@ -26,7 +26,7 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SecondBrain",
+  title: "LumaDiary",
   description: "Tu diario personal con IA",
   icons: {
     icon: [

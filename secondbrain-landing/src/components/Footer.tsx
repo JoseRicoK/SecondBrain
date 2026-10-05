@@ -6,13 +6,13 @@ export default function Footer() {
       <div className="mx-auto max-w-6xl grid gap-8 md:grid-cols-3">
         <div>
           <Link href="/" className="text-xl font-bold text-white">
-            SecondBrain
+            LumaDiary
           </Link>
           <p className="mt-3 text-slate-400">
             Un espacio para escribir, recordar y reflexionar.
           </p>
           <p className="mt-4 text-sm text-slate-400">
-            © {new Date().getFullYear()} SecondBrain
+            © {new Date().getFullYear()} LumaDiary
           </p>
         </div>
         <nav aria-label="Guías del diario" className="space-y-3">

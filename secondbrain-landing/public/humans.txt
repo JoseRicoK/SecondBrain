@@ -1,6 +1,6 @@
 /* TEAM */
-Developer: SecondBrain Team
-Website: https://secondbrainapp.com
+Developer: LumaDiary Team
+Website: https://lumadiary.com
 Contact: hello@secondbrainapp.com
 
 /* SITE */

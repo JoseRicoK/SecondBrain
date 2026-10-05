@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       try {
         const { error: mailError } = await new Resend(key).emails.send(
           {
-            from: "SecondBrain <feedback@secondbrainapp.com>",
+            from: "LumaDiary <feedback@secondbrainapp.com>",
             to: ["josemariark@gmail.com"],
             ...feedbackEmail(body.type, user.email, message, new Date()),
             replyTo: user.email,

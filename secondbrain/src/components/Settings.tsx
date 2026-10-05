@@ -286,7 +286,7 @@ const Settings: React.FC<SettingsProps> = () => {
             Configuración
           </h1>
           <p className="text-slate-600">
-            Personaliza tu experiencia en SecondBrain
+            Personaliza tu experiencia en LumaDiary
           </p>
         </div>
 
@@ -1191,11 +1191,11 @@ const Settings: React.FC<SettingsProps> = () => {
         <div className="bg-white/50 backdrop-blur-lg rounded-3xl p-4 sm:p-6 shadow-xl border border-white/20 text-center">
           <div className="flex items-center justify-center mb-3">
             <FiUser className="text-slate-600 mr-2" />
-            <span className="text-slate-600 font-medium">SecondBrain v1.0</span>
+            <span className="text-slate-600 font-medium">LumaDiary v1.0</span>
           </div>
           <p className="text-slate-500 text-sm max-w-2xl mx-auto">
             Tu privacidad es importante. Todos tus datos se almacenan de forma
-            segura y solo tú tienes acceso a ellos. SecondBrain utiliza
+            segura y solo tú tienes acceso a ellos. LumaDiary utiliza
             tecnologías de vanguardia para proteger tu información personal.
           </p>
         </div>

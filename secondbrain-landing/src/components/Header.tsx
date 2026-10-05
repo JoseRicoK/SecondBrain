@@ -39,7 +39,7 @@ export default function Header() {
             height={32}
             priority
           />
-          SecondBrain
+          LumaDiary
         </Link>
         <div className="hidden items-center gap-6 lg:flex">
           {links.map((link) => (

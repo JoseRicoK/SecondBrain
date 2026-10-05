@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         );
         const result = await resend.emails.send(
           {
-            from: "SecondBrain <feedback@secondbrainapp.com>",
+            from: "LumaDiary <feedback@secondbrainapp.com>",
             to: [data.user.email],
             ...message,
           },

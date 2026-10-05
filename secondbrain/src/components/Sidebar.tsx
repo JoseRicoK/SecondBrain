@@ -137,7 +137,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onS
           <div className="flex items-center justify-center">
             <Image 
               src="/image/Logo-simple-SecondBrain-morado.png" 
-              alt="SecondBrain Logo" 
+              alt="LumaDiary Logo"
               width={40} 
               height={40} 
               className="rounded-lg"
@@ -145,7 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onS
             />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">SecondBrain</h1>
+            <h1 className="text-xl font-bold text-white">LumaDiary</h1>
             <p className="text-sm text-slate-300">Tu diario inteligente</p>
           </div>
         </div>

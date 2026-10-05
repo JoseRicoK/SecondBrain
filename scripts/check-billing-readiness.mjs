@@ -31,7 +31,7 @@ const mode = /^(sk|rk)_live_/.test(key)
     ? "test"
     : "unknown";
 add("key mode", mode === (live ? "live" : "test"), mode);
-const origin = process.env.APP_BASE_URL || "https://app.secondbrainapp.com";
+const origin = process.env.APP_BASE_URL || "https://app.lumadiary.com";
 try {
   const url = new URL(origin);
   add(

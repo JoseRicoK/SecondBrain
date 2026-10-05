@@ -652,7 +652,7 @@ export default function Home() {
           <div className="ml-4">
             <Image
               src="/image/Logo-entero-SecondBrain.png"
-              alt="SecondBrain Logo"
+              alt="LumaDiary Logo"
               width={120}
               height={24}
               priority

@@ -25,7 +25,7 @@ export default function OGImage() {
         }}
       >
         <div style={{ fontSize: 28, opacity: 0.85, marginBottom: 12 }}>Diario Personal con IA</div>
-        <div>SecondBrain</div>
+        <div>LumaDiary</div>
         <div style={{ fontSize: 24, marginTop: 16, opacity: 0.9 }}>Tu Segundo Cerebro Digital</div>
       </div>
     ),

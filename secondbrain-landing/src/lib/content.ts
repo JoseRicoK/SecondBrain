@@ -12,7 +12,7 @@ export const faqs = [
   {
     question: "¿Cómo me ayuda la IA a reflexionar?",
     answer:
-      "Puedes preguntarle por experiencias de tu diario, pedir una propuesta de redacción o revisar las personas que aparecen en tus entradas. Sus respuestas pueden equivocarse: revísalas antes de aceptarlas. SecondBrain es una herramienta de reflexión, no un servicio de terapia o diagnóstico.",
+      "Puedes preguntarle por experiencias de tu diario, pedir una propuesta de redacción o revisar las personas que aparecen en tus entradas. Sus respuestas pueden equivocarse: revísalas antes de aceptarlas. LumaDiary es una herramienta de reflexión, no un servicio de terapia o diagnóstico.",
   },
   {
     question: "¿Cómo funciona el diario de voz?",
@@ -53,7 +53,7 @@ export const guides = [
         title: "Empieza por tus palabras",
         paragraphs: [
           "Escribe qué ha pasado, cómo te has sentido y qué te gustaría recordar. No necesitas una entrada larga ni una redacción perfecta. Una situación concreta da más contexto que una etiqueta como «mal día».",
-          "En SecondBrain puedes guardar entradas por fecha, escribir desde el móvil o transcribir una grabación. Si pides una propuesta de redacción, compárala con lo que querías decir antes de guardarla.",
+          "En LumaDiary puedes guardar entradas por fecha, escribir desde el móvil o transcribir una grabación. Si pides una propuesta de redacción, compárala con lo que querías decir antes de guardarla.",
         ],
       },
       {
@@ -74,7 +74,7 @@ export const guides = [
         title: "Decide qué contenido quieres procesar",
         paragraphs: [
           "Tu cuenta limita el acceso a tus entradas. Las funciones de IA envían el contenido necesario al proveedor para responder. No es un diario con cifrado de extremo a extremo; revisa la política de privacidad antes de incluir información sensible.",
-          "La IA puede omitir contexto o interpretar algo de forma equivocada. SecondBrain sirve para escribir y reflexionar; no sustituye atención profesional ni ofrece diagnóstico.",
+          "La IA puede omitir contexto o interpretar algo de forma equivocada. LumaDiary sirve para escribir y reflexionar; no sustituye atención profesional ni ofrece diagnóstico.",
         ],
       },
     ],
@@ -91,7 +91,7 @@ export const guides = [
       {
         title: "Elige la fecha y guarda una entrada",
         paragraphs: [
-          "Abre SecondBrain con tu cuenta, selecciona la fecha y guarda una entrada. La grabación se asocia a una entrada existente para que el audio y su transcripción tengan un lugar en tu diario.",
+          "Abre LumaDiary con tu cuenta, selecciona la fecha y guarda una entrada. La grabación se asocia a una entrada existente para que el audio y su transcripción tengan un lugar en tu diario.",
           "Puedes empezar con una frase, por ejemplo «Hoy quiero recordar la conversación de esta tarde». No hace falta preparar un discurso.",
         ],
       },
@@ -152,7 +152,7 @@ export const guides = [
         title: "Usa la IA como una segunda lectura",
         paragraphs: [
           "Después de escribir, puedes pedir una propuesta de redacción o una pregunta que te ayude a profundizar. Revisa siempre el resultado: una respuesta convincente puede contener errores.",
-          "Con SecondBrain empiezas con una cuenta gratuita y sin tarjeta. Conserva el control de lo que escribes y revisa los límites del chat y la privacidad del procesamiento antes de usarlo.",
+          "Con LumaDiary empiezas con una cuenta gratuita y sin tarjeta. Conserva el control de lo que escribes y revisa los límites del chat y la privacidad del procesamiento antes de usarlo.",
         ],
       },
     ],

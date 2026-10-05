@@ -26,7 +26,7 @@ export default async function PreciosPage() {
             __html: jsonLd({
               "@context": "https://schema.org",
               "@type": "SoftwareApplication",
-              name: "SecondBrain",
+              name: "LumaDiary",
               url: SITE_URL,
               applicationCategory: "LifestyleApplication",
               operatingSystem: "Web",

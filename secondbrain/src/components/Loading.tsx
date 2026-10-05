@@ -7,7 +7,7 @@ export default function Loading() {
         <div className="mb-8">
           <Image
             src="/image/Logo-entero-SecondBrain.png"
-            alt="SecondBrain"
+            alt="LumaDiary"
             width={200}
             height={80}
             priority
@@ -16,7 +16,7 @@ export default function Loading() {
         </div>
         <div className="relative">
           <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Cargando SecondBrain...</p>
+          <p className="mt-4 text-gray-600 font-medium">Cargando LumaDiary...</p>
         </div>
       </div>
     </div>

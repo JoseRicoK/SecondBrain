@@ -13,7 +13,7 @@ import {
 
 export const metadata = pageMetadata(
   "Términos y condiciones",
-  "Condiciones de acceso, uso del diario y funcionamiento de las suscripciones de SecondBrain.",
+  "Condiciones de acceso, uso del diario y funcionamiento de las suscripciones de LumaDiary.",
   "/terminos",
 );
 
@@ -34,7 +34,7 @@ export default function TerminosPage() {
               <span className="liquid-gradient-text">Condiciones</span>
             </h1>
             <p className="text-gray-300 text-lg max-w-3xl mx-auto">
-              Al usar SecondBrain aceptas estos términos. Léelos con atención
+              Al usar LumaDiary aceptas estos términos. Léelos con atención
               para comprender tus derechos y responsabilidades.
             </p>
           </div>
@@ -108,7 +108,7 @@ export default function TerminosPage() {
                 </h2>
               </div>
               <p className="text-gray-300">
-                SecondBrain se ofrece «tal cual». No somos responsables de
+                LumaDiary se ofrece «tal cual». No somos responsables de
                 pérdidas indirectas o daños que surjan del uso del servicio.
               </p>
             </div>

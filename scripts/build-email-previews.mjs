@@ -17,7 +17,7 @@ for (const kind of Object.keys(AUTH_EMAILS)) {
     email.html
       .replaceAll(
         "{{ .ConfirmationURL }}",
-        "https://app.secondbrainapp.com/reset-password",
+        "https://app.lumadiary.com/reset-password",
       )
       .replaceAll("{{ .Token }}", "123456"),
   );
@@ -45,7 +45,7 @@ for (const [name, status, cancel] of [
   );
 writeFileSync(
   "docs/email-previews/index.html",
-  '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Correos de SecondBrain</title><body style="font:18px Arial;padding:24px"><h1>Correos de SecondBrain</h1><p>Vista previa con datos ficticios. No envía correos.</p><ul>' +
+  '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Correos de LumaDiary</title><body style="font:18px Arial;padding:24px"><h1>Correos de LumaDiary</h1><p>Vista previa con datos ficticios. No envía correos.</p><ul>' +
     [
       ...Object.keys(AUTH_EMAILS),
       "feedback",

@@ -10,10 +10,10 @@
 - `src/app/[slug]/page.tsx`: statically generated guides from `src/lib/content.ts`, with distinct metadata and Article/BreadcrumbList. Unknown guides return 404 through `notFound()`.
 - `src/app/soporte`, `privacidad`, `terminos`: informative/legal pages with distinct metadata, shared header/footer and factual provider descriptions.
 - `Header.tsx`: accessible client mobile navigation with expanded/control state, Escape/focus restoration and height-limited overflow. `Footer.tsx`, `CtaSection.tsx`, `FAQSection.tsx`, `PricingSection.tsx` are server components. FAQ uses native exclusive `details/summary` and works without JavaScript.
-- `src/lib/site.ts`: canonical domain, app/signup URL, editorial revision date, metadata helper and JSON-LD escaping. The canonical public host is `www.secondbrainapp.com`, the destination of the apex redirect; verify the deployed redirect before changing it.
+- `src/lib/site.ts`: canonical domain, app/signup URL, editorial revision date, metadata helper and JSON-LD escaping. The canonical public host is `www.lumadiary.com`, the destination of the apex redirect; verify the deployed redirect before changing it.
 - `src/app/layout.tsx`: global Organization/WebSite metadata, accessible viewport allowing zoom and skip link. Page-specific software/article markup stays on the relevant page. Social images, sitemap and robots are generated routes.
 
-The public site and private app have separate Next/Tailwind versions. CTAs target `https://app.secondbrainapp.com/signup?plan=free`. Pro/Elite signups preserve their selected plan only while the server allows paid checkout; when disabled, disclose unavailability and offer free registration. Never use a cached marketing response to authorize a payment.
+The public site and private app have separate Next/Tailwind versions. CTAs target `https://app.lumadiary.com/signup?plan=free`. Pro/Elite signups preserve their selected plan only while the server allows paid checkout; when disabled, disclose unavailability and offer free registration. Never use a cached marketing response to authorize a payment.
 
 ## SEO and regression checks
 

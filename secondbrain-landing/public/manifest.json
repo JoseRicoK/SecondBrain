@@ -1,6 +1,6 @@
 {
-  "name": "SecondBrain - Diario Personal con IA",
-  "short_name": "SecondBrain",
+  "name": "LumaDiary - Diario Personal con IA",
+  "short_name": "LumaDiary",
   "description": "El diario personal más inteligente con IA conversacional, grabación de voz y análisis avanzado",
   "start_url": "/",
   "display": "standalone",

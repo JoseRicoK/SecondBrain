@@ -10,13 +10,13 @@ const inter = Inter({
 });
 export const metadata: Metadata = {
   ...pageMetadata(
-    "Diario personal con IA y voz | SecondBrain",
-    "Escribe o graba tu diario, conversa sobre tus experiencias y vuelve a lo importante. Empieza gratis con SecondBrain, sin tarjeta y desde tu navegador.",
+    "Diario personal con IA y voz | LumaDiary",
+    "Escribe o graba tu diario, conversa sobre tus experiencias y vuelve a lo importante. Empieza gratis con LumaDiary, sin tarjeta y desde tu navegador.",
   ),
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Diario personal con IA y voz | SecondBrain",
-    template: "%s | SecondBrain",
+    default: "Diario personal con IA y voz | LumaDiary",
+    template: "%s | LumaDiary",
   },
   robots: {
     index: true,
@@ -41,7 +41,7 @@ const graph = {
     {
       "@type": "Organization",
       "@id": SITE_URL + "/#organization",
-      name: "SecondBrain",
+      name: "LumaDiary",
       url: SITE_URL,
       logo: SITE_URL + "/Logo-simple-SecondBrain.png",
       contactPoint: {
@@ -54,7 +54,7 @@ const graph = {
     {
       "@type": "WebSite",
       "@id": SITE_URL + "/#website",
-      name: "SecondBrain",
+      name: "LumaDiary",
       url: SITE_URL,
       inLanguage: "es",
       publisher: { "@id": SITE_URL + "/#organization" },

@@ -153,12 +153,12 @@ export default function Auth({ onAuthSuccess, initialMode = "login" }: AuthProps
         <div className="text-center mb-8">
           <Image
             src="/image/Logo-simple-SecondBrain.png"
-            alt="SecondBrain"
+            alt="LumaDiary"
             width={60}
             height={60}
             className="mx-auto mb-4"
           />
-          <h1 className="text-2xl font-bold text-gray-800">SecondBrain</h1>
+          <h1 className="text-2xl font-bold text-gray-800">LumaDiary</h1>
           <p className="text-gray-600 mt-2">
             {isLogin ? 'Inicia sesión en tu cuenta' : 'Crea una cuenta nueva'}
           </p>

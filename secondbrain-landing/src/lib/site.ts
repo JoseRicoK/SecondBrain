@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-export const SITE_URL = "https://www.secondbrainapp.com";
-export const APP_URL = "https://app.secondbrainapp.com";
+export const SITE_URL = "https://www.lumadiary.com";
+export const APP_URL = "https://app.lumadiary.com";
 export const SIGNUP_URL = APP_URL + "/signup?plan=free";
 export const CONTENT_UPDATED = "2026-09-30";
 export function pageMetadata(
@@ -16,7 +16,7 @@ export function pageMetadata(
     openGraph: {
       type: "website",
       locale: "es_ES",
-      siteName: "SecondBrain",
+      siteName: "LumaDiary",
       title,
       description,
       url,
@@ -25,7 +25,7 @@ export function pageMetadata(
           url: SITE_URL + "/opengraph-image",
           width: 1200,
           height: 630,
-          alt: "SecondBrain, tu diario personal con IA",
+          alt: "LumaDiary, tu diario personal con IA",
         },
       ],
     },

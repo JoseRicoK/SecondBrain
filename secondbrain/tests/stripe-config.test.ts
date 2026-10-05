@@ -33,13 +33,13 @@ it("checkout requires explicit flag and all credentials", () => {
 
 it("billing return origin ignores request headers and defaults to canonical app", () => {
   vi.stubEnv("APP_BASE_URL", "");
-  expect(getBillingOrigin()).toBe("https://app.secondbrainapp.com");
+  expect(getBillingOrigin()).toBe("https://app.lumadiary.com");
 });
 it.each([
   "http://attacker.invalid",
-  "https://app.secondbrainapp.com/other",
+  "https://app.lumadiary.com/other",
   "https://user:password@app.secondbrainapp.com",
-  "https://app.secondbrainapp.com?redirect=1",
+  "https://app.lumadiary.com?redirect=1",
 ])("rejects unsafe billing origin %s", (url) => {
   vi.stubEnv("APP_BASE_URL", url);
   expect(() => getBillingOrigin()).toThrow();

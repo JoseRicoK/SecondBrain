@@ -28,7 +28,7 @@ export function isCheckoutEnabled(): boolean {
 }
 export function getBillingOrigin(): string {
   const url = new URL(
-    process.env.APP_BASE_URL || "https://app.secondbrainapp.com",
+    process.env.APP_BASE_URL || "https://app.lumadiary.com",
   );
   const local =
     ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) &&

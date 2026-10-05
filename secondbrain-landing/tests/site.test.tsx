@@ -101,7 +101,7 @@ it.each([
   );
   expect(screen.getByRole("link", { name: label })).toHaveAttribute(
     "href",
-    `https://app.secondbrainapp.com/signup?plan=${plan}`,
+    `https://app.lumadiary.com/signup?plan=${plan}`,
   );
 });
 it("mobile menu can open, navigate and close", async () => {
@@ -130,13 +130,13 @@ it("sitemap has unique canonical URLs for all actual public routes", () => {
       "/privacidad",
       "/terminos",
       "/soporte",
-    ].map((path) => `https://www.secondbrainapp.com${path}`),
+    ].map((path) => `https://www.lumadiary.com${path}`),
   );
   expect(urls.some((url) => url.includes("/en"))).toBe(false);
 });
 it("robots includes private-path exclusion and canonical sitemap", () => {
   const config = robots();
-  expect(config.sitemap).toBe("https://www.secondbrainapp.com/sitemap.xml");
+  expect(config.sitemap).toBe("https://www.lumadiary.com/sitemap.xml");
   const rules = config.rules as any[];
   expect(rules.find((rule) => rule.userAgent === "*")).toMatchObject({
     allow: "/",

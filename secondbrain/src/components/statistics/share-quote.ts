@@ -71,7 +71,7 @@ export const generateInstagramStoryImage = (quote: string): Promise<Blob> => {
     ctx.font =
       '32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.fillText("SecondBrain", canvas.width / 2, canvas.height - 100);
+    ctx.fillText("LumaDiary", canvas.width / 2, canvas.height - 100);
 
     canvas.toBlob((blob) => {
       if (blob) {
@@ -89,7 +89,7 @@ export async function shareQuote(quote: string) {
     type: "image/png",
   });
   if (navigator.share && navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ title: "Mi cita de SecondBrain", files: [file] });
+    await navigator.share({ title: "Mi cita de LumaDiary", files: [file] });
   } else {
     const url = URL.createObjectURL(imageBlob);
     try {

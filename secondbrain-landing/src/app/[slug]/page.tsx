@@ -28,7 +28,7 @@ export default async function GuidePage({ params }: Props) {
         headline: guide.title,
         description: guide.description,
         dateModified: CONTENT_UPDATED,
-        author: { "@type": "Organization", name: "SecondBrain" },
+        author: { "@type": "Organization", name: "LumaDiary" },
         publisher: { "@id": SITE_URL + "/#organization" },
         mainEntityOfPage: url,
         inLanguage: "es",
@@ -57,7 +57,7 @@ export default async function GuidePage({ params }: Props) {
           / Guías
         </nav>
         <p className="mt-8 text-sm text-purple-300">
-          Guía de SecondBrain · Actualizada el 30 de septiembre de 2026
+          Guía de LumaDiary · Actualizada el 30 de septiembre de 2026
         </p>
         <h1 className="mt-4 text-4xl font-bold leading-tight text-white sm:text-5xl">
           {guide.title}
