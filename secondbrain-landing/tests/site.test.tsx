@@ -81,13 +81,13 @@ it.each([
         verified: true,
         limits: {
           free: {
-            personalChatMessages: 5,
-            personChatMessages: 10,
+            personalChatMessages: 10,
+            personChatMessages: 50,
             statisticsAccess: 0,
           },
           pro: {
-            personalChatMessages: 30,
-            personChatMessages: 100,
+            personalChatMessages: 50,
+            personChatMessages: 150,
             statisticsAccess: 10,
           },
           elite: {

@@ -61,8 +61,10 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     let mounted = true;
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    let pendingWork: ReturnType<typeof setTimeout> | undefined;
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
+      clearTimeout(pendingWork);
       const request = ++authRevision.current;
       if (!session?.user) {
         setUser(null);
@@ -78,24 +80,33 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         setUser(null);
         setUserProfile(null);
         setIsGoogleUser(false);
-        await supabase.auth.signOut();
-        if (mounted && authRevision.current === request) setLoading(false);
+        setLoading(false);
+        pendingWork = setTimeout(() => {
+          if (mounted && authRevision.current === request) {
+            void supabase.auth.signOut().catch(error => console.error('Error cerrando sesión no verificada:', error));
+          }
+        }, 0);
         return;
       }
       const appUser = toAppUser(session.user);
       setUser(appUser);
       setUserProfile(null);
       setIsGoogleUser(provider === 'google');
-      try {
-        const profile = await loadProfile(appUser, provider);
-        if (mounted && authRevision.current === request) setUserProfile(profile);
-      } catch (error) {
-        console.error('Error gestionando perfil de usuario:', error);
-        if (mounted && authRevision.current === request) setUserProfile(null);
-      }
-      if (mounted && authRevision.current === request) setLoading(false);
+      // Supabase holds its auth lock during this callback. Profile queries must
+      // start after it returns so token refresh/getSession cannot deadlock.
+      pendingWork = setTimeout(async () => {
+        if (!mounted || authRevision.current !== request) return;
+        try {
+          const profile = await loadProfile(appUser, provider);
+          if (mounted && authRevision.current === request) setUserProfile(profile);
+        } catch (error) {
+          console.error('Error gestionando perfil de usuario:', error);
+          if (mounted && authRevision.current === request) setUserProfile(null);
+        }
+        if (mounted && authRevision.current === request) setLoading(false);
+      }, 0);
     });
-    return () => { mounted = false; authRevision.current++; listener.subscription.unsubscribe(); };
+    return () => { mounted = false; clearTimeout(pendingWork); authRevision.current++; listener.subscription.unsubscribe(); };
   }, []);
 
   const refreshUserProfile = async () => {

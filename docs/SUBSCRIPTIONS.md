@@ -30,8 +30,8 @@ Los planes conservan estas condiciones:
 
 | Plan     | Chat personal/mes | Chat de personas/mes | Informes/mes |
 | -------- | ----------------: | -------------------: | -----------: |
-| Gratuito |                 5 |                   10 |            0 |
-| Pro      |                30 |                  100 |           10 |
+| Gratuito |                10 |                   50 |            0 |
+| Pro      |                50 |                  150 |           10 |
 | Elite    |               100 |                  500 |   Ilimitados |
 
 Transcripción, personas y estilización siguen disponibles según su comportamiento anterior. Todos los planes utilizan los mismos modelos de IA; las diferencias implementadas son cuotas y acceso a estadísticas. La facturación mensual y el mes de cuota son conceptos distintos: la cuota se renueva el día 1 a las 00:00 UTC. Cambiar de plan conserva el consumo ya realizado; no duplica la cuota ni borra historial. El catálogo de la base es la autoridad para cuotas del servidor y la app; la landing consulta y valida sus cuotas publicadas, con revalidación cada 60 segundos y fallback identificado que mantiene el pago cerrado.

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import Home from '@/app/page';
@@ -20,7 +20,9 @@ vi.mock('@/components/Settings', () => ({ default: () => null }));
 vi.mock('@/components/StatisticsWrapper', () => ({ default: () => null }));
 vi.mock('@/components/PeopleManager', () => ({ default: () => null }));
 vi.mock('next/image', () => ({ default: (props: any) => <img alt={props.alt} /> }));
+let activeRecorder: Recorder;
 class Recorder {
+  constructor() { activeRecorder = this; }
   state = 'inactive'; mimeType = 'audio/webm;codecs=opus';
   ondataavailable: any; onstop: any;
   start() { this.state = 'recording'; }
@@ -82,4 +84,37 @@ it('does not apply a delayed transcription to another diary date', async () => {
   await act(async () => resolve({ text: 'Texto de la fecha anterior.', audioUrl: 'url' }));
   expect(mock.save).not.toHaveBeenCalled();
   expect(screen.queryByRole('button', { name: 'Reintentar transcripción' })).toBeNull();
+});
+
+it('records beyond four minutes, stops at ten and automatically transcribes the complete final blob once', async () => {
+  vi.useFakeTimers();
+  mock.transcribe.mockResolvedValue({ text: 'Todo el audio, incluido el final.', audioUrl: 'url' });
+  render(<Home />);
+  await act(async () => fireEvent.click(screen.getByTitle('Iniciar grabación')));
+  activeRecorder.ondataavailable({ data: new Blob([new Uint8Array(1000)]) });
+  await act(async () => vi.advanceTimersByTime(599_999));
+  expect(activeRecorder.state).toBe('recording');
+  expect(mock.transcribe).not.toHaveBeenCalled();
+  await act(async () => vi.advanceTimersByTime(1));
+  expect(activeRecorder.state).toBe('inactive');
+  expect(mock.stop).toHaveBeenCalledOnce();
+  expect(mock.transcribe).toHaveBeenCalledOnce();
+  expect(mock.transcribe.mock.calls[0][0].size).toBe(3000);
+  expect(screen.getByRole('status')).toHaveTextContent('10 minutos');
+  expect(mock.save).toHaveBeenCalledWith('Todo el audio, incluido el final.', 'u', []);
+  await act(async () => vi.advanceTimersByTime(60_000));
+  expect(mock.transcribe).toHaveBeenCalledOnce();
+  vi.useRealTimers();
+});
+it('cancels the duration timer when the diary date changes', async () => {
+  vi.useFakeTimers();
+  const { rerender } = render(<Home />);
+  await act(async () => fireEvent.click(screen.getByTitle('Iniciar grabación')));
+  mock.date = '2026-10-02';
+  rerender(<Home />);
+  await act(async () => vi.advanceTimersByTime(600_000));
+  expect(mock.stop).toHaveBeenCalled();
+  expect(mock.transcribe).not.toHaveBeenCalled();
+  expect(screen.getByRole('status')).not.toHaveTextContent('Se han alcanzado');
+  vi.useRealTimers();
 });

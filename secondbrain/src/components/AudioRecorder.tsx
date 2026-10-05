@@ -3,6 +3,7 @@ import { useDiaryStore } from '@/lib/store';
 import { FaMicrophone, FaStop, FaPlay, FaPause } from 'react-icons/fa';
 import { saveAudioTranscription } from '@/lib/supabase-operations';
 import { transcribeAudio } from '@/lib/transcription-client';
+import { RECORDING_OPTIONS, RECORDING_LIMIT_NOTICE, recordingTime, startLimitedRecording } from '@/lib/audio-recording';
 
 
 // Este componente actualmente no necesita props
@@ -11,6 +12,9 @@ type AudioRecorderProps = Record<string, never>;
 const AudioRecorder: React.FC<AudioRecorderProps> = () => {
   const { currentEntry, fetchTranscriptions } = useDiaryStore();
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordingNotice, setRecordingNotice] = useState<string | null>(null);
+  const autoTranscribe = useRef(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,8 +24,10 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
-  const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const cancelRecordingTimer = useRef<(() => void) | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const activeEntryId = useRef(currentEntry?.id);
+  activeEntryId.current = currentEntry?.id;
 
   useEffect(() => {
     if (!audioBlob) { setAudioUrl(null); return; }
@@ -30,24 +36,39 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
     return () => URL.revokeObjectURL(url);
   }, [audioBlob]);
 
-  useEffect(() => () => {
-    if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
-    const recorder = mediaRecorderRef.current;
-    if (recorder && recorder.state !== 'inactive') {
-      recorder.onstop = null;
-      recorder.ondataavailable = null;
-      recorder.stop();
-    }
-    streamRef.current?.getTracks().forEach(track => track.stop());
-  }, []);
+  useEffect(() => {
+    setAudioBlob(null);
+    setIsRecording(false);
+    setRecordingNotice(null);
+    autoTranscribe.current = false;
+    return () => {
+      cancelRecordingTimer.current?.();
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state !== 'inactive') {
+        recorder.onstop = null;
+        recorder.ondataavailable = null;
+        recorder.stop();
+      }
+      streamRef.current?.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    };
+  }, [currentEntry?.id]);
   
   // Iniciar grabación
   const startRecording = async () => {
-    const MAX_RECORDING_DURATION = 5 * 60 * 1000; // 5 minutos
+    const entryId = activeEntryId.current;
+    if (!entryId) return;
+    if (isProcessing || audioBlob || mediaRecorderRef.current?.state === 'recording') return;
+    setRecordingNotice(null);
+    autoTranscribe.current = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (activeEntryId.current !== entryId) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
       streamRef.current = stream;
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream, RECORDING_OPTIONS);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       
@@ -58,6 +79,8 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
       };
       
       mediaRecorder.onstop = () => {
+        cancelRecordingTimer.current?.();
+        setIsRecording(false);
         const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || audioChunksRef.current[0]?.type || 'audio/webm' });
         setAudioBlob(audioBlob);
         
@@ -66,15 +89,15 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
         streamRef.current = null;
       };
       
-      mediaRecorder.start();
+      cancelRecordingTimer.current = startLimitedRecording(mediaRecorder, setRecordingSeconds, () => {
+        autoTranscribe.current = true;
+        setRecordingNotice(RECORDING_LIMIT_NOTICE);
+      });
       setIsRecording(true);
       setError(null);
-      recordingTimeoutRef.current = setTimeout(() => {
-        if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-        setIsRecording(false);
-        recordingTimeoutRef.current = null;
-      }, MAX_RECORDING_DURATION);
     } catch (err) {
+      streamRef.current?.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
       console.error('Error al iniciar la grabación:', err);
       setError('No se pudo acceder al micrófono. Verifica los permisos.');
     }
@@ -82,13 +105,10 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
   
   // Detener grabación
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    cancelRecordingTimer.current?.();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      if (recordingTimeoutRef.current) {
-        clearTimeout(recordingTimeoutRef.current);
-        recordingTimeoutRef.current = null;
-      }
     }
   };
   
@@ -120,6 +140,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
     
     try {
       const data = await transcribeAudio(audioBlob);
+      if (activeEntryId.current !== currentEntry.id) return;
       
       // Guardar la transcripción en Supabase
       const saved = await saveAudioTranscription(
@@ -128,6 +149,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
         data.text
       );
       if (!saved) throw new Error('No se pudo guardar la transcripción');
+      if (activeEntryId.current !== currentEntry.id) return;
       
       // Actualizar la lista de transcripciones
       fetchTranscriptions();
@@ -141,6 +163,13 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
     }
   };
 
+  useEffect(() => {
+    if (audioBlob && autoTranscribe.current) {
+      autoTranscribe.current = false;
+      void processTranscription();
+    }
+  }, [audioBlob]);
+
   return (
     <div className="bg-white rounded-lg shadow-xl p-6 sm:p-8 space-y-6">
       <h2 className="text-2xl font-semibold text-slate-800 mb-2">
@@ -153,7 +182,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
           {!isRecording ? (
             <button
               onClick={startRecording}
-              disabled={!currentEntry || isProcessing}
+              disabled={!currentEntry || isProcessing || Boolean(audioBlob)}
               className="p-4 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
               title="Iniciar grabación"
             >
@@ -209,6 +238,8 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
           />
         )}
         
+        {recordingNotice && <p role="status" className="text-sm text-slate-600 text-center">{recordingNotice}</p>}
+
         {/* Mensaje de error */}
         {error && (
           <div className="w-full max-w-md p-3 bg-red-100 border border-red-300 text-red-700 rounded-md text-sm text-center">
@@ -221,10 +252,10 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
           {!currentEntry 
             ? "Necesitas crear o seleccionar una entrada para grabar audio."
             : isRecording 
-              ? "Grabando... Haz clic en detener cuando termines."
+              ? `Grabando ${recordingTime(recordingSeconds)} / 10:00. Se detendrá automáticamente.`
               : audioBlob 
                 ? "Puedes reproducir la grabación o transcribir el audio."
-                : "Haz clic en el micrófono para comenzar a grabar (máximo 5 minutos)."}
+                : "Haz clic en el micrófono para comenzar a grabar (máximo 10 minutos)."}
         </p>
       </div>
     </div>

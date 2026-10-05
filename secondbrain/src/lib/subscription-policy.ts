@@ -27,8 +27,8 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     hasAdvancedFeatures: false,
     hasPersonalChat: true,
     hasStatistics: false,
-    personalChatMessages: 5, // 5 mensajes de chat personal por mes
-    personChatMessages: 10, // 10 mensajes de chat con personas por mes
+    personalChatMessages: 10, // 10 mensajes de chat personal por mes
+    personChatMessages: 50, // 50 mensajes de chat con personas por mes
     statisticsAccess: 0, // No puede acceder a estadísticas
   },
   pro: {
@@ -37,8 +37,8 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     hasAdvancedFeatures: true,
     hasPersonalChat: true,
     hasStatistics: true,
-    personalChatMessages: 30, // 30 mensajes de chat personal por mes
-    personChatMessages: 100, // 100 mensajes de chat con personas por mes
+    personalChatMessages: 50, // 50 mensajes de chat personal por mes
+    personChatMessages: 150, // 150 mensajes de chat con personas por mes
     statisticsAccess: 10, // 10 accesos a estadísticas por mes
   },
   elite: {

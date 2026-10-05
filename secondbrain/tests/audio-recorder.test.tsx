@@ -137,18 +137,28 @@ it("failed persistence keeps the preview and reports an error", async () => {
   expect(mock.refresh).not.toHaveBeenCalled();
   expect(screen.getByTitle("Reproducir")).toBeVisible();
 });
-it("automatically stops recording after five minutes", async () => {
+it("automatically stops at ten minutes and transcribes all chunks including the final one", async () => {
   vi.useFakeTimers();
+  vi.mocked(fetch).mockResolvedValue(new Response('{"text":"Audio completo","audioUrl":"url"}'));
   render(<AudioRecorder />);
   await act(async () => {
     fireEvent.click(screen.getByTitle("Iniciar grabación"));
   });
   expect(recorder.state).toBe("recording");
   await act(() => {
-    vi.advanceTimersByTime(5 * 60 * 1000);
+    vi.advanceTimersByTime(10 * 60 * 1000 - 1);
   });
+  expect(recorder.state).toBe("recording");
+  recorder.ondataavailable({ data: new Blob([new Uint8Array(1000)]) });
+  await act(async () => { vi.advanceTimersByTime(1); });
   expect(recorder.state).toBe("inactive");
-  expect(mock.trackStop).toHaveBeenCalled();
+  expect(mock.trackStop).toHaveBeenCalledOnce();
+  expect(screen.getByRole("status")).toHaveTextContent("10 minutos");
+  expect(fetch).toHaveBeenCalledOnce();
+  const audio = (vi.mocked(fetch).mock.calls[0][1]?.body as FormData).get("file") as File;
+  expect(audio.size).toBe(3000);
+  vi.useRealTimers();
+  await waitFor(() => expect(mock.save).toHaveBeenCalledWith("e", "url", "Audio completo"));
 });
 it("unmount stops a running microphone and cleans preview URLs", async () => {
   const { unmount } = render(<AudioRecorder />);

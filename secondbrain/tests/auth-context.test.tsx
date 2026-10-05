@@ -38,6 +38,7 @@ const user = {
 let notify: Function;
 beforeEach(() => {
   for (const fn of Object.values(mock)) fn.mockReset();
+  mock.signOut.mockResolvedValue({ error: null });
   mock.listen.mockImplementation((callback) => {
     notify = callback;
     return { data: { subscription: { unsubscribe: mock.unsubscribe } } };
@@ -71,6 +72,7 @@ it("initializes anonymous state and unsubscribes on unmount", async () => {
 it("loads identity and profile without replacing the subscription", async () => {
   const { result } = mount();
   await act(() => notify("SIGNED_IN", { user }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current).toMatchObject({
     user: { uid: "u", displayName: "Ana" },
     userProfile: { uid: "u" },
@@ -105,7 +107,7 @@ it("rejects an unverified email user before loading a profile", async () => {
   await act(() =>
     notify("SIGNED_IN", { user: { ...user, email_confirmed_at: null } }),
   );
-  expect(mock.signOut).toHaveBeenCalled();
+  await waitFor(() => expect(mock.signOut).toHaveBeenCalled());
   expect(mock.createProfile).not.toHaveBeenCalled();
   expect(result.current.user).toBeNull();
 });
@@ -113,6 +115,7 @@ it("does not hang if profile loading fails", async () => {
   mock.createProfile.mockRejectedValue(new Error("offline"));
   const { result } = mount();
   await act(() => notify("SIGNED_IN", { user }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current).toMatchObject({
     user: { uid: "u" },
     userProfile: null,
@@ -140,6 +143,7 @@ it("signout clears account, profile and Google state even on failure", async () 
 it("refreshes the current profile", async () => {
   const { result } = mount();
   await act(() => notify("SIGNED_IN", { user }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
   mock.getProfile.mockResolvedValue({
     uid: "u",
     subscription: { plan: "pro" },
@@ -157,6 +161,7 @@ it("a profile response cannot restore another account after signout", async () =
   await act(async () => {
     pending = notify("SIGNED_IN", { user });
   });
+  await waitFor(() => expect(mock.getProfile).toHaveBeenCalled());
   await act(() => result.current.signOut());
   await act(async () => {
     resolve({ uid: "u" });
@@ -167,4 +172,21 @@ it("a profile response cannot restore another account after signout", async () =
     userProfile: null,
     isGoogleUser: false,
   });
+});
+
+it("returns synchronously before starting profile queries under the auth lock", async () => {
+  const { result } = mount();
+  act(() => {
+    expect(notify("TOKEN_REFRESHED", { user })).toBeUndefined();
+    expect(mock.getProfile).not.toHaveBeenCalled();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.userProfile).toMatchObject({ uid: "u" });
+});
+it("cancels deferred profile work when unmounted", async () => {
+  const { unmount } = mount();
+  act(() => notify("SIGNED_IN", { user }));
+  unmount();
+  await new Promise(resolve => setTimeout(resolve, 10));
+  expect(mock.getProfile).not.toHaveBeenCalled();
 });

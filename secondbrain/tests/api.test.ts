@@ -920,6 +920,14 @@ describe("AI, audio and statistics", () => {
     expect(response.status).toBe(413);
     expect(mock.transcription).not.toHaveBeenCalled();
   });
+  it("rejects audio that would exceed the hosting response limit after base64 encoding", async () => {
+    const form = new FormData();
+    form.set("file", new File([new Uint8Array(3 * 1024 * 1024 + 1)], "large.webm", { type: "audio/webm" }));
+    const response = await (await load("transcribe")).POST(new Request("http://localhost", { method: "POST", body: form }));
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ code: "AUDIO_TOO_LARGE" });
+    expect(mock.transcription).not.toHaveBeenCalled();
+  });
   it("does not accept empty transcription", async () => {
     mock.transcription.mockResolvedValue({ text: " " });
     const form = new FormData();

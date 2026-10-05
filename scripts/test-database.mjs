@@ -80,6 +80,10 @@ try {
       "secondbrain/supabase/migrations/20261002220537_admin_diary_reanalysis.sql",
       "utf8",
     ) +
+    readFileSync(
+      "secondbrain/supabase/migrations/20261005183128_increase_monthly_chat_limits.sql",
+      "utf8",
+    ) +
     "begin;\n" +
     readFileSync("tests/database/security.sql", "utf8") +
     readFileSync("tests/database/billing.sql", "utf8") +
@@ -149,9 +153,9 @@ try {
     ),
   );
   const allowed = results.filter((result) => result.allowed);
-  if (allowed.length !== 5)
+  if (allowed.length !== 10)
     throw new Error(
-      `Concurrency quota failure: ${allowed.length} requests allowed instead of 5`,
+      `Concurrency quota failure: ${allowed.length} requests allowed instead of 10`,
     );
   await Promise.all(
     allowed.map((result) =>
@@ -165,10 +169,10 @@ try {
       "select public.read_monthly_usage('11111111-1111-4111-8111-111111111111');",
     ),
   );
-  if (counters[0].used !== 5 || counters[0].reserved !== 0)
+  if (counters[0].used !== 10 || counters[0].reserved !== 0)
     throw new Error("Concurrent completion lost a usage update");
   process.stdout.write(
-    "Concurrency: 24 parallel requests, exactly 5 allowed and charged.\n",
+    "Concurrency: 24 parallel requests, exactly 10 allowed and charged.\n",
   );
   const checkoutClaims = await Promise.all(
     Array.from({ length: 24 }, () =>

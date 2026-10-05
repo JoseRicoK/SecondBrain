@@ -1,4 +1,5 @@
 import { authenticatedFetch } from './authenticated-fetch';
+import { MAX_TRANSCRIPTION_BYTES } from './audio-recording';
 
 export function recordingFilename(type: string) {
   const extensions: Record<string, string> = {
@@ -11,6 +12,9 @@ export function recordingFilename(type: string) {
 }
 
 export async function transcribeAudio(audio: Blob) {
+  if (audio.size > MAX_TRANSCRIPTION_BYTES) {
+    throw new Error('El audio es demasiado grande para enviarlo. Tu grabación se conserva: descárgala antes de salir.');
+  }
   const form = new FormData();
   form.append('file', audio, recordingFilename(audio.type));
   const response = await authenticatedFetch('/api/transcribe', {

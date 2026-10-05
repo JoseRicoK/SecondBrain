@@ -406,6 +406,10 @@ export default function StatisticsDashboard({
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
                   data={emotionTimeline}
+                  // Recharts rounds bar widths down; half-pixel overlap closes
+                  // the fractional seams between consecutive columns.
+                  barCategoryGap={-0.5}
+                  barGap={0}
                   margin={{ top: 20, right: 10, left: -20, bottom: 5 }}
                 >
                   <CartesianGrid stroke="#edeaf4" vertical={false} />
@@ -443,7 +447,6 @@ export default function StatisticsDashboard({
                       stackId="emotions"
                       fill={e.color}
                       fillOpacity={visible.includes(e.key) ? 1 : 0.18}
-                      maxBarSize={56}
                       isAnimationActive={!preview}
                     />
                   ))}

@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { AI_MODELS } from '@/lib/ai-models';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { MAX_TRANSCRIPTION_BYTES } from '@/lib/audio-recording';
+
+export const maxDuration = 180;
 
 export async function POST(request: Request) {
   try {
@@ -42,8 +45,8 @@ export async function POST(request: Request) {
       );
     }
 
-    if (audioFile.size > 25 * 1024 * 1024) {
-      return NextResponse.json({ error: 'El archivo de audio supera el máximo de 25 MB.' }, { status: 413 });
+    if (audioFile.size > MAX_TRANSCRIPTION_BYTES) {
+      return NextResponse.json({ error: 'El audio es demasiado grande para procesarlo. Conserva o descarga la grabación.', code: 'AUDIO_TOO_LARGE' }, { status: 413 });
     }
 
     // Convertir File a Buffer para enviarlo a OpenAI
@@ -63,7 +66,7 @@ export async function POST(request: Request) {
       ? new File([audioFile], `recording.${extension}`, { type: audioFile.type })
       : audioFile;
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 150_000, maxRetries: 0 });
     const response = await openai.audio.transcriptions.create({
       file: transcriptionFile,
       model: AI_MODELS.transcription,

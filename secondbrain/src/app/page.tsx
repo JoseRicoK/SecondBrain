@@ -2,6 +2,7 @@
 
 import { authenticatedFetch } from "@/lib/authenticated-fetch";
 import { recordingFilename, transcribeAudio } from "@/lib/transcription-client";
+import { RECORDING_OPTIONS, RECORDING_LIMIT_NOTICE, recordingTime, startLimitedRecording } from "@/lib/audio-recording";
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
@@ -64,6 +65,9 @@ export default function Home() {
   const [content, setContent] = useState("");
   const [secondaryContent, setSecondaryContent] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordingNotice, setRecordingNotice] = useState<string | null>(null);
+  const cancelRecordingTimer = useRef<(() => void) | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -93,6 +97,8 @@ export default function Home() {
   latestContent.current = content;
 
   useEffect(() => {
+    cancelRecordingTimer.current?.();
+    setRecordingNotice(null);
     setAudioBlob(null);
     attemptedAudio.current = null;
     const recorder = mediaRecorder.current;
@@ -104,6 +110,7 @@ export default function Home() {
     currentStream.current = null;
     setIsRecording(false);
     return () => {
+      cancelRecordingTimer.current?.();
       const activeRecorder = mediaRecorder.current;
       if (activeRecorder && activeRecorder.state !== "inactive") {
         activeRecorder.onstop = null;
@@ -320,10 +327,11 @@ export default function Home() {
   };
 
   const startRecording = async () => {
-    if (audioBlob || transcriptionPending.current) return;
+    if (audioBlob || transcriptionPending.current || mediaRecorder.current?.state === 'recording') return;
     const context = activeRecordingContext.current;
     console.log("📝 DIARY: Iniciando grabación...");
     setError(null);
+    setRecordingNotice(null);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -331,9 +339,9 @@ export default function Home() {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
-      const recorder = new MediaRecorder(stream);
+      currentStream.current = stream;
+      const recorder = new MediaRecorder(stream, RECORDING_OPTIONS);
       mediaRecorder.current = recorder;
-      currentStream.current = stream; // Almacenar referencia del stream
       audioChunks.current = [];
 
       recorder.ondataavailable = (event) => {
@@ -343,6 +351,8 @@ export default function Home() {
       };
 
       recorder.onstop = () => {
+        cancelRecordingTimer.current?.();
+        setIsRecording(false);
         const audioBlob = new Blob(audioChunks.current, {
           type:
             recorder.mimeType || audioChunks.current[0]?.type || "audio/webm",
@@ -357,9 +367,14 @@ export default function Home() {
         }
       };
 
-      recorder.start();
+      cancelRecordingTimer.current = startLimitedRecording(recorder, setRecordingSeconds, () => {
+        setRecordingNotice(RECORDING_LIMIT_NOTICE);
+      });
       setIsRecording(true);
     } catch (error) {
+      cancelRecordingTimer.current?.();
+      currentStream.current?.getTracks().forEach(track => track.stop());
+      currentStream.current = null;
       console.error("📝 DIARY: Error al acceder al micrófono:", error);
       setError("Error al acceder al micrófono");
     }
@@ -367,7 +382,8 @@ export default function Home() {
 
   const stopRecording = () => {
     console.log("📝 DIARY: Deteniendo grabación...");
-    if (mediaRecorder.current && isRecording) {
+    cancelRecordingTimer.current?.();
+    if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
       mediaRecorder.current.stop();
       setIsRecording(false);
     }
@@ -867,6 +883,9 @@ export default function Home() {
 
                   {/* Contenido principal mejorado con fondo unificado */}
                   <div className="flex-1 bg-gradient-to-r from-indigo-50 to-purple-50 overflow-y-auto">
+                    <p role="status" className="mx-4 mb-4 text-sm text-slate-600">
+                      {isRecording ? `Grabando ${recordingTime(recordingSeconds)} / 10:00 · Se detendrá y transcribirá automáticamente.` : recordingNotice || 'Máximo 10 minutos por grabación. Al detenerla, se transcribe automáticamente.'}
+                    </p>
                     {/* Mensajes de error mejorados */}
                     {(error || storeError) && (
                       <div

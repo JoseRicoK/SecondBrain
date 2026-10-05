@@ -654,6 +654,25 @@ test("plan cards can be selected using a keyboard while payments stay disabled",
     page.getByText(/Los pagos estarán disponibles próximamente/),
   ).toBeVisible();
   await noHorizontalOverflow(page);
+  await expect(
+    page.getByRole("heading", { name: /Un espacio para ti/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("10 mensajes de chat personal por mes", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("150 mensajes con personas por mes", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `output/subscription-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 320, height: 568 });
+  await noHorizontalOverflow(page);
+  await page.screenshot({
+    path: `output/subscription-narrow-${test.info().project.name}.png`,
+    fullPage: true,
+  });
 });
 
 test("statistics AI reports require an explicit action and charge exactly once", async ({

@@ -1,12 +1,13 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-const auth = vi.hoisted(() => ({ getUser: vi.fn(), getSession: vi.fn() }));
+const auth = vi.hoisted(() => ({ getUser: vi.fn(), getSession: vi.fn(), refreshSession: vi.fn() }));
 vi.mock("@/lib/supabase", () => ({ supabase: { auth } }));
 import { getAuthenticatedUser, getRequestUser } from "@/lib/api-auth";
 import { authenticatedFetch } from "@/lib/authenticated-fetch";
 beforeEach(() => {
   auth.getUser.mockReset();
   auth.getSession.mockReset();
+  auth.refreshSession.mockReset();
 });
 it("requires a token and validates it through Supabase", async () => {
   expect(await getAuthenticatedUser()).toBeNull();
@@ -88,4 +89,30 @@ it("replaces forged authorization while preserving request options", async () =>
   expect(init).toMatchObject({ method: "POST", body: "{}" });
   expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer real");
   expect(new Headers(init?.headers).get("X-Custom")).toBe("yes");
+});
+
+it("refreshes a rejected session and retries once under the same account", async () => {
+  auth.getSession.mockResolvedValue({ data: { session: { access_token: "old", user: { id: "u" } } } });
+  auth.refreshSession.mockResolvedValue({ data: { session: { access_token: "new", user: { id: "u" } } }, error: null });
+  vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 401 })).mockResolvedValueOnce(new Response("{}"));
+  const response = await authenticatedFetch("/api/subscription/status", { method: "POST", body: "{}" });
+  expect(response.ok).toBe(true);
+  expect(auth.refreshSession).toHaveBeenCalledOnce();
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(new Headers(vi.mocked(fetch).mock.calls[1][1]?.headers).get("Authorization")).toBe("Bearer new");
+});
+it.each(["failed", "switched", "still rejected"])("does not bypass an invalid session: %s", async mode => {
+  auth.getSession.mockResolvedValue({ data: { session: { access_token: "old", user: { id: "u" } } } });
+  auth.refreshSession.mockResolvedValue({ data: { session: mode === "failed" ? null : { access_token: "new", user: { id: mode === "switched" ? "other" : "u" } } }, error: mode === "failed" ? new Error("revoked") : null });
+  vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 401 }));
+  expect((await authenticatedFetch("/api/private")).status).toBe(401);
+  expect(fetch).toHaveBeenCalledTimes(mode === "still rejected" ? 2 : 1);
+  expect(auth.refreshSession).toHaveBeenCalledOnce();
+});
+it.each([403, 429])("does not refresh or bypass plan/quota rejection %s", async status => {
+  auth.getSession.mockResolvedValue({ data: { session: { access_token: "t" } } });
+  vi.mocked(fetch).mockResolvedValue(new Response(null, { status }));
+  expect((await authenticatedFetch("/api/private")).status).toBe(status);
+  expect(auth.refreshSession).not.toHaveBeenCalled();
+  expect(fetch).toHaveBeenCalledOnce();
 });
