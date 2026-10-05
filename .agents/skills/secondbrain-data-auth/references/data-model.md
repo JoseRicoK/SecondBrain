@@ -34,7 +34,7 @@ RLS scopes rows to `auth.uid()` or, for transcriptions, the entry owner. Inspect
 
 ## Auth behavior
 
-Email/password, Google OAuth, email verification, password reset, and account deletion use Supabase Auth. The reset helper sends an explicit `redirectTo` based on the current origin. A Google-linked account may have `email` as its primary provider while `app_metadata.providers` includes `google`; use that provider array when deciding whether Google is available.
+Email/password, Google OAuth, email verification, password reset, and account deletion use Supabase Auth. Production Site URL is `https://app.lumadiary.com`; allowlist its root and `/reset-password` exactly. Keep `https://app.secondbrainapp.com/**` during the domain migration. The existing Google client and Supabase callback remain unchanged. Hosted email subjects/templates use LumaDiary; verify the entire editor contents after saving, because replacing only a visible editor slice can leave old HTML behind. The reset helper sends an explicit `redirectTo` based on the current origin. A Google-linked account may have `email` as its primary provider while `app_metadata.providers` includes `google`; use that provider array when deciding whether Google is available.
 
 For a new private route: authenticate first; validate payload shape and size; derive or check the owner from the verified token; fetch only owner-scoped resources; enforce plan/usage on the server when it has a cost; return no personal data in logs or error details. Webhooks instead verify the provider signature using the raw body.
 
