@@ -33,7 +33,7 @@ export default function Header() {
       >
         <Link href="/" className="flex items-center gap-2 font-bold text-white">
           <Image
-            src="/Logo-simple-SecondBrain.png"
+            src="/brand/logo.png"
             alt=""
             width={32}
             height={32}

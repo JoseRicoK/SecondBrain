@@ -136,7 +136,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userId, onClose, onSettingsClick, onS
         <div className="flex items-center space-x-3 mb-2">
           <div className="flex items-center justify-center">
             <Image 
-              src="/image/Logo-simple-SecondBrain-morado.png" 
+              src="/brand/logo.png"
               alt="LumaDiary Logo"
               width={40} 
               height={40} 

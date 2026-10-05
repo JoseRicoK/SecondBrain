@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import {
   BookOpen,
   Mic,
@@ -50,7 +51,7 @@ export default function ProductPreview() {
         </div>
         <div className="product-topbar">
           <span className="product-brand">
-            <Brain size={23} />
+            <Image src="/brand/logo.png" alt="" width={23} height={23} />
             LumaDiary
           </span>
           <span className="demo-user">A</span>

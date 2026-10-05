@@ -152,7 +152,7 @@ export default function Auth({ onAuthSuccess, initialMode = "login" }: AuthProps
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <Image
-            src="/image/Logo-simple-SecondBrain.png"
+            src="/brand/logo.png"
             alt="LumaDiary"
             width={60}
             height={60}

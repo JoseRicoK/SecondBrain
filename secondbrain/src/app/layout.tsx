@@ -35,22 +35,22 @@ export const metadata: Metadata = {
         sizes: 'any',
       },
       {
-        url: '/image/Logo-simple-SecondBrain-morado.png',
+        url: '/brand/icon-32.png',
         type: 'image/png',
         sizes: '32x32',
       },
       {
-        url: '/image/Logo-simple-SecondBrain-morado.png',
+        url: '/brand/icon-16.png',
         type: 'image/png',
         sizes: '16x16',
       }
     ],
     apple: {
-      url: '/image/Logo-simple-SecondBrain-morado.png',
+      url: '/brand/icon-180.png',
       sizes: '180x180',
       type: 'image/png',
     },
-    shortcut: '/image/Logo-simple-SecondBrain-morado.png',
+    shortcut: '/brand/icon-32.png',
   },
 };
 

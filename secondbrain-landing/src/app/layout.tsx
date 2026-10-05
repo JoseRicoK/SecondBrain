@@ -28,7 +28,7 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  icons: { icon: "/favicon.ico", apple: "/Logo-simple-SecondBrain.png" },
+  icons: { icon: "/favicon.ico", apple: "/brand/icon-180.png" },
 };
 export const viewport: Viewport = {
   width: "device-width",
@@ -43,7 +43,7 @@ const graph = {
       "@id": SITE_URL + "/#organization",
       name: "LumaDiary",
       url: SITE_URL,
-      logo: SITE_URL + "/Logo-simple-SecondBrain.png",
+      logo: SITE_URL + "/brand/logo.png",
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer support",

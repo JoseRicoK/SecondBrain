@@ -103,7 +103,7 @@ function ResetPasswordForm() {
         <div className="text-center mb-8">
           <div className="mx-auto mb-4 w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center">
             <Image
-              src="/image/Logo-simple-SecondBrain.png"
+              src="/brand/logo.png"
               alt="LumaDiary Logo"
               width={48}
               height={48}

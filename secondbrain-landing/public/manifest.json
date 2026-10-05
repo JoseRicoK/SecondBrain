@@ -9,27 +9,23 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/Logo-simple-SecondBrain.png",
+      "src": "/brand/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     },
     {
-      "src": "/Logo-entero-SecondBrain.png", 
+      "src": "/brand/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     }
   ],
-  "categories": ["productivity", "lifestyle", "health"],
+  "categories": [
+    "productivity",
+    "lifestyle",
+    "health"
+  ],
   "lang": "es",
-  "scope": "/",
-  "screenshots": [
-    {
-      "src": "/Logo-entero-SecondBrain.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    }
-  ]
+  "scope": "/"
 }

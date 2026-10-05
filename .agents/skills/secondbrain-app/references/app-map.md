@@ -30,6 +30,7 @@
 - UI copy is primarily Spanish. Preserve keyboard, focus, and touch behavior, especially the mobile sidebar, people panel, calendar, and modal flows.
 - Styles use Tailwind utility classes plus `src/app/globals.css` and CSS modules for PeopleManager, PersonalChat, Statistics, and WelcomeModal. Reuse the established palette and responsive breakpoints rather than adding a parallel design system.
 - Assets live under `public/`; `next.config.ts` permits Google profile images and sets CSP/security headers. Review CSP when adding an external API, frame, font, or image host.
+- The transparent square logo source is root `assets/logo_lumadiary.png`. `node scripts/build-brand-assets.mjs` publishes `/brand/logo.png`, sized PNG icons and favicons in both workspaces; legacy logo URLs serve the same artwork for cached pages. Keep square display dimensions, with separate text for horizontal brand presentation.
 
 ## State and regression checks
 

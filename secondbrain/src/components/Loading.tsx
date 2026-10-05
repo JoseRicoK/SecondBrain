@@ -6,12 +6,12 @@ export default function Loading() {
       <div className="text-center">
         <div className="mb-8">
           <Image
-            src="/image/Logo-entero-SecondBrain.png"
+            src="/brand/logo.png"
             alt="LumaDiary"
-            width={200}
-            height={80}
+            width={64}
+            height={64}
             priority
-            className="h-16 w-auto mx-auto"
+            className="h-16 w-16 mx-auto"
           />
         </div>
         <div className="relative">

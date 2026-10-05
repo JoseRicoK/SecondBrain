@@ -649,14 +649,15 @@ export default function Home() {
           >
             <FiMenu size={24} />
           </button>
-          <div className="ml-4">
+          <div className="ml-4 flex items-center gap-2">
             <Image
-              src="/image/Logo-entero-SecondBrain.png"
-              alt="LumaDiary Logo"
-              width={120}
-              height={24}
+              src="/brand/logo.png"
+              alt=""
+              width={32}
+              height={32}
               priority
             />
+            <span className="font-bold text-slate-800">LumaDiary</span>
           </div>
         </header>
 
