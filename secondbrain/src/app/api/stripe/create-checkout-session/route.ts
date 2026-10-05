@@ -214,6 +214,17 @@ export async function POST(req: NextRequest) {
       {
         mode: "subscription",
         integration_identifier: "secondbrain_checkout_hqynbfks",
+        consent_collection: { terms_of_service: "required" },
+        custom_text: {
+          terms_of_service_acceptance: {
+            message:
+              "Acepto los [términos de LumaDiary](https://www.lumadiary.com/terminos) y he leído la [política de privacidad](https://www.lumadiary.com/privacidad).",
+          },
+          submit: {
+            message:
+              "Suscripción mensual con renovación automática. Puedes cancelar desde tu cuenta. Reembolso del último cargo mensual si lo solicitas dentro de 30 días.",
+          },
+        },
         expires_at: Math.floor(new Date(attempt.expiresAt).getTime() / 1000),
         line_items: [
           {

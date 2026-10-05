@@ -75,3 +75,11 @@ The public canonical origin is `https://www.lumadiary.com` (apex redirects perma
 ## Shared plan pricing
 
 `shared/plan-pricing.json` is the canonical monthly EUR price contract in cents (Pro 499, Elite 999). Both workspaces expose it through `src/lib/plan-pricing.ts`; plan cards, public catalogue amounts, SEO offers, Stripe checkout validation and the readiness script derive prices from it. Stripe price amounts are immutable: provision matching prices and update configured IDs before releasing a price change. Inspect existing subscriptions before replacing IDs because subscription reconciliation maps those IDs to plans. Do not activate checkout as a side effect of changing prices.
+
+## Live checkout and commercial settings
+
+Hosted checkout requires explicit acceptance of the public terms, links to the privacy policy, and discloses monthly automatic renewal and the 30-day refund guarantee. Configure both URLs in Stripe's public business details before enabling this flow. Public seller information is centralized in the landing's `src/lib/business.ts`; changes to seller or refund policy must update the legal pages and checkout disclosure together. Refund requests are handled through the published support mailbox; publishing a policy does not issue automatic refunds.
+
+Prices use inclusive tax behavior to preserve the advertised final amounts. Inclusive prices do not calculate or remit tax: verify active registrations and a successful calculation before enabling automatic tax. Never infer registration from a NIF or an enabled Stripe account. Portal upgrades use `always_invoice` with the billing date unchanged; decreases are scheduled at period end and cancellation keeps the paid period. Payment method updates and invoice history are enabled. Readiness retrieves the default portal with `features.subscription_update.products` expanded because Stripe omits this field from ordinary responses.
+
+Use a dedicated restricted live key in Vercel Production, separate from sandbox Preview. Runtime access needs customers, Checkout and portal sessions, subscription maintenance, and read access to prices and invoices; catalog/portal/webhook configuration additionally needs their write permissions. Do not grant access to payouts or transfers. Confirm actual endpoint delivery and complete sandbox flows before enabling checkout.

@@ -1496,6 +1496,14 @@ describe("Stripe checkout and cancellation without charges", () => {
         expect.objectContaining({
           mode: "subscription",
           line_items: [{ price: `price_${planType}`, quantity: 1 }],
+          consent_collection: { terms_of_service: "required" },
+          custom_text: expect.objectContaining({
+            terms_of_service_acceptance: {
+              message: expect.stringContaining(
+                "https://www.lumadiary.com/terminos",
+              ),
+            },
+          }),
           success_url:
             "http://localhost:3100/billing/return?session_id={CHECKOUT_SESSION_ID}",
           cancel_url: "http://localhost:3100/subscription",

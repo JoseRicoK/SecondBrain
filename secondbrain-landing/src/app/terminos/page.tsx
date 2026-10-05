@@ -1,4 +1,6 @@
 import { pageMetadata } from "@/lib/site";
+import { BUSINESS } from "@/lib/business";
+import { PLAN_PRICING } from "@/lib/plan-pricing";
 import Footer from "@/components/Footer";
 import Header from "../../components/Header";
 import CtaSection from "../../components/CtaSection";
@@ -18,6 +20,11 @@ export const metadata = pageMetadata(
 );
 
 export default function TerminosPage() {
+  const price = (plan: "pro" | "elite") =>
+    new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: "EUR",
+    }).format(PLAN_PRICING.amounts[plan] / 100);
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative">
       <Header />
@@ -34,8 +41,8 @@ export default function TerminosPage() {
               <span className="liquid-gradient-text">Condiciones</span>
             </h1>
             <p className="text-gray-300 text-lg max-w-3xl mx-auto">
-              Al usar LumaDiary aceptas estos términos. Léelos con atención
-              para comprender tus derechos y responsabilidades.
+              Al usar LumaDiary aceptas estos términos. Léelos con atención para
+              comprender tus derechos y responsabilidades.
             </p>
           </div>
         </section>
@@ -43,6 +50,16 @@ export default function TerminosPage() {
         {/* Content */}
         <section className="px-4 sm:px-6 lg:px-8 pb-12">
           <div className="max-w-5xl mx-auto grid gap-6">
+            <div className="glass rounded-2xl p-6 lg:p-8">
+              <h2 className="text-xl lg:text-2xl font-semibold text-white mb-4">
+                Titular del servicio
+              </h2>
+              <p className="text-gray-300">
+                LumaDiary es un servicio de {BUSINESS.name}, NIF{" "}
+                {BUSINESS.taxId}, con domicilio fiscal en {BUSINESS.address}.
+                Contacto: {BUSINESS.email}.
+              </p>
+            </div>
             <div className="glass rounded-2xl p-6 lg:p-8">
               <div className="flex items-center gap-3 mb-4">
                 <UserCheck className="w-6 h-6 text-purple-400" />
@@ -83,21 +100,57 @@ export default function TerminosPage() {
               </div>
               <ul className="text-gray-300 space-y-2 list-disc list-inside">
                 <li>
-                  El plan gratuito está disponible. Los planes de pago requieren
-                  que la contratación esté habilitada.
+                  Free es gratuito. Pro cuesta {price("pro")} al mes y Elite{" "}
+                  {price("elite")} al mes. Son precios finales, con los
+                  impuestos aplicables incluidos.
                 </li>
                 <li>
                   Una vez contratadas, las suscripciones se renuevan
                   mensualmente hasta que se cancelen.
                 </li>
                 <li>
-                  Puedes cancelar en cualquier momento desde Configuración
+                  Stripe procesa los pagos. Puedes consultar tus facturas,
+                  actualizar el método de pago, cambiar de plan y cancelar la
+                  renovación desde Suscripción en tu cuenta.
                 </li>
                 <li>
                   Las funciones premium se mantienen hasta el fin del período
                   facturado
                 </li>
+                <li>
+                  Al subir de plan, Stripe muestra y cobra la diferencia
+                  proporcional del periodo restante. Al bajar de plan, el cambio
+                  se aplica en la siguiente renovación. Los contadores de uso
+                  del mes se conservan.
+                </li>
               </ul>
+            </div>
+
+            <div className="glass rounded-2xl p-6 lg:p-8">
+              <h2 className="text-xl lg:text-2xl font-semibold text-white mb-4">
+                Reembolsos y desistimiento
+              </h2>
+              <p className="text-gray-300 mb-3">
+                Si solicitas un reembolso dentro de los 30 días naturales
+                siguientes al último cargo mensual, te devolvemos íntegramente
+                ese cargo. Revisamos las solicitudes sobre cargos anteriores
+                caso por caso. Escribe a {BUSINESS.email} desde el correo de tu
+                cuenta, indicando el cargo; no envíes datos de tarjeta.
+              </p>
+              <p className="text-gray-300 mb-3">
+                El reembolso se realiza por el mismo medio de pago. Solicitarlo
+                no cancela por sí solo futuras renovaciones: puedes cancelarlas
+                desde Suscripción o pedirlo en el mismo mensaje. No elimina tu
+                diario.
+              </p>
+              <p className="text-gray-300">
+                Esta garantía comercial no limita tus derechos legales. Cuando
+                contratas como consumidor, puedes desistir de la contratación
+                inicial dentro de 14 días naturales escribiendo al mismo correo,
+                sin necesidad de justificar tu decisión. Basta con indicar tu
+                cuenta, fecha de contratación y que deseas desistir. No exigimos
+                renunciar a ese derecho para empezar a usar el servicio.
+              </p>
             </div>
 
             <div className="liquid-card rounded-2xl p-6 lg:p-8">
@@ -108,8 +161,10 @@ export default function TerminosPage() {
                 </h2>
               </div>
               <p className="text-gray-300">
-                LumaDiary se ofrece «tal cual». No somos responsables de
-                pérdidas indirectas o daños que surjan del uso del servicio.
+                Las funciones de IA pueden generar errores y no sustituyen
+                asesoramiento profesional. Estas condiciones no excluyen ni
+                limitan los derechos y garantías que reconoce la legislación
+                aplicable a los consumidores.
               </p>
             </div>
 

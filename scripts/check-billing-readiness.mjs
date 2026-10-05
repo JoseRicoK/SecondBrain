@@ -198,9 +198,15 @@ if (
         active: true,
         limit: 100,
       });
-      const config = configs.data.find(
+      const defaultConfig = configs.data.find(
         (item) => item.is_default && item.livemode === live,
       );
+      // Stripe omits the allowed products unless explicitly expanded.
+      const config = defaultConfig
+        ? await stripe.billingPortal.configurations.retrieve(defaultConfig.id, {
+            expand: ["features.subscription_update.products"],
+          })
+        : null;
       const allowed =
         config?.features.subscription_update.products?.flatMap(
           (item) => item.prices,

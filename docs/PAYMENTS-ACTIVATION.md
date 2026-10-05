@@ -1,6 +1,6 @@
 # Activación de suscripciones
 
-El código está preparado para Checkout alojado y Customer Portal. La contratación y el correo de facturación siguen desactivados. Este documento distingue la preparación del código de la configuración y las pruebas necesarias para cobrar.
+El código está preparado para Checkout alojado y Customer Portal. La configuración real de Stripe está creada, pero la contratación y el correo de facturación siguen desactivados mientras se completa el tratamiento fiscal. Este documento distingue la preparación del código de la configuración y las pruebas necesarias para cobrar.
 
 ## Comprobación de solo lectura
 
@@ -57,6 +57,8 @@ La eliminación del cliente de Stripe cancela sus suscripciones activas y bloque
 
 ## Resultado de la revisión del 30 de septiembre de 2026
 
+Esta sección es histórica; consultar la revisión del 5 de octubre para el estado posterior.
+
 - Validación local final: 504 pruebas de código/API, 107 comprobaciones SQL y 86 recorridos de navegador en móvil/escritorio; todas pasan. Las reservas de cuota y checkout se verifican con 24 conexiones concurrentes cada una. Ambos builds normales de producción pasan y sus guardas no detectan copias numeradas; `npm audit` informa cero vulnerabilidades conocidas. Los proveedores son simulados en las suites y las pruebas SQL usan PostgreSQL desechable.
 - Supabase publicado conserva 3 perfiles, 3 suscripciones y 54 entradas; los perfiles ya no tienen la columna JSON antigua. Las tablas públicas tienen RLS. No se han modificado filas ni aplicado la nueva migración durante esta revisión.
 - La app publicada y la landing responden HTTP 200; la landing redirige del dominio raíz a `www.secondbrainapp.com`. El catálogo publicado devuelve contratación desactivada.
@@ -65,3 +67,14 @@ La eliminación del cliente de Stripe cancela sus suscripciones activas y bloque
 - Los avisos de Supabase incluyen descubrimiento del esquema GraphQL por SELECT de tablas con RLS, información sobre copias privadas, índices todavía sin uso y asignación fija de conexiones de Auth. La nueva migración retira acceso de navegador a tablas internas. No se eliminan índices por no haberse usado todavía; con el volumen actual eso no demuestra que sean innecesarios. [Avisos de esquema GraphQL](https://supabase.com/docs/guides/database/database-linter?lint=0027_pg_graphql_authenticated_table_exposed), [conexiones de producción](https://supabase.com/docs/guides/deployment/going-into-prod).
 
 Las suites locales usan proveedores ficticios y PostgreSQL aislado. La comprobación remota de configuración es de lectura; la matriz de pago real todavía debe ejecutarse en un sandbox autorizado.
+
+## Preparación y aceptación del 5 de octubre de 2026
+
+- Se aplicó la migración de linaje en Supabase: `billing_schema_version()` devuelve 2. Se conservaron los datos y el plan de una cuenta Elite con referencias antiguas, desvinculando únicamente sus dos IDs de Stripe después de comprobar que no existían en las cuentas original de pruebas y real y obtener autorización del titular.
+- La cuenta real tiene los precios mensuales Pro 499 y Elite 999 céntimos EUR, con `tax_behavior=inclusive`; se retiraron los precios anteriores después de comprobar que no tenían suscripciones. El portal permite facturas, método de pago y cancelación al final del periodo; las subidas cobran prorrateo y las bajadas se programan para la siguiente renovación.
+- Se creó el webhook real con la API fijada y los eventos del ciclo de vida. La clave restringida y el secreto se guardaron como variables sensibles de Production en Vercel, conservando el sandbox en Preview. La comprobación `--remote --live` pasa; no acredita por sí sola la entrega del webhook publicado.
+- Stripe muestra LumaDiary, su sitio, contacto y enlaces legales. Checkout exige aceptar los términos y explica renovación y garantía de reembolso. Los textos públicos incluyen al titular y su política: último cargo solicitado dentro de 30 días; cargos anteriores se revisan individualmente. Se preserva el desistimiento inicial de 14 días del consumidor, sin pedir su renuncia ([artículo 102](https://www.boe.es/buscar/act.php?id=BOE-A-2007-20555#a102)).
+- Aceptación con proveedor real en modo de prueba y usuario ficticio aislado: Checkout Pro 499, rechazo de tarjeta recuperable, pago correcto y aceptación de términos; la cuenta permanece Free antes del webhook firmado y pasa a Pro después. Repetir el evento se reconoce sin duplicar la activación. El portal y el retorno verifican correctamente la suscripción. Una subida con factura de prueba pagada activa Elite mediante webhook y cancelar desde la API conserva Elite activo hasta el fin del periodo confirmado por Stripe.
+- Se eliminaron el cliente Stripe de prueba y el usuario ficticio de Supabase; quedan los 3 perfiles originales. El portal predeterminado de sandbox queda configurado para futuras pruebas. No se realizaron cargos reales. Las pruebas de proveedor anteriores no cubren todavía SCA, renovaciones mediante reloj de prueba ni la entrega automática del webhook real.
+- Validación local: 708 pruebas de código/API y las comprobaciones SQL pasan. El navegador predeterminado de Playwright no estaba instalado; usando `PLAYWRIGHT_CHANNEL=chrome` pasan 125 recorridos y se omiten 5. Ambos builds normales de los workspaces pasan.
+- Pendiente de decisión del titular: confirmar su registro fiscal antes de configurar IVA y habilitar Checkout real. Un precio inclusivo no calcula IVA: no se ha habilitado `automatic_tax` ni supuesto un alta tributaria.

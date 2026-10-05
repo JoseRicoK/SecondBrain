@@ -1,4 +1,5 @@
 import { pageMetadata } from "@/lib/site";
+import { BUSINESS } from "@/lib/business";
 import Footer from "@/components/Footer";
 import Header from "../../components/Header";
 import CtaSection from "../../components/CtaSection";
@@ -37,6 +38,17 @@ export default function PrivacidadPage() {
         <section className="px-4 sm:px-6 lg:px-8 pb-12">
           <div className="max-w-5xl mx-auto grid gap-6">
             <div className="glass rounded-2xl p-6 lg:p-8">
+              <h2 className="text-xl lg:text-2xl font-semibold text-white mb-4">
+                Responsable del tratamiento
+              </h2>
+              <p className="text-gray-300">
+                {BUSINESS.name}, NIF {BUSINESS.taxId}, con domicilio en{" "}
+                {BUSINESS.address}. Puedes contactar en {BUSINESS.email} para
+                ejercer tus derechos de acceso, rectificación, supresión,
+                oposición, limitación y portabilidad.
+              </p>
+            </div>
+            <div className="glass rounded-2xl p-6 lg:p-8">
               <div className="flex items-center gap-3 mb-4">
                 <Lock className="w-6 h-6 text-purple-400" />
                 <h2 className="text-xl lg:text-2xl font-semibold text-white">
@@ -64,6 +76,7 @@ export default function PrivacidadPage() {
                 <li>Email y nombre para tu cuenta</li>
                 <li>Entradas del diario y archivos que subas</li>
                 <li>Contadores de uso para aplicar las cuotas de tu plan</li>
+                <li>Datos de suscripción, facturación y estado de los pagos</li>
               </ul>
             </div>
 
@@ -88,6 +101,12 @@ export default function PrivacidadPage() {
                   de IA, incluidas las grabaciones que envías para transcribir.
                   Resend procesa los correos de cuenta y soporte. Estos
                   proveedores procesan datos para prestar sus servicios.
+                </li>
+                <li>
+                  Stripe procesa los pagos y conserva los datos necesarios para
+                  facturas, renovaciones y reembolsos. LumaDiary recibe los
+                  identificadores y el estado de la suscripción; no almacena el
+                  número completo de tu tarjeta. Tu diario no se envía a Stripe.
                 </li>
               </ul>
             </div>
