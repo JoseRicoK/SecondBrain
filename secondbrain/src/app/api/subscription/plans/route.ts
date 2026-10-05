@@ -1,3 +1,4 @@
+import { hasBillingSchema } from "@/lib/billing-readiness";
 import { NextResponse } from "next/server";
 import { getDatabaseClient } from "@/lib/supabase";
 import { isCheckoutEnabled } from "@/lib/stripe-server";
@@ -23,10 +24,15 @@ export async function GET() {
       free: null,
       pro: process.env.STRIPE_PRO_PRICE_ID || null,
       elite: process.env.STRIPE_ELITE_PRICE_ID || null,
-      checkoutEnabled: isCheckoutEnabled(),
+      checkoutEnabled: isCheckoutEnabled() && (await hasBillingSchema()),
     };
 
-    return NextResponse.json(planIds);
+    return NextResponse.json(planIds, {
+      headers: {
+        "Cache-Control":
+          "public, max-age=0, s-maxage=60, stale-while-revalidate=60",
+      },
+    });
   } catch (error) {
     console.error("Error al obtener plan IDs:", error);
     return NextResponse.json(

@@ -3,11 +3,6 @@ import OpenAI from 'openai';
 import { AI_MODELS } from '@/lib/ai-models';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
-// Configuración de OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -20,8 +15,8 @@ export async function POST(request: Request) {
     // Verificar la clave API de OpenAI
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
+        { error: 'El servicio de transcripción no está configurado.', code: 'TRANSCRIPTION_UNAVAILABLE' },
+        { status: 503 }
       );
     }
 
@@ -68,6 +63,7 @@ export async function POST(request: Request) {
       ? new File([audioFile], `recording.${extension}`, { type: audioFile.type })
       : audioFile;
 
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await openai.audio.transcriptions.create({
       file: transcriptionFile,
       model: AI_MODELS.transcription,
@@ -91,12 +87,22 @@ export async function POST(request: Request) {
     });
     
   } catch (error) {
-    console.error('❌ API: Error processing audio:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-    
+    const providerError = error as { code?: string; status?: number; type?: string } | null;
+    // Do not log provider headers, credentials or raw response bodies.
+    console.warn('Transcription failed', { code: providerError?.code, status: providerError?.status });
+    if (providerError?.code === 'credit_balance_exhausted' ||
+        providerError?.code === 'insufficient_quota' || providerError?.type === 'insufficient_quota') {
+      return NextResponse.json({
+        error: 'La transcripción no está disponible porque el servicio de IA no tiene saldo. Es necesario recargar el saldo de OpenAI para continuar.',
+        code: 'AI_CREDITS_EXHAUSTED',
+      }, { status: 503 });
+    }
+    if (providerError?.status === 429) {
+      return NextResponse.json({ error: 'El servicio de transcripción está ocupado. Inténtalo de nuevo en unos momentos.', code: 'AI_RATE_LIMITED' }, { status: 503 });
+    }
     return NextResponse.json(
-      { error: errorMessage || 'Error processing audio' },
-      { status: 500 }
+      { error: 'No se pudo transcribir el audio. Inténtalo de nuevo.', code: 'TRANSCRIPTION_FAILED' },
+      { status: 502 }
     );
   }
 }

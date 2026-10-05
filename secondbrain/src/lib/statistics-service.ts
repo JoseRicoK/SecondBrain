@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { MOOD_KEYS } from "./diary-analytics";
 import { AI_MODELS, TEXT_REASONING_EFFORT } from "./ai-models";
 import {
   getDiaryEntriesByUserId,
@@ -31,15 +32,20 @@ export async function requireStatisticsPlan(uid: string) {
 export async function getMoodStatistics(uid: string, period: StatisticsPeriod) {
   const range = statisticsRange(period);
   const data = await getEntriesMoodDataByDateRange(uid, range.start, range.end);
-  const clamp = (value: number) =>
-    Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
   return data
     .map((point) => ({
       ...point,
-      stress: clamp(point.stress),
-      happiness: clamp(point.happiness),
-      tranquility: clamp(point.tranquility),
-      sadness: clamp(point.sadness),
+      ...Object.fromEntries(
+        MOOD_KEYS.map((key) => {
+          const value = point[key];
+          return [
+            key,
+            value === null || value === undefined || !Number.isFinite(value)
+              ? null
+              : Math.max(0, Math.min(100, value)),
+          ];
+        }),
+      ),
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }

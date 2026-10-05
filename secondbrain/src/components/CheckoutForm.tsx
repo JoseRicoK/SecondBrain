@@ -2,9 +2,9 @@
 
 import { authenticatedFetch } from "@/lib/authenticated-fetch";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
-const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+import { navigateToBilling } from "@/lib/billing-navigation";
 
 interface CheckoutFormProps {
   plan: {
@@ -32,9 +32,21 @@ export default function CheckoutForm({
   const checkoutAttempt = useRef<{ key: string; id: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const generation = useRef(0);
+  useEffect(() => {
+    generation.current++;
+    setIsLoading(false);
+    setError(null);
+    setPending(false);
+    return () => {
+      generation.current++;
+    };
+  }, [userId, plan.name]);
 
   const handleCheckout = async () => {
-    if (!enabled || !publishableKey) return;
+    if (!enabled) return;
+    const current = generation.current;
     try {
       setIsLoading(true);
       setError(null);
@@ -73,39 +85,60 @@ export default function CheckoutForm({
         },
       );
 
-      const { sessionId, portalUrl, error: apiError } = await response.json();
+      const {
+        checkoutUrl,
+        portalUrl,
+        error: apiError,
+        code,
+      } = await response.json();
+      if (current !== generation.current) return;
+      setPending(code === "CHECKOUT_PENDING");
 
       if (apiError) {
         throw new Error(apiError);
       }
 
-      if (
-        response.ok &&
-        typeof portalUrl === "string" &&
-        new URL(portalUrl).hostname === "billing.stripe.com"
-      ) {
-        window.location.assign(portalUrl);
-        return;
-      }
-      if (!response.ok || !sessionId)
-        throw new Error("No se pudo iniciar el pago");
-      const { loadStripe } = await import("@stripe/stripe-js");
-      const stripe = await loadStripe(publishableKey!);
-      if (!stripe) throw new Error("Stripe no se pudo cargar");
-      const { error: stripeError } = await stripe.redirectToCheckout({
-        sessionId,
-      });
-      if (stripeError) throw new Error(stripeError.message);
+      if (!response.ok) throw new Error("No se pudo iniciar el pago");
+      navigateToBilling(
+        portalUrl || checkoutUrl,
+        portalUrl ? "portal" : "checkout",
+      );
     } catch (err) {
+      if (current !== generation.current) return;
       console.error("Error en checkout:", err);
       setError(
         err instanceof Error ? err.message : "Error al procesar el pago",
       );
     } finally {
-      setIsLoading(false);
+      if (current === generation.current) setIsLoading(false);
     }
   };
 
+  const cancelAttempt = async () => {
+    const current = generation.current;
+    setIsLoading(true);
+    try {
+      const response = await authenticatedFetch(
+        "/api/stripe/cancel-checkout-session",
+        { method: "POST" },
+      );
+      const data = await response.json();
+      if (current !== generation.current) return;
+      if (!response.ok) throw new Error(data.error);
+      checkoutAttempt.current = null;
+      setPending(false);
+      setError("Intento cancelado. Puedes iniciar un nuevo pago.");
+    } catch (error) {
+      if (current === generation.current)
+        setError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo cancelar el intento",
+        );
+    } finally {
+      if (current === generation.current) setIsLoading(false);
+    }
+  };
   const IconComponent = plan.icon;
 
   return (
@@ -137,11 +170,21 @@ export default function CheckoutForm({
         </div>
       )}
 
+      {pending && (
+        <button
+          type="button"
+          disabled={isLoading}
+          onClick={cancelAttempt}
+          className="mb-4 w-full rounded-xl border border-purple-500 p-3 font-semibold text-purple-700"
+        >
+          Cancelar intento de pago pendiente
+        </button>
+      )}
       <button
         onClick={handleCheckout}
-        disabled={isLoading || !enabled || !publishableKey}
+        disabled={isLoading || !enabled}
         className={`w-full py-4 px-6 rounded-xl text-white font-semibold text-lg transition-all duration-300 ${
-          isLoading || !enabled || !publishableKey
+          isLoading || !enabled
             ? "bg-gray-400 cursor-not-allowed"
             : `bg-gradient-to-r ${plan.color} hover:shadow-xl hover:scale-105 transform`
         }`}
@@ -151,7 +194,7 @@ export default function CheckoutForm({
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
             Procesando...
           </div>
-        ) : !enabled || !publishableKey ? (
+        ) : !enabled ? (
           "Pagos disponibles próximamente"
         ) : (
           `Suscribirse a ${plan.name}`

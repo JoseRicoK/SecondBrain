@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       Date.now() - new Date(cached.generated_at).getTime() < 30 * 60000
     )
       return NextResponse.json(
-        { ...cached.report, cached: true },
+        { ...cached.report, generatedAt: cached.generated_at, cached: true },
         { headers: { "Cache-Control": "private, no-store" } },
       );
     const reservation = await reserveUsage(owner, "statisticsAccess");
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     if (error) throw error;
     reservationId = undefined;
     return NextResponse.json(
-      { ...report, cached: false },
+      { ...report, generatedAt: new Date().toISOString(), cached: false },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
         /* Expired holds are reclaimed by reserve_usage. */
       }
     }
-    console.error("Statistics report failed", error);
+    console.error("Statistics report failed");
     return NextResponse.json(
       { error: "No se pudo generar el informe. Puedes reintentarlo." },
       { status: 500 },

@@ -38,7 +38,9 @@ export async function POST(request: Request) {
         { error: "Subscription not found" },
         { status: 409 },
       );
-    const subscription = await stripe.subscriptions.retrieve(id);
+    const subscription = await stripe.subscriptions.retrieve(id, {
+      expand: ["latest_invoice"],
+    });
     if (
       stripeObjectId(subscription.customer) !==
         stripeObjectId(session.customer) ||

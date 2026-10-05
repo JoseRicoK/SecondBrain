@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { AI_MODELS, CHAT_REASONING_EFFORT } from "@/lib/ai-models";
-import { Person } from "@/lib/supabase-operations";
+import { Person, getPersonByIdForUser } from "@/lib/supabase-operations";
 import { getAuthenticatedUser } from "@/lib/api-auth";
 import { reserveUsage, finishUsage } from "@/lib/subscription-operations";
 
@@ -21,10 +21,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { person, message, conversationHistory, currentDate } =
-      await request.json();
+    const {
+      person: requestedPerson,
+      message,
+      conversationHistory,
+      currentDate,
+    } = await request.json();
 
-    if (!person || !message) {
+    if (
+      !requestedPerson ||
+      typeof requestedPerson.id !== "string" ||
+      !message
+    ) {
       return NextResponse.json(
         { error: "Se requiere la información de la persona y el mensaje" },
         { status: 400 },
@@ -50,6 +58,12 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+    const person = await getPersonByIdForUser(requestedPerson.id, user.uid);
+    if (!person)
+      return NextResponse.json(
+        { error: "Persona no encontrada" },
+        { status: 404 },
+      );
     owner = user.uid;
     const reservation = await reserveUsage(owner, "personChatMessages");
     if (!reservation.allowed)
@@ -64,8 +78,6 @@ export async function POST(request: NextRequest) {
       );
     if (!reservation.id) throw new Error("Reserva de cuota no disponible");
     reservationId = reservation.id;
-
-    console.log("Chat person request - Current date:", currentDate);
 
     // Construir el contexto de la persona
     const personContext = buildPersonContext(person);
@@ -139,17 +151,12 @@ INSTRUCCIONES:
         console.error("Error liberando reserva de cuota", releaseError);
       }
     }
-    console.error("Error en chat con persona:", error);
-
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: `Error del chat: ${error.message}` },
-        { status: 500 },
-      );
-    }
+    console.warn("Person chat failed", {
+      status: (error as { status?: number })?.status,
+    });
 
     return NextResponse.json(
-      { error: "Error interno del servidor" },
+      { error: "No se pudo completar el chat. Puedes reintentarlo." },
       { status: 500 },
     );
   }
@@ -171,12 +178,12 @@ function buildPersonContext(person: Person): string {
         const categoryData = value as {
           entries: Array<{ value: string; date: string }>;
         };
-        categoryData.entries
-          .sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-          )
+        [...categoryData.entries]
+          .sort((a, b) => b.date.localeCompare(a.date))
           .forEach((entry) => {
-            const date = new Date(entry.date).toLocaleDateString("es-ES");
+            const date = entry.date
+              ? new Date(entry.date + "T12:00:00").toLocaleDateString("es-ES")
+              : "fecha no registrada";
             context += `- ${entry.value} (registrado el ${date})\n`;
           });
       } else if (Array.isArray(value)) {

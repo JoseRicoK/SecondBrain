@@ -1,3 +1,4 @@
+import { hasBillingSchema } from "@/lib/billing-readiness";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripeClient } from "@/lib/stripe-server";
@@ -27,6 +28,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
   try {
+    if (!(await hasBillingSchema()))
+      return NextResponse.json(
+        { error: "Billing schema pending" },
+        { status: 503 },
+      );
     let subscriptionId: string | null = null;
     let checkoutOwner: string | undefined;
     if (
@@ -64,13 +70,21 @@ export async function POST(request: Request) {
     } else return NextResponse.json({ received: true });
     if (!subscriptionId) throw new Error("Billing event missing subscription");
     // Re-read current Stripe state for all event types, including late invoice events.
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ["latest_invoice"],
+    });
     const result = await syncStripeSubscription(
       subscription,
       event,
       checkoutOwner,
+      stripe,
     );
-    if (checkoutOwner && result.snapshot.status === "active")
+    if (
+      checkoutOwner &&
+      result.owner &&
+      result.applied &&
+      result.snapshot?.status === "active"
+    )
       await markFirstPaymentComplete(result.owner);
     return NextResponse.json({ received: true });
   } catch (error) {

@@ -37,23 +37,19 @@ function deserialize(data: Record<string, unknown>): UserProfile {
     ? data.subscriptions[0]
     : data.subscriptions;
   const subscription = (
-    Object.prototype.hasOwnProperty.call(data, "subscriptions")
-      ? typed
-        ? {
-            plan: typed.plan,
-            status: typed.status,
-            stripeCustomerId: typed.stripe_customer_id,
-            stripeSubscriptionId: typed.stripe_subscription_id,
-            currentPeriodEnd: typed.current_period_end,
-            cancelAtPeriodEnd: typed.cancel_at_period_end,
-            createdAt: typed.created_at,
-            updatedAt: typed.updated_at,
-          }
-        : {}
-      : data.subscription || {}
+    typed
+      ? {
+          plan: typed.plan,
+          status: typed.status,
+          stripeCustomerId: typed.stripe_customer_id,
+          stripeSubscriptionId: typed.stripe_subscription_id,
+          currentPeriodEnd: typed.current_period_end,
+          cancelAtPeriodEnd: typed.cancel_at_period_end,
+          createdAt: typed.created_at,
+          updatedAt: typed.updated_at,
+        }
+      : {}
   ) as Record<string, unknown>;
-  const usage = subscription.monthlyUsage as
-    Record<string, unknown> | undefined;
   return {
     uid: String(data.uid),
     email: String(data.email || ""),
@@ -67,16 +63,6 @@ function deserialize(data: Record<string, unknown>): UserProfile {
       updatedAt: new Date(String(subscription.updatedAt || data.created_at)),
       currentPeriodEnd: subscription.currentPeriodEnd
         ? new Date(String(subscription.currentPeriodEnd))
-        : undefined,
-      monthlyUsage: usage
-        ? {
-            ...usage,
-            personalChatMessages: Number(usage.personalChatMessages || 0),
-            personChatMessages: Number(usage.personChatMessages || 0),
-            statisticsAccess: Number(usage.statisticsAccess || 0),
-            month: String(usage.month),
-            lastUpdated: new Date(String(usage.lastUpdated)),
-          }
         : undefined,
     },
     isFirstLogin: Boolean(data.is_first_login),
@@ -95,14 +81,12 @@ export async function createUserProfile(
   const database = getDatabaseClient();
   const existing = await getUserProfile(uid);
   if (!existing) {
-    const { error } = await database
-      .from("profiles")
-      .insert({
-        uid,
-        email: userData.email || "",
-        display_name: userData.displayName || "",
-        is_google_user: userData.isGoogleUser || false,
-      });
+    const { error } = await database.from("profiles").insert({
+      uid,
+      email: userData.email || "",
+      display_name: userData.displayName || "",
+      is_google_user: userData.isGoogleUser || false,
+    });
     if (error) throw error;
     return;
   }

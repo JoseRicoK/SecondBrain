@@ -1,4 +1,4 @@
-insert into auth.users values ('11111111-1111-4111-8111-111111111111'), ('22222222-2222-4222-8222-222222222222');
+insert into auth.users(id) values ('11111111-1111-4111-8111-111111111111'), ('22222222-2222-4222-8222-222222222222');
 insert into profiles(uid, email) select id, id::text || '@test.invalid' from auth.users;
 insert into diary_entries(id, user_id, date, content) values
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','11111111-1111-4111-8111-111111111111','2026-09-29','A privado'),
@@ -29,9 +29,9 @@ select test.raises($$insert into mood_data(user_id,date) values ('22222222-2222-
 select test.raises($$insert into audio_transcriptions(entry_id,audio_url,transcription) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','x','x')$$,'42501','foreign audio parent insert denied');
 select test.raises($$update diary_entries set user_id='22222222-2222-4222-8222-222222222222' where id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'$$,'42501','owner transfer denied');
 select test.raises($$update audio_transcriptions set entry_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'$$,'42501','audio parent transfer denied');
-select test.raises($$update profiles set subscription='{"plan":"elite","status":"active"}'$$,'42501','client cannot self-grant paid subscription');
+select test.raises($$update subscriptions set plan='elite',status='active'$$,'42501','client cannot self-grant paid subscription');
 select test.raises('update profiles set has_completed_first_payment=true','42501','client cannot forge completed payment');
-select test.raises($$insert into profiles(uid,subscription) values ('11111111-1111-4111-8111-111111111111','{"plan":"elite"}')$$,'42501','client cannot insert paid subscription');
+select test.raises($$insert into subscriptions(user_id,plan,status) values ('11111111-1111-4111-8111-111111111111','elite','active')$$,'42501','client cannot insert paid subscription');
 select test.raises('delete from profiles','42501','client cannot bypass account deletion API');
 with changed as (update diary_entries set content='intruso' where id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' returning *) select test.ok((select count(*)=0 from changed),'foreign update changes zero rows');
 with removed as (delete from people where user_id='22222222-2222-4222-8222-222222222222' returning *) select test.ok((select count(*)=0 from removed),'foreign delete changes zero rows');
@@ -53,8 +53,8 @@ select test.ok((select count(*)=1 from audio_transcriptions),'B audio remains is
 reset role;
 
 set local role service_role;
-update profiles set subscription='{"plan":"pro","status":"active"}' where uid='11111111-1111-4111-8111-111111111111';
-select test.ok((select subscription->>'plan'='pro' from profiles where uid='11111111-1111-4111-8111-111111111111'),'service role can maintain billing');
+update subscriptions set plan='pro',status='active' where user_id='11111111-1111-4111-8111-111111111111';
+select test.ok((select plan='pro' from subscriptions where user_id='11111111-1111-4111-8111-111111111111'),'service role can maintain billing');
 reset role;
 select test.raises($$insert into diary_entries(user_id,date) values ('33333333-3333-4333-8333-333333333333','2026-09-29')$$,'23503','orphan diary owner denied by FK');
 select test.raises($$insert into audio_transcriptions(entry_id,audio_url,transcription) values ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','x','x')$$,'23503','orphan audio parent denied by FK');

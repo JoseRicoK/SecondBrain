@@ -1,161 +1,25 @@
-# SecondBrain Landing Page
+# SecondBrain landing
 
-Landing page moderno y atractivo para SecondBrain - Tu diario personal inteligente.
+Web pública en español con Next.js 15, React 19 y Tailwind 4. El contenido principal es HTML generado en servidor y las guías son estáticas. La portada prioriza mockups y copy breve. La cabecera tiene un menú móvil interactivo, `ProductPreview` permite explorar cuatro vistas ficticias de la app y pausar su movimiento, y las FAQs usan controles nativos.
 
-## 🚀 Características
+Desde la raíz del repositorio:
 
-### Diseño Moderno
-- **Glassmorphism** - Efectos de cristal con backdrop-blur
-- **Gradientes dinámicos** - Colores vibrantes y profesionales
-- **Animaciones fluidas** - Powered by Framer Motion
-- **Responsive design** - Optimizado para móvil, tablet y desktop
-
-### Componentes Interactivos
-- **Hero Section** - Presentación impactante con CTAs
-- **Animated Features** - Funcionalidades en círculo interactivo
-- **Stats Section** - Estadísticas animadas
-- **Testimonials Carousel** - Carrusel de testimonios automático
-- **Pricing Section** - Planes con diseño atractivo
-- **FAQ Section** - Preguntas frecuentes colapsables
-- **CTA Section** - Llamada a acción con formulario
-- **Animated Background** - Partículas flotantes
-
-### Funcionalidades
-- ✨ **Scroll suave** entre secciones
-- 🎭 **Animaciones on-scroll** con Framer Motion
-- 📱 **Navegación responsive** con menú móvil
-- 🎨 **Efectos hover** interactivos
-- 🌟 **Elementos flotantes** animados
-- 📧 **Formulario de contacto** funcional
-
-## 🛠️ Tecnologías
-
-- **Next.js 15** - Framework React moderno
-- **TypeScript** - Tipado estático
-- **Tailwind CSS 4** - Estilos utility-first
-- **Framer Motion** - Animaciones avanzadas
-- **Lucide React** - Iconos modernos
-
-## 📁 Estructura del Proyecto
-
-```
-src/
-├── app/
-│   ├── globals.css          # Estilos globales y animaciones
-│   ├── layout.tsx           # Layout principal con metadatos SEO
-│   └── page.tsx             # Página principal
-└── components/
-    ├── AnimatedBackground.tsx    # Partículas animadas de fondo
-    ├── AnimatedFeatures.tsx      # Funcionalidades en círculo
-    ├── CtaSection.tsx           # Sección de llamada a acción
-    ├── FAQSection.tsx           # Preguntas frecuentes
-    ├── PricingSection.tsx       # Planes y precios
-    ├── StatsSection.tsx         # Estadísticas animadas
-    └── TestimonialsCarousel.tsx # Carrusel de testimonios
+```sh
+npm ci
+npm run dev --workspace secondbrain-landing
+npm run build --workspace secondbrain-landing
+npm run test:all
 ```
 
-## 🎨 Guía de Diseño
+El lockfile canónico está en la raíz; no crear otro en este workspace. Los builds comprueban copias de archivos con sufijo numérico.
 
-### Colores Principales
-- **Purple**: `#8b5cf6` - Color principal
-- **Pink**: `#ec4899` - Color secundario
-- **Blue**: `#06b6d4` - Acento
-- **Green**: `#10b981` - Éxito
-- **Orange**: `#f59e0b` - Advertencia
+- `src/app/page.tsx`: portada, funciones, ejemplo ficticio y CTAs de registro.
+- `src/app/precios`: catálogo de planes y contratación disponible.
+- `src/app/[slug]`: tres guías definidas en `src/lib/content.ts`.
+- `src/lib/site.ts`: dominios, metadatos y serialización JSON-LD.
+- `src/lib/plans.ts`: consulta validada del catálogo, caché y fallback con pago cerrado.
+- `Header`, `Footer`, `CtaSection`, `FAQSection`, `PricingSection`: componentes activos compartidos.
+- `ProductPreview` y `ProductArtwork`: demo visual de diario, voz, chat y gráficas; no acceden a diarios reales ni ejecutan operaciones de IA.
+- `src/app/landing-visual.css`: estilos de los mockups, las tarjetas y los breakpoints. Movimiento reducido y pausa disponibles.
 
-### Tipografía
-- **Font Family**: Inter (Google Fonts)
-- **Weights**: 300, 400, 500, 600, 700, 800
-
-### Efectos
-- **Glass**: `backdrop-blur(10px)` + transparencia
-- **Gradients**: Lineales en 135deg
-- **Shadows**: Múltiples capas con colores temáticos
-- **Animations**: Suaves con easing personalizado
-
-## 🚀 Scripts Disponibles
-
-```bash
-# Desarrollo
-npm run dev
-
-# Build
-npm run build
-
-# Producción
-npm start
-
-# Linting
-npm run lint
-```
-
-## 📝 Configuración SEO
-
-El proyecto incluye metadatos optimizados para SEO:
-
-- **Title**: SecondBrain - Tu Diario Personal Inteligente
-- **Description**: Optimizada para conversión
-- **Keywords**: IA, diario personal, chat, transcripción
-- **Open Graph**: Configurado para redes sociales
-- **Twitter Cards**: Optimizado para Twitter
-- **Robots**: Indexación habilitada
-
-## 🔗 Enlaces Importantes
-
-- **App Principal**: `https://app.secondbrain.com`
-- **Signup**: `https://app.secondbrain.com/signup`
-- **Support**: `support@secondbrain.com`
-
-## 📱 Responsive Breakpoints
-
-- **Mobile**: < 768px
-- **Tablet**: 768px - 1024px  
-- **Desktop**: > 1024px
-
-## 🎯 Conversión Optimizada
-
-- **Multiple CTAs** estratégicamente ubicados
-- **Social proof** con estadísticas y testimonios
-- **Trust indicators** (seguridad, gratuito, usuarios)
-- **Clear value proposition** en cada sección
-- **Urgency elements** sutiles
-
-## 🔧 Personalización
-
-Para personalizar colores, edita las variables en `globals.css`:
-
-```css
-:root {
-  --primary: #8b5cf6;
-  --secondary: #ec4899;
-  --accent: #06b6d4;
-}
-```
-
-Para modificar animaciones, ajusta las duraciones en los componentes:
-
-```tsx
-transition={{ duration: 0.8, delay: 0.2 }}
-```
-
-## 🎪 Casos de Uso
-
-1. **Landing principal** para adquisición de usuarios
-2. **Página de referencia** para marketing
-3. **Demo showcase** para inversores
-4. **Base template** para otros productos
-
-## 🔮 Futuras Mejoras
-
-- [ ] Integración con analytics
-- [ ] A/B testing components  
-- [ ] Modo oscuro/claro
-- [ ] Internacionalización (i18n)
-- [ ] Video backgrounds
-- [ ] Formularios avanzados
-- [ ] Chat en vivo
-- [ ] Blog integration
-
----
-
-**SecondBrain Landing** - Diseñado para convertir visitantes en usuarios felices. 🧠✨
+Leer las instrucciones portables en [la skill de landing](../.agents/skills/secondbrain-landing/SKILL.md), [contenido y SEO](../docs/LANDING-SEO.md) y [activación de pagos](../docs/PAYMENTS-ACTIVATION.md). La app privada está en el workspace `secondbrain` y tiene su propia versión de Next.

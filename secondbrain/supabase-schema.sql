@@ -1,3 +1,5 @@
+-- Historical bootstrap. Apply the complete supabase/migrations chain for the current schema.
+-- The final schema has no profiles.subscription column; do not use this snapshot alone.
 create extension if not exists "pgcrypto";
 
 create table public.profiles (

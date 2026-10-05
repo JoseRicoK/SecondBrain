@@ -25,6 +25,12 @@
     "test:e2e:ui": "playwright test --ui",
     "test:all": "npm run test:coverage && npm run test:database && npm run test:e2e",
     "test:report": "playwright show-report",
-    "test:database": "node scripts/test-database.mjs"
+    "test:database": "node scripts/test-database.mjs",
+    "check:billing": "node scripts/check-billing-readiness.mjs",
+    "eval:mood": "node scripts/evaluate-mood.mjs"
+  },
+  "overrides": {
+    "postcss": "8.5.28",
+    "sharp": "0.35.5"
   }
 }

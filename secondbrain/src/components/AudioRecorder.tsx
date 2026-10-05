@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useDiaryStore } from '@/lib/store';
 import { FaMicrophone, FaStop, FaPlay, FaPause } from 'react-icons/fa';
 import { saveAudioTranscription } from '@/lib/supabase-operations';
-import { supabase } from '@/lib/supabase';
+import { transcribeAudio } from '@/lib/transcription-client';
 
 
 // Este componente actualmente no necesita props
@@ -119,27 +119,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
     setError(null);
     
     try {
-      // Crear un objeto FormData para enviar el archivo
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'recording.wav');
-      formData.append('entryId', currentEntry.id);
-      
-      // Enviar a la API de transcripción
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      const response = await fetch('/api/transcribe', {
-        method: 'POST',
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        throw new Error('Error al procesar la transcripción');
-      }
-      
-      const data = await response.json();
+      const data = await transcribeAudio(audioBlob);
       
       // Guardar la transcripción en Supabase
       const saved = await saveAudioTranscription(
@@ -155,8 +135,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = () => {
       // Limpiar el estado
       setAudioBlob(null);
     } catch (err) {
-      console.error('Error en la transcripción:', err);
-      setError('No se pudo realizar la transcripción. Inténtalo de nuevo.');
+      setError(err instanceof Error ? err.message : 'No se pudo realizar la transcripción. Inténtalo de nuevo.');
     } finally {
       setIsProcessing(false);
     }

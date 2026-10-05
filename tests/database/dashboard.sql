@@ -1,0 +1,48 @@
+begin;
+insert into auth.users(id,email,created_at,last_sign_in_at,email_confirmed_at) values
+('11111111-1111-4111-8111-111111111111','admin@test.invalid',now(),now(),now()),
+('22222222-2222-4222-8222-222222222222','member@test.invalid',now(),null,null),
+('44444444-4444-4444-8444-444444444444','orphan@test.invalid',now(),null,null);
+insert into profiles(uid,email,display_name) values('11111111-1111-4111-8111-111111111111','editable@test.invalid','Admin'),('22222222-2222-4222-8222-222222222222','spoof@test.invalid','Miembro');
+select test.ok((select bool_and(not admin) from profiles),'all profiles default to non-admin');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',true);
+select test.raises('update profiles set admin=true','42501','member cannot promote self');
+select test.raises($$insert into profiles(uid,admin) values('44444444-4444-4444-8444-444444444444',true)$$,'42501','member cannot insert an admin profile');
+select test.raises('select * from feedback_reports','42501','reports and internal notes not directly readable');
+select test.raises('truncate feedback_reports','42501','reports cannot be truncated by browser');
+select test.raises($$select public.admin_overview('11111111-1111-4111-8111-111111111111')$$,'42501','browser cannot call overview even with an admin actor');
+select test.raises($$select dashboard_private.accounts('11111111-1111-4111-8111-111111111111')$$,'42501','private Auth account source is inaccessible to browser');
+select test.raises($$select public.submit_feedback('22222222-2222-4222-8222-222222222222',repeat('a',64),'problem','Error')$$,'42501','browser cannot bypass feedback API rate checks');
+reset role;
+set local role anon;
+select test.raises('select * from feedback_reports','42501','anonymous report read denied');
+select test.raises($$select public.admin_users('11111111-1111-4111-8111-111111111111')$$,'42501','anonymous admin user enumeration denied');
+reset role;
+set local role service_role;
+select test.raises($$select public.admin_overview('22222222-2222-4222-8222-222222222222')$$,'42501','RPC independently checks admin flag');
+update profiles set admin=true where uid='11111111-1111-4111-8111-111111111111';
+select test.ok((public.admin_users('11111111-1111-4111-8111-111111111111')->>'total')::int>=3,'directory includes Auth accounts without app profile');
+select test.ok((public.admin_users('11111111-1111-4111-8111-111111111111','member@test.invalid')->'items'->0->>'email')='member@test.invalid','directory uses trusted Auth email instead of editable profile email');
+select test.ok((public.admin_users('11111111-1111-4111-8111-111111111111','%')->>'total')::int=0,'search is literal not wildcard');
+update subscriptions set plan='elite',status='active',current_period_end=now()-interval '1 day' where user_id='22222222-2222-4222-8222-222222222222';
+select test.ok(public.admin_user_detail('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222')->>'effective_plan'='free','expired elite subscription is shown with free entitlement');
+select test.ok((public.admin_overview('11111111-1111-4111-8111-111111111111')->>'missingProfiles')::int=1,'overview detects accounts missing app profiles');
+select test.ok((public.submit_feedback('22222222-2222-4222-8222-222222222222',repeat('a',64),'problem','Error')->>'allowed')::boolean,'report persists');
+select test.ok((public.submit_feedback('22222222-2222-4222-8222-222222222222',repeat('a',64),'problem','Error')->>'duplicate')::boolean,'report retry is idempotent');
+select public.submit_feedback('22222222-2222-4222-8222-222222222222',repeat(n::text,64),'suggestion','Sugerencia') from generate_series(2,5)n;
+select test.ok(not(public.submit_feedback('22222222-2222-4222-8222-222222222222',repeat('6',64),'problem','Error')->>'allowed')::boolean,'sixth report blocked per owner per hour');
+select test.ok((public.admin_feedback('11111111-1111-4111-8111-111111111111','','problem')->>'total')::int=1,'feedback filters accurately count persisted reports');
+select test.ok(public.admin_user_detail('11111111-1111-4111-8111-111111111111','99999999-9999-4999-8999-999999999999') is null,'missing account returns null');
+select test.raises($$select public.admin_users('11111111-1111-4111-8111-111111111111','','all',0)$$,'22023','invalid pagination rejected at database too');
+select test.ok((select (public.admin_update_feedback('11111111-1111-4111-8111-111111111111',id,'resolved','high','Checked',updated_at)->>'saved')::boolean from feedback_reports where fingerprint=repeat('a',64)),'admin updates report with optimistic version');
+select test.ok((select (public.admin_update_feedback('11111111-1111-4111-8111-111111111111',id,'open','normal','Stale',created_at)->>'conflict')::boolean from feedback_reports where fingerprint=repeat('a',64)),'stale updates cannot overwrite another admin');
+select test.ok((select status='resolved' and admin_notes='Checked' and updated_by='11111111-1111-4111-8111-111111111111' from feedback_reports where fingerprint=repeat('a',64)),'triage records updater and preserves previous successful write');
+select test.ok(not(public.admin_user_detail('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222') ? 'content'),'admin user response excludes diary content');
+update profiles set admin=false where uid='11111111-1111-4111-8111-111111111111';
+select test.raises($$select public.admin_feedback('11111111-1111-4111-8111-111111111111')$$,'42501','revocation takes effect on next operation');
+reset role;
+delete from auth.users where id='22222222-2222-4222-8222-222222222222';
+select test.ok((select count(*)=0 from feedback_reports),'account deletion removes owned reports');
+select count(*) as passed_dashboard_checks from test.results;
+rollback;

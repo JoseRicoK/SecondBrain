@@ -152,6 +152,37 @@ describe("diary, people, audio and mood persistence", () => {
     expect(db.calls[0].steps).toContainEqual(["eq", "user_id", "u"]);
     expect(db.calls[0].steps).toContainEqual(["order", "name"]);
   });
+  it("loads a person only by both its ID and verified owner", async () => {
+    db.reply(person);
+    expect(await ops.getPersonByIdForUser("person", "u")).toMatchObject({
+      id: "person",
+      name: "Ana",
+    });
+    expect(db.calls[0].steps).toContainEqual(["eq", "id", "person"]);
+    expect(db.calls[0].steps).toContainEqual(["eq", "user_id", "u"]);
+  });
+  it("returns no person for foreign or missing IDs and throws on lookup failure", async () => {
+    expect(await ops.getPersonByIdForUser("missing", "u")).toBeNull();
+    db.reply(null, { message: "denied" });
+    await expect(ops.getPersonByIdForUser("person", "u")).rejects.toThrow(
+      "denied",
+    );
+  });
+  it("manual saves compare the editing version and fail without pretending success", async () => {
+    db.reply(null, { code: "PGRST116", message: "no matching version" });
+    expect(
+      await ops.savePerson({
+        id: "person",
+        name: "Ana",
+        updated_at: person.updated_at,
+      }),
+    ).toBeNull();
+    expect(db.calls[0].steps).toContainEqual([
+      "eq",
+      "updated_at",
+      person.updated_at,
+    ]);
+  });
   it.each([false, true])("saves a %s existing person", async (existing) => {
     db.reply(person);
     await ops.savePerson({
@@ -162,80 +193,89 @@ describe("diary, people, audio and mood persistence", () => {
     expect(db.calls[0].steps[0][0]).toBe(existing ? "update" : "insert");
     expect(db.calls[0].steps[0][1]).not.toHaveProperty("id");
   });
-  it("deduplicates accents/case only within the same date and normalizes birthdays", async () => {
+  it("merges extracted information with owner and an optimistic version", async () => {
     db.reply({
       ...person,
       details: {
-        gustos: {
-          entries: [
-            { value: "Café", date: row.date },
-            { value: "Café", date: "2024-02-28" },
-          ],
-        },
+        relacion: { entries: [{ value: "novia", date: "2024-02-01" }] },
       },
     });
     db.reply(person);
     await ops.saveExtractedPersonInfo(
       "Ana",
-      {
-        gustos: ["cafe", " Café "],
-        cumpleanos: "1 enero",
-        ignored: null,
-        invalid: 5,
-      },
+      { relacion: "Novia", detalles: ["Leyó un libro"] },
       "u",
       row.date,
     );
-    const payload = db.calls[1].steps[0][1];
-    expect(payload.details.gustos.entries).toHaveLength(2);
-    expect(payload.details["cumpleaños"].entries).toEqual([
-      { value: "1 enero", date: row.date },
-    ]);
-    expect(payload.details).not.toHaveProperty("ignored");
+    const write = db.calls[1];
+    expect(write.steps).toContainEqual(["eq", "updated_at", person.updated_at]);
+    expect(write.steps).toContainEqual(["eq", "user_id", "u"]);
+    expect(write.steps[0][1].details.relacion.entries).toHaveLength(1);
   });
-  it.each(["rol", "relacion", "cumpleaños", "direccion"])(
-    "replaces unique %s only on that date",
-    async (key) => {
-      db.reply({
-        ...person,
-        details: {
-          [key]: {
-            entries: [
-              { value: "Antes", date: row.date },
-              { value: "Histórico", date: "2024-02-28" },
-            ],
-          },
-        },
-      });
-      db.reply(person);
-      await ops.saveExtractedPersonInfo(
-        "Ana",
-        { [key]: "nuevo" },
-        "u",
-        row.date,
-      );
-      expect(db.calls[1].steps[0][1].details[key].entries).toEqual([
-        { value: "Nuevo", date: row.date },
-        { value: "Histórico", date: "2024-02-28" },
-      ]);
-    },
-  );
+  it("does not write an unchanged person again", async () => {
+    db.reply({
+      ...person,
+      details: {
+        relacion: { entries: [{ value: "novia", date: "2024-02-01" }] },
+      },
+    });
+    await ops.saveExtractedPersonInfo(
+      "Ana",
+      { relacion: "Novia" },
+      "u",
+      row.date,
+    );
+    expect(db.calls).toHaveLength(1);
+  });
+  it("retries concurrent updates by merging the latest persisted details", async () => {
+    db.reply(person);
+    db.reply(null);
+    db.reply({
+      ...person,
+      updated_at: "2024-03-01T00:00:00Z",
+      details: {
+        detalles: { entries: [{ value: "Otro hecho", date: row.date }] },
+      },
+    });
+    db.reply(person);
+    await ops.saveExtractedPersonInfo(
+      "Ana",
+      { detalles: ["Nuevo hecho"] },
+      "u",
+      row.date,
+    );
+    expect(
+      db.calls[3].steps[0][1].details.detalles.entries.map((e: any) => e.value),
+    ).toEqual(["Otro hecho", "Nuevo hecho"]);
+    expect(db.calls[3].steps).toContainEqual([
+      "eq",
+      "updated_at",
+      "2024-03-01T00:00:00Z",
+    ]);
+  });
   it("creates an unknown person with owner and dated details", async () => {
     db.reply(null);
     db.reply(person);
-    await ops.saveExtractedPersonInfo("Ana", { gustos: "leer" }, "u", row.date);
+    await ops.saveExtractedPersonInfo(
+      "  Ana  ",
+      { gustos: "leer" },
+      "u",
+      row.date,
+    );
     expect(db.calls[1].steps[0]).toEqual([
       "insert",
       expect.objectContaining({
         name: "Ana",
         user_id: "u",
-        details: { gustos: { entries: [{ value: "Leer", date: row.date }] } },
+        details: { gustos: { entries: [{ value: "leer", date: row.date }] } },
       }),
     ]);
   });
   it("does not insert when lookup failed", async () => {
     db.reply(null, { message: "offline" });
-    expect(await ops.saveExtractedPersonInfo("Ana", {}, "u")).toBeNull();
+    await expect(ops.saveExtractedPersonInfo("Ana", {}, "u")).rejects.toThrow(
+      "offline",
+    );
     expect(db.calls).toHaveLength(1);
   });
   it("adds a manual detail to the person owner", async () => {
@@ -304,20 +344,19 @@ describe("diary, people, audio and mood persistence", () => {
     expect(
       await ops.getEntriesMoodDataByDateRange("u", row.date, row.date),
     ).toEqual([
-      { date: row.date, happiness: 25, stress: 0, tranquility: 0, sadness: 0 },
+      {
+        date: row.date,
+        happiness: 25,
+        stress: null,
+        tranquility: null,
+        sadness: null,
+        neutral: null,
+      },
     ]);
-    expect(db.calls[1].steps).toContainEqual(["not", "happiness", "is", null]);
-  });
-  it("increments mentions of an existing owner-scoped person", async () => {
-    db.reply({ ...person, mention_count: 4 });
-    db.reply();
-    await ops.incrementPersonMentionCount("u", "Ana");
-    expect(db.calls[0].steps).toContainEqual(["eq", "user_id", "u"]);
-    expect(db.calls[1].steps[0][1].mention_count).toBe(5);
-  });
-  it("does not update unknown mention counts", async () => {
-    await ops.incrementPersonMentionCount("u", "missing");
-    expect(db.calls).toHaveLength(1);
+    expect(db.calls[1].steps).toContainEqual([
+      "or",
+      "happiness.not.is.null,tranquility.not.is.null,stress.not.is.null,sadness.not.is.null,neutral.not.is.null",
+    ]);
   });
   it.each([null, { message: "denied" }])(
     "reports mood update success/failure",
@@ -329,12 +368,12 @@ describe("diary, people, audio and mood persistence", () => {
           stress: 20,
           tranquility: 40,
           sadness: 10,
+          neutral: null,
         }),
       ).toBe(!error);
     },
   );
   it.each([
-    ["people", () => ops.getPeopleByUserId("u"), []],
     ["save person", () => ops.savePerson(person), null],
     ["save audio", () => ops.saveAudioTranscription("e", "url", "text"), null],
     ["read audio", () => ops.getTranscriptionsByEntryId("e"), []],
@@ -511,4 +550,9 @@ describe("authentication operations", () => {
     });
     await expect((run as Function)()).rejects.toThrow("service failed");
   });
+});
+
+it("people lookup failures are explicit, not an empty address book", async () => {
+  db.reply(null, new Error("offline"));
+  await expect(ops.getPeopleByUserId("u")).rejects.toThrow("offline");
 });

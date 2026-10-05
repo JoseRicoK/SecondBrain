@@ -85,7 +85,7 @@ function SignupContent() {
     return <Loading />; // Mientras redirige
   }
 
-  return <Auth onAuthSuccess={handleAuthSuccess} />;
+  return <Auth initialMode="signup" onAuthSuccess={handleAuthSuccess} />;
 }
 
 export default function SignupPage() {

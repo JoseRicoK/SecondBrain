@@ -26,6 +26,7 @@ import {
 } from "@/lib/supabase-operations";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import SettingsDialog from "./SettingsDialog";
 
 interface SettingsProps {
   userId: string;
@@ -201,12 +202,13 @@ const Settings: React.FC<SettingsProps> = () => {
         }),
       });
 
+      const result = await response.json();
       if (!response.ok) {
-        throw new Error("Error al enviar el mensaje");
+        throw new Error(result.error || "No se pudo guardar tu mensaje");
       }
 
       setFeedbackSuccess(
-        `Tu ${type === "suggestion" ? "sugerencia" : "reporte"} ha sido enviado correctamente`,
+        `Tu ${type === "suggestion" ? "sugerencia" : "reporte"} ha sido enviado correctamente y guardado para su revisión`,
       );
 
       if (type === "suggestion") {
@@ -276,11 +278,11 @@ const Settings: React.FC<SettingsProps> = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-3 sm:p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Título principal */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-2">
             Configuración
           </h1>
           <p className="text-slate-600">
@@ -313,9 +315,9 @@ const Settings: React.FC<SettingsProps> = () => {
         {/* Grid de configuraciones */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Sección Datos Personales */}
-          <div className="lg:col-span-2 bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+          <div className="lg:col-span-2 bg-white/70 backdrop-blur-lg rounded-3xl p-4 sm:p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4">
+              <div className="w-12 h-12 shrink-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4">
                 <FiUser className="text-white text-xl" />
               </div>
               <div>
@@ -537,9 +539,9 @@ const Settings: React.FC<SettingsProps> = () => {
           </div>
 
           {/* Sección Suscripción */}
-          <div className="lg:col-span-2 bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+          <div className="lg:col-span-2 bg-white/70 backdrop-blur-lg rounded-3xl p-4 sm:p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mr-4">
+              <div className="w-12 h-12 shrink-0 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mr-4">
                 <FiCreditCard className="text-white text-xl" />
               </div>
               <div>
@@ -906,9 +908,9 @@ const Settings: React.FC<SettingsProps> = () => {
           </div>
 
           {/* Sección Calendario */}
-          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-4 sm:p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl flex items-center justify-center mr-4">
+              <div className="w-12 h-12 shrink-0 bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl flex items-center justify-center mr-4">
                 <FiCalendar className="text-white text-xl" />
               </div>
               <div>
@@ -960,9 +962,9 @@ const Settings: React.FC<SettingsProps> = () => {
           </div>
 
           {/* Sección Sugerencias */}
-          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-4 sm:p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mr-4">
+              <div className="w-12 h-12 shrink-0 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mr-4">
                 <FiMessageSquare className="text-white text-xl" />
               </div>
               <div>
@@ -970,7 +972,7 @@ const Settings: React.FC<SettingsProps> = () => {
                   Sugerencias
                 </h2>
                 <p className="text-slate-600 text-sm">
-                  Ayúdanos a mejorar SecondBrain
+                  Tus ideas se guardan para que podamos revisarlas.
                 </p>
               </div>
             </div>
@@ -1006,6 +1008,7 @@ const Settings: React.FC<SettingsProps> = () => {
                   value={suggestionText}
                   onChange={(e) => setSuggestionText(e.target.value)}
                   rows={4}
+                  maxLength={5000}
                   className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors resize-none"
                   placeholder="Comparte tus ideas para mejorar la aplicación..."
                 />
@@ -1013,7 +1016,7 @@ const Settings: React.FC<SettingsProps> = () => {
 
               <button
                 onClick={() => handleSendFeedback("suggestion")}
-                disabled={feedbackLoading}
+                disabled={feedbackLoading || !suggestionText.trim()}
                 className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-70"
               >
                 {feedbackLoading ? (
@@ -1032,9 +1035,9 @@ const Settings: React.FC<SettingsProps> = () => {
           </div>
 
           {/* Sección Reportar Problemas */}
-          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+          <div className="bg-white/70 backdrop-blur-lg rounded-3xl p-4 sm:p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center mr-4">
+              <div className="w-12 h-12 shrink-0 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center mr-4">
                 <FiAlertTriangle className="text-white text-xl" />
               </div>
               <div>
@@ -1042,7 +1045,8 @@ const Settings: React.FC<SettingsProps> = () => {
                   Reportar Problema
                 </h2>
                 <p className="text-slate-600 text-sm">
-                  ¿Encontraste un error? Cuéntanos
+                  Describe qué ocurrió y cómo reproducirlo. Guardaremos tu
+                  reporte.
                 </p>
               </div>
             </div>
@@ -1078,6 +1082,7 @@ const Settings: React.FC<SettingsProps> = () => {
                   value={problemText}
                   onChange={(e) => setProblemText(e.target.value)}
                   rows={4}
+                  maxLength={5000}
                   className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors resize-none"
                   placeholder="Describe el problema que experimentaste, incluyendo los pasos para reproducirlo..."
                 />
@@ -1085,7 +1090,7 @@ const Settings: React.FC<SettingsProps> = () => {
 
               <button
                 onClick={() => handleSendFeedback("problem")}
-                disabled={feedbackLoading}
+                disabled={feedbackLoading || !problemText.trim()}
                 className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-70"
               >
                 {feedbackLoading ? (
@@ -1104,9 +1109,9 @@ const Settings: React.FC<SettingsProps> = () => {
           </div>
 
           {/* Sección Eliminar Cuenta */}
-          <div className="lg:col-span-2 bg-red-50/70 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-red-200/50 hover:shadow-2xl transition-all duration-300">
+          <div className="lg:col-span-2 bg-red-50/70 backdrop-blur-lg rounded-3xl p-4 sm:p-6 shadow-xl border border-red-200/50 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-700 rounded-2xl flex items-center justify-center mr-4">
+              <div className="w-12 h-12 shrink-0 bg-gradient-to-br from-red-500 to-red-700 rounded-2xl flex items-center justify-center mr-4">
                 <FiTrash2 className="text-white text-xl" />
               </div>
               <div>
@@ -1123,7 +1128,9 @@ const Settings: React.FC<SettingsProps> = () => {
               <div className="text-center">
                 <p className="text-red-700 mb-4">
                   Esta acción eliminará permanentemente tu cuenta y todos tus
-                  datos. Esta acción no se puede deshacer.
+                  datos. También cerrará tu facturación y cancelará
+                  inmediatamente cualquier suscripción, sin conservar el acceso
+                  hasta final de periodo. Esta acción no se puede deshacer.
                 </p>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
@@ -1148,7 +1155,7 @@ const Settings: React.FC<SettingsProps> = () => {
                   />
                 </div>
 
-                <div className="flex space-x-3 justify-center">
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <button
                     onClick={() => {
                       setShowDeleteConfirm(false);
@@ -1181,7 +1188,7 @@ const Settings: React.FC<SettingsProps> = () => {
         </div>
 
         {/* Información de la aplicación */}
-        <div className="bg-white/50 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white/20 text-center">
+        <div className="bg-white/50 backdrop-blur-lg rounded-3xl p-4 sm:p-6 shadow-xl border border-white/20 text-center">
           <div className="flex items-center justify-center mb-3">
             <FiUser className="text-slate-600 mr-2" />
             <span className="text-slate-600 font-medium">SecondBrain v1.0</span>
@@ -1196,8 +1203,13 @@ const Settings: React.FC<SettingsProps> = () => {
 
       {/* Modal de confirmación de cancelación */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+        <SettingsDialog
+          label="Cancelar suscripción"
+          onClose={() => {
+            if (!cancelLoading) setShowCancelModal(false);
+          }}
+        >
+          <div className="bg-white p-4 sm:p-6">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <FiX className="w-8 h-8 text-red-600" />
@@ -1232,7 +1244,7 @@ const Settings: React.FC<SettingsProps> = () => {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setShowCancelModal(false)}
                 className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
@@ -1259,13 +1271,16 @@ const Settings: React.FC<SettingsProps> = () => {
               </button>
             </div>
           </div>
-        </div>
+        </SettingsDialog>
       )}
 
       {/* Modal de éxito de cancelación */}
       {cancelSuccess && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+        <SettingsDialog
+          label="Suscripción cancelada"
+          onClose={() => setCancelSuccess(null)}
+        >
+          <div className="bg-white p-4 sm:p-6">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <FiCheck className="w-8 h-8 text-green-600" />
@@ -1305,7 +1320,7 @@ const Settings: React.FC<SettingsProps> = () => {
               Entendido
             </button>
           </div>
-        </div>
+        </SettingsDialog>
       )}
     </div>
   );

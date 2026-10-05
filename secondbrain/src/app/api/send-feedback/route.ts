@@ -1,110 +1,103 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { Resend } from "resend";
+import { createHash } from "node:crypto";
 import { getDatabaseClient } from "@/lib/supabase";
 import { feedbackEmail } from "@/lib/email-templates";
-import { createHash } from "node:crypto";
 import { getRequestUser } from "@/lib/api-auth";
+import { dashboardJson } from "@/lib/dashboard-auth";
 
-interface FeedbackRequest {
-  type: "suggestion" | "problem";
-  message: string;
-  userEmail: string;
-}
-
-// Inicializar Resend
-const resend = new Resend(process.env.RESEND_API_KEY);
 export async function POST(request: NextRequest) {
   try {
     const user = await getRequestUser(request);
-    if (!user)
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    const body: FeedbackRequest = await request.json();
-    const { type, message, userEmail } = body;
-
-    // Validar los datos recibidos
-    if (
-      !["suggestion", "problem"].includes(type) ||
-      typeof message !== "string" ||
-      !message.trim() ||
-      message.length > 5000 ||
-      typeof userEmail !== "string" ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)
-    ) {
-      return NextResponse.json(
-        { error: "Faltan datos requeridos" },
-        { status: 400 },
-      );
+    if (!user) return dashboardJson({ error: "No autorizado" }, 401);
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return dashboardJson({ error: "Formato no válido" }, 400);
     }
-
-    // Validar que la API key esté configurada
     if (
-      !process.env.RESEND_API_KEY ||
-      process.env.RESEND_API_KEY === "re_placeholder_get_from_resend_dashboard"
-    ) {
-      console.error("❌ RESEND: API key no configurada");
-      return NextResponse.json(
-        { error: "Servicio de correo no configurado" },
-        { status: 500 },
+      !body ||
+      !["suggestion", "problem"].includes(body.type) ||
+      typeof body.message !== "string" ||
+      !body.message.trim() ||
+      body.message.length > 5000 ||
+      (body.userEmail !== undefined &&
+        (typeof body.userEmail !== "string" ||
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.userEmail)))
+    )
+      return dashboardJson(
+        { error: "Escribe un mensaje de entre 1 y 5.000 caracteres" },
+        400,
       );
-    }
-
-    if (user.email?.toLowerCase() !== userEmail.toLowerCase())
-      return NextResponse.json(
+    if (
+      body.userEmail !== undefined &&
+      user.email?.toLowerCase() !== body.userEmail.toLowerCase()
+    )
+      return dashboardJson(
         { error: "El correo debe coincidir con tu cuenta" },
-        { status: 403 },
+        403,
       );
-    const email = feedbackEmail(type, user.email, message.trim(), new Date());
+    const message = body.message.trim();
     const fingerprint = createHash("sha256")
       .update(
-        `${user.uid}:${type}:${message.trim()}:${new Date().toISOString().slice(0, 13)}`,
+        `${user.uid}:${body.type}:${message}:${new Date().toISOString().slice(0, 13)}`,
       )
       .digest("hex");
-
-    const { data: allowed, error: quotaError } = await getDatabaseClient().rpc(
-      "reserve_feedback",
-      { p_user_id: user.uid, p_id: fingerprint },
-    );
-    if (quotaError) throw quotaError;
-    if (!allowed)
-      return NextResponse.json(
+    const { data, error } = await getDatabaseClient().rpc("submit_feedback", {
+      p_user_id: user.uid,
+      p_fingerprint: fingerprint,
+      p_type: body.type,
+      p_message: message,
+    });
+    if (error || !data)
+      return dashboardJson(
+        { error: "No se pudo guardar tu mensaje. Inténtalo de nuevo." },
+        503,
+      );
+    if (!data.allowed)
+      return dashboardJson(
         {
           error:
             "Has enviado demasiados mensajes. Inténtalo dentro de una hora.",
         },
-        { status: 429 },
+        429,
       );
-
-    // Enviar el email usando Resend
-    const { data, error } = await resend.emails.send(
-      {
-        from: "SecondBrain <feedback@secondbrainapp.com>",
-        to: ["josemariark@gmail.com"],
-        ...email,
-        replyTo: user.email, // Para poder responder directamente al usuario
-      },
-      { idempotencyKey: `feedback-${fingerprint}` },
-    );
-
-    if (error) {
-      console.error("❌ RESEND: Error al enviar correo:", error);
-      return NextResponse.json(
-        { error: "Error al enviar el correo" },
-        { status: 500 },
-      );
+    // Database persistence is authoritative. Email is an optional notification;
+    // provider failure never tells the user that a saved report was lost.
+    let notified = false;
+    const key = process.env.RESEND_API_KEY;
+    if (
+      user.email &&
+      key &&
+      key !== "re_placeholder_get_from_resend_dashboard"
+    ) {
+      try {
+        const { error: mailError } = await new Resend(key).emails.send(
+          {
+            from: "SecondBrain <feedback@secondbrainapp.com>",
+            to: ["josemariark@gmail.com"],
+            ...feedbackEmail(body.type, user.email, message, new Date()),
+            replyTo: user.email,
+          },
+          { idempotencyKey: `feedback-${fingerprint}` },
+        );
+        notified = !mailError;
+      } catch {
+        /* The saved report remains available to administrators. */
+      }
     }
-
-    console.log("✅ RESEND: Correo enviado exitosamente:", data?.id);
-
-    return NextResponse.json({
+    return dashboardJson({
       success: true,
-      message: "Mensaje enviado correctamente",
-      emailId: data?.id,
+      id: data.id,
+      saved: true,
+      notified,
+      message: "Mensaje guardado correctamente",
     });
-  } catch (error) {
-    console.error("❌ SEND-FEEDBACK: Error general:", error);
-    return NextResponse.json(
-      { error: "Error interno del servidor" },
-      { status: 500 },
+  } catch {
+    return dashboardJson(
+      { error: "No se pudo guardar tu mensaje. Inténtalo de nuevo." },
+      503,
     );
   }
 }

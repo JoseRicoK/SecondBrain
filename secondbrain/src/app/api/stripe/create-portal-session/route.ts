@@ -1,13 +1,18 @@
+import { hasBillingSchema } from "@/lib/billing-readiness";
 import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/api-auth";
-import { getStripeClient, isCheckoutEnabled } from "@/lib/stripe-server";
+import {
+  getStripeClient,
+  isCheckoutEnabled,
+  getBillingOrigin,
+} from "@/lib/stripe-server";
 import { getUserProfile } from "@/lib/subscription-operations";
 export async function POST(request: Request) {
   try {
     const user = await getRequestUser(request);
     if (!user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (!isCheckoutEnabled())
+    if (!isCheckoutEnabled() || !(await hasBillingSchema()))
       return NextResponse.json(
         { error: "La gestión de pagos estará disponible próximamente" },
         { status: 503 },
@@ -21,7 +26,7 @@ export async function POST(request: Request) {
       );
     const session = await stripe.billingPortal.sessions.create({
       customer: profile.subscription.stripeCustomerId,
-      return_url: `${new URL(request.url).origin}/subscription`,
+      return_url: `${getBillingOrigin()}/subscription`,
       locale: "es",
     });
     return NextResponse.json({ url: session.url });

@@ -15,7 +15,8 @@ body {
 /* Liquid Glass Effects */
 .liquid-glass {
   position: relative;
-  background: linear-gradient(135deg, 
+  background: linear-gradient(
+    135deg,
     rgba(255, 255, 255, 0.1) 0%,
     rgba(255, 255, 255, 0.05) 25%,
     rgba(255, 255, 255, 0.1) 50%,
@@ -30,16 +31,17 @@ body {
 }
 
 .liquid-glass::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -2px;
   left: -2px;
   right: -2px;
   bottom: -2px;
-  background: linear-gradient(45deg, 
-    transparent, 
-    rgba(255, 255, 255, 0.1), 
-    transparent, 
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent,
     rgba(255, 255, 255, 0.15),
     transparent
   );
@@ -50,20 +52,23 @@ body {
 }
 
 .liquid-glass::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(circle at 30% 20%, 
-    rgba(167, 139, 250, 0.15) 0%,
-    transparent 50%
-  ),
-  radial-gradient(circle at 70% 80%, 
-    rgba(236, 72, 153, 0.15) 0%,
-    transparent 50%
-  );
+  background:
+    radial-gradient(
+      circle at 30% 20%,
+      rgba(167, 139, 250, 0.15) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 70% 80%,
+      rgba(236, 72, 153, 0.15) 0%,
+      transparent 50%
+    );
   animation: liquidShimmer 6s ease-in-out infinite alternate;
   pointer-events: none;
 }
@@ -71,7 +76,8 @@ body {
 /* Liquid Card - más sofisticado */
 .liquid-card {
   position: relative;
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     rgba(30, 41, 59, 0.8) 0%,
     rgba(51, 65, 85, 0.6) 50%,
     rgba(30, 41, 59, 0.8) 100%
@@ -84,13 +90,14 @@ body {
 }
 
 .liquid-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg,
+  background: linear-gradient(
+    90deg,
     transparent,
     rgba(255, 255, 255, 0.08),
     rgba(255, 255, 255, 0.12),
@@ -102,15 +109,23 @@ body {
 }
 
 .liquid-card::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 30%, rgba(167, 139, 250, 0.1) 0%, transparent 60%),
-    radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.1) 0%, transparent 60%);
+  background:
+    radial-gradient(
+      circle at 20% 30%,
+      rgba(167, 139, 250, 0.1) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 80% 70%,
+      rgba(236, 72, 153, 0.1) 0%,
+      transparent 60%
+    );
   animation: liquidPulse 8s ease-in-out infinite;
   pointer-events: none;
 }
@@ -118,7 +133,8 @@ body {
 /* Liquid Card especial para estadísticas - sin overflow hidden */
 .liquid-stats-card {
   position: relative;
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     rgba(30, 41, 59, 0.8) 0%,
     rgba(51, 65, 85, 0.6) 50%,
     rgba(30, 41, 59, 0.8) 100%
@@ -220,13 +236,14 @@ body {
 }
 
 .liquid-stats-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg,
+  background: linear-gradient(
+    90deg,
     transparent,
     rgba(255, 255, 255, 0.08),
     rgba(255, 255, 255, 0.12),
@@ -239,15 +256,23 @@ body {
 }
 
 .liquid-stats-card::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 30%, rgba(167, 139, 250, 0.1) 0%, transparent 60%),
-    radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.1) 0%, transparent 60%);
+  background:
+    radial-gradient(
+      circle at 20% 30%,
+      rgba(167, 139, 250, 0.1) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 80% 70%,
+      rgba(236, 72, 153, 0.1) 0%,
+      transparent 60%
+    );
   animation: liquidPulse 8s ease-in-out infinite;
   pointer-events: none;
   z-index: -1;
@@ -256,7 +281,8 @@ body {
 /* Liquid Button */
 .liquid-button {
   position: relative;
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     rgba(147, 51, 234, 0.9) 0%,
     rgba(219, 39, 119, 0.9) 50%,
     rgba(147, 51, 234, 0.9) 100%
@@ -268,13 +294,14 @@ body {
 }
 
 .liquid-button::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -50%;
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle,
+  background: radial-gradient(
+    circle,
     rgba(255, 255, 255, 0.3) 0%,
     rgba(255, 255, 255, 0.1) 30%,
     transparent 70%
@@ -293,7 +320,8 @@ body {
 /* Liquid Button Secondary */
 .liquid-button-secondary {
   position: relative;
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     rgba(30, 41, 59, 0.6) 0%,
     rgba(51, 65, 85, 0.4) 50%,
     rgba(30, 41, 59, 0.6) 100%
@@ -307,13 +335,14 @@ body {
 }
 
 .liquid-button-secondary::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -50%;
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle,
+  background: radial-gradient(
+    circle,
     rgba(167, 139, 250, 0.2) 0%,
     rgba(167, 139, 250, 0.1) 30%,
     transparent 70%
@@ -332,7 +361,8 @@ body {
 
 /* Liquid Navigation - Header fijo */
 .liquid-nav {
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     rgba(15, 23, 42, 0.95) 0%,
     rgba(30, 41, 59, 0.9) 50%,
     rgba(15, 23, 42, 0.95) 100%
@@ -350,13 +380,14 @@ body {
 }
 
 .liquid-nav::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg,
+  background: linear-gradient(
+    90deg,
     transparent,
     rgba(167, 139, 250, 0.5),
     rgba(236, 72, 153, 0.5),
@@ -367,62 +398,133 @@ body {
 
 /* Animaciones Liquid */
 @keyframes liquidFlow {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 @keyframes liquidBorder {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 300% 300%; }
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 300% 300%;
+  }
 }
 
 @keyframes liquidShimmer {
-  0% { opacity: 0.3; transform: scale(1); }
-  100% { opacity: 0.8; transform: scale(1.05); }
+  0% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
 }
 
 @keyframes liquidSweep {
-  0% { left: -100%; }
-  30% { left: -100%; }
-  70% { left: 100%; }
-  100% { left: 100%; }
+  0% {
+    left: -100%;
+  }
+  30% {
+    left: -100%;
+  }
+  70% {
+    left: 100%;
+  }
+  100% {
+    left: 100%;
+  }
 }
 
 @keyframes liquidSweepRandom {
-  0% { left: -120%; opacity: 0; }
-  5% { left: -120%; opacity: 0; }
-  15% { left: -80%; opacity: 0.3; }
-  25% { left: -20%; opacity: 0.8; }
-  35% { left: 30%; opacity: 0.6; }
-  45% { left: 70%; opacity: 0.4; }
-  55% { left: 110%; opacity: 0; }
-  85% { left: 120%; opacity: 0; }
-  100% { left: 120%; opacity: 0; }
+  0% {
+    left: -120%;
+    opacity: 0;
+  }
+  5% {
+    left: -120%;
+    opacity: 0;
+  }
+  15% {
+    left: -80%;
+    opacity: 0.3;
+  }
+  25% {
+    left: -20%;
+    opacity: 0.8;
+  }
+  35% {
+    left: 30%;
+    opacity: 0.6;
+  }
+  45% {
+    left: 70%;
+    opacity: 0.4;
+  }
+  55% {
+    left: 110%;
+    opacity: 0;
+  }
+  85% {
+    left: 120%;
+    opacity: 0;
+  }
+  100% {
+    left: 120%;
+    opacity: 0;
+  }
 }
 
 @keyframes liquidPulse {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.02); }
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
 }
 
 @keyframes liquidButtonFlow {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 @keyframes liquidButtonShine {
-  0% { transform: rotate(0deg) translate(-50%, -50%); }
-  100% { transform: rotate(360deg) translate(-50%, -50%); }
+  0% {
+    transform: rotate(0deg) translate(-50%, -50%);
+  }
+  100% {
+    transform: rotate(360deg) translate(-50%, -50%);
+  }
 }
 
 @keyframes liquidNavFlow {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
 }
 
 /* Gradient Text Liquid */
 .liquid-gradient-text {
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     #667eea 0%,
     #764ba2 25%,
     #f093fb 50%,
@@ -437,8 +539,13 @@ body {
 }
 
 @keyframes liquidTextFlow {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 /* Floating Liquid Elements - muy sutil y chill */
@@ -447,13 +554,14 @@ body {
 }
 
 @keyframes liquidFloating {
-  0%, 100% { 
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg) scale(1);
   }
-  33% { 
+  33% {
     transform: translateY(-3px) rotate(0.3deg) scale(1.005);
   }
-  66% { 
+  66% {
     transform: translateY(2px) rotate(-0.2deg) scale(0.998);
   }
 }
@@ -469,7 +577,8 @@ body {
 /* Botones de navegación del carrusel de testimonios */
 .carousel-nav-button {
   position: relative;
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     rgba(30, 41, 59, 0.9) 0%,
     rgba(51, 65, 85, 0.8) 50%,
     rgba(30, 41, 59, 0.9) 100%
@@ -481,13 +590,14 @@ body {
 }
 
 .carousel-nav-button::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg,
+  background: linear-gradient(
+    90deg,
     transparent,
     rgba(255, 255, 255, 0.1),
     rgba(255, 255, 255, 0.15),
@@ -513,7 +623,7 @@ body {
     width: 2.5rem; /* 40px */
     height: 2.5rem; /* 40px */
   }
-  
+
   .carousel-nav-button svg {
     width: 1.25rem; /* 20px */
     height: 1.25rem; /* 20px */
@@ -525,9 +635,33 @@ body {
     width: 2rem; /* 32px */
     height: 2rem; /* 32px */
   }
-  
+
   .carousel-nav-button svg {
     width: 1rem; /* 16px */
     height: 1rem; /* 16px */
   }
+}
+
+:focus-visible {
+  outline: 2px solid #c4b5fd;
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Static public content should not run decorative animation loops while reading. */
+.liquid-card,
+.liquid-card::before,
+.liquid-card::after,
+.liquid-gradient-text {
+  animation: none;
 }

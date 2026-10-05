@@ -4,7 +4,7 @@ import {
   getUserProfile,
 } from "@/lib/subscription-operations";
 import { getRequestUser } from "@/lib/api-auth";
-import { stripePeriodEnd } from "@/lib/stripe-billing";
+import { stripePeriodEnd, stripeObjectId } from "@/lib/stripe-billing";
 import { getStripeClient } from "@/lib/stripe-server";
 
 export const runtime = "nodejs";
@@ -65,6 +65,18 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           { error: "Stripe no está configurado" },
           { status: 503 },
+        );
+      const existing = await stripe.subscriptions.retrieve(
+        userSubscription.stripeSubscriptionId,
+      );
+      if (
+        stripeObjectId(existing.customer) !==
+          userSubscription.stripeCustomerId ||
+        (existing.metadata.uid && existing.metadata.uid !== user.uid)
+      )
+        return NextResponse.json(
+          { error: "Subscription owner mismatch" },
+          { status: 403 },
         );
       // Intentar cancelar en Stripe si tenemos una suscripción real
       try {

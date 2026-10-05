@@ -44,15 +44,49 @@ try {
     "commit;\n" +
     schema +
     policies +
+    // Mirror hosted Supabase defaults: new tables may inherit broad grants.
+    "alter default privileges in schema public grant all on tables to anon,authenticated,service_role;\n" +
     readFileSync("tests/database/billing-backfill-seed.sql", "utf8") +
     readFileSync(
-      "secondbrain/supabase/migrations/20260929204059_normalized_billing_and_atomic_usage.sql",
+      "secondbrain/supabase/migrations/20260929231804_normalized_billing_and_atomic_usage.sql",
+      "utf8",
+    ) +
+    readFileSync(
+      "secondbrain/supabase/migrations/20260929231923_billing_catalog_permissions_and_indexes.sql",
       "utf8",
     ) +
     readFileSync("tests/database/billing-backfill.sql", "utf8") +
+    readFileSync(
+      "secondbrain/supabase/migrations/20260929232943_remove_profile_subscription_json.sql",
+      "utf8",
+    ) +
+    readFileSync(
+      "secondbrain/supabase/migrations/20260929234816_billing_subscription_lineage.sql",
+      "utf8",
+    ) +
+    readFileSync(
+      "secondbrain/supabase/migrations/20261001192323_person_information_integrity.sql",
+      "utf8",
+    ) +
+    readFileSync(
+      "secondbrain/supabase/migrations/20261002055046_admin_dashboard_and_feedback.sql",
+      "utf8",
+    ) +
+    readFileSync(
+      "secondbrain/supabase/migrations/20261002213018_neutral_diary_emotion.sql",
+      "utf8",
+    ) +
+    readFileSync(
+      "secondbrain/supabase/migrations/20261002220537_admin_diary_reanalysis.sql",
+      "utf8",
+    ) +
     "begin;\n" +
     readFileSync("tests/database/security.sql", "utf8") +
-    readFileSync("tests/database/billing.sql", "utf8");
+    readFileSync("tests/database/billing.sql", "utf8") +
+    readFileSync("tests/database/people.sql", "utf8") +
+    readFileSync("tests/database/dashboard.sql", "utf8") +
+    readFileSync("tests/database/emotions.sql", "utf8") +
+    readFileSync("tests/database/reanalysis.sql", "utf8");
   process.stdout.write(
     docker(
       [
@@ -135,6 +169,95 @@ try {
     throw new Error("Concurrent completion lost a usage update");
   process.stdout.write(
     "Concurrency: 24 parallel requests, exactly 5 allowed and charged.\n",
+  );
+  const checkoutClaims = await Promise.all(
+    Array.from({ length: 24 }, () =>
+      query(
+        `select public.claim_checkout_attempt('11111111-1111-4111-8111-111111111111','${randomUUID()}','pro');`,
+      ).then(JSON.parse),
+    ),
+  );
+  if (new Set(checkoutClaims.map((value) => value.requestId)).size !== 1)
+    throw new Error("Concurrent checkout created multiple attempt keys");
+  process.stdout.write(
+    "Checkout concurrency: 24 parallel reservations share one payment attempt.\n",
+  );
+  docker(psql, {
+    input:
+      "insert into public.people(id,user_id,name) values ('33333333-3333-4333-8333-333333333333','11111111-1111-4111-8111-111111111111','Concurrency person');",
+  });
+  const personVersion = await query(
+    "select updated_at from public.people where id='33333333-3333-4333-8333-333333333333';",
+  );
+  const personWrites = await Promise.all(
+    Array.from({ length: 8 }, (_, index) =>
+      query(
+        `update public.people set details='{"detalles":{"entries":[{"value":"Fact ${index}","date":"2026-10-01"}]}}'::jsonb where id='33333333-3333-4333-8333-333333333333' and user_id='11111111-1111-4111-8111-111111111111' and updated_at='${personVersion}' returning id;`,
+      ),
+    ),
+  );
+  if (personWrites.filter(Boolean).length !== 1)
+    throw new Error(
+      "Optimistic person updates failed to reject stale versions",
+    );
+  const afterPerson = JSON.parse(
+    await query(
+      "select jsonb_build_object('details',details,'version',updated_at) from public.people where id='33333333-3333-4333-8333-333333333333';",
+    ),
+  );
+  afterPerson.details.detalles.entries.push({
+    value: "Retried fact",
+    date: "2026-10-01",
+  });
+  await query(
+    `update public.people set details='${JSON.stringify(afterPerson.details)}'::jsonb where id='33333333-3333-4333-8333-333333333333' and user_id='11111111-1111-4111-8111-111111111111' and updated_at='${afterPerson.version}';`,
+  );
+  if (
+    (await query(
+      "select jsonb_array_length(details->'detalles'->'entries') from public.people where id='33333333-3333-4333-8333-333333333333';",
+    )) !== "2"
+  )
+    throw new Error("Person retry lost another writer fact");
+  process.stdout.write(
+    "People concurrency: one of eight stale writes accepted, retry preserves both facts.\n",
+  );
+  const feedbackWrites = await Promise.all(
+    Array.from({ length: 24 }, (_, index) =>
+      query(
+        `select public.submit_feedback('11111111-1111-4111-8111-111111111111',md5('report-${index}')||md5('id-${index}'),'suggestion','Synthetic concurrency report ${index}');`,
+      ).then(JSON.parse),
+    ),
+  );
+  if (feedbackWrites.filter((row) => row.allowed).length !== 5)
+    throw new Error(
+      "Parallel feedback exceeded five reports per owner per hour",
+    );
+  process.stdout.write(
+    "Feedback concurrency: 24 parallel submissions, exactly 5 saved.\n",
+  );
+  await query(
+    "update public.profiles set admin=true where uid='11111111-1111-4111-8111-111111111111'; insert into public.diary_entries(user_id,date,content) values('11111111-1111-4111-8111-111111111111','2026-01-01','Synthetic concurrency diary');",
+  );
+  const analysisJobs = await Promise.all(
+    Array.from({ length: 24 }, () =>
+      query(
+        `select public.admin_start_reanalysis('11111111-1111-4111-8111-111111111111','11111111-1111-4111-8111-111111111111','${randomUUID()}');`,
+      ).then(JSON.parse),
+    ),
+  );
+  if (new Set(analysisJobs.map((job) => job.id)).size !== 1)
+    throw new Error("Concurrent reanalysis created duplicate jobs");
+  const analysisClaims = await Promise.all(
+    Array.from({ length: 24 }, () =>
+      query(
+        `select public.admin_claim_reanalysis('11111111-1111-4111-8111-111111111111','${analysisJobs[0].id}');`,
+      ).then(JSON.parse),
+    ),
+  );
+  if (analysisClaims.filter((result) => result.claim).length !== 1)
+    throw new Error("Concurrent reanalysis claimed multiple provider calls");
+  process.stdout.write(
+    "Reanalysis concurrency: 24 starts share one job; 24 processors claim exactly one entry.\n",
   );
 } finally {
   spawnSync("docker", ["rm", "--force", name], { stdio: "ignore" });

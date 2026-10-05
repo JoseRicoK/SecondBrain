@@ -84,7 +84,7 @@
     height: 80px !important;
     background: white !important;
     border-bottom: 2px solid #e2e8f0 !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
@@ -126,14 +126,14 @@
     height: 100vh !important;
     height: 100svh !important; /* Small viewport height - no cambia con el teclado */
   }
-  
+
   .mobileModalHeader {
     /* Asegurar que el header nunca se mueva */
     position: fixed !important;
     top: 0 !important;
     height: 70px !important;
   }
-  
+
   .mobileContentArea {
     top: 70px !important;
   }
@@ -154,9 +154,208 @@
     height: 65px !important;
     padding: 0 16px !important;
   }
-  
+
   .mobileContentArea {
     top: 65px !important;
     padding: 16px !important;
+  }
+}
+
+.personList {
+  display: grid;
+  gap: 12px;
+}
+.personCard {
+  border: 1px solid #e9e3f1;
+  border-radius: 16px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 2px 8px #37244705;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.personCard:hover {
+  border-color: #d7c6ea;
+}
+.personCardOpen {
+  border-color: #d9c5ed;
+  box-shadow: 0 7px 24px #6540910b;
+}
+.personHeader {
+  scroll-margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 74px;
+  padding: 15px;
+  text-align: left;
+  color: #342a45;
+  background: white;
+  cursor: pointer;
+}
+.personHeader:focus-visible {
+  outline: 2px solid #aa79da;
+  outline-offset: -3px;
+  border-radius: 14px;
+}
+.personCardOpen .personHeader {
+  background: linear-gradient(110deg, #fbf8ff, #f9f6fc);
+  border-bottom: 1px solid #eee4f6;
+}
+.personAvatar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #f1e9fb;
+  color: #9a63ca;
+  font-size: 12px;
+  font-weight: 600;
+}
+.personIdentity {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.personIdentity strong {
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.personIdentity small {
+  font-size: 11px;
+  color: #ab96bb;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.personChevron {
+  color: #baa7ca;
+  flex-shrink: 0;
+}
+.personBody {
+  padding: 14px;
+}
+.personActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.chatAction,
+.editAction {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 10px;
+  color: #9260bd;
+  white-space: nowrap;
+}
+.chatAction {
+  background: #f4ecfc;
+  flex: 1;
+}
+.editAction {
+  border: 1px solid #eee4f7;
+  background: white;
+  width: 100%;
+}
+.chatAction:hover,
+.editAction:hover {
+  background: #ede0fa;
+}
+.chatAction:focus-visible,
+.editAction:focus-visible {
+  outline: 2px solid #aa79da;
+  outline-offset: 2px;
+}
+.chatAction svg,
+.editAction svg {
+  flex-shrink: 0;
+  margin: 0;
+}
+.editActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.editActions > button {
+  min-height: 42px;
+  font-size: 12px;
+  padding: 8px 10px;
+}
+.detailCategory h4 {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #b09ac2;
+  margin: 16px 0 9px;
+}
+.detailList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+}
+.detailEntry {
+  padding: 11px 0 12px 12px;
+  border-left: 2px solid #e9dbf6;
+  position: relative;
+}
+.detailEntry::before {
+  content: "";
+  position: absolute;
+  top: 17px;
+  left: -4px;
+  width: 6px;
+  height: 6px;
+  background: #c0a1dc;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px white;
+}
+.detailEntry > span {
+  display: block;
+  font-size: 13px;
+  color: #61536e;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.detailEntry time {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #b5a5c3;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+.emptyDetail {
+  font-size: 12px;
+  color: #b6a6c4;
+}
+@media (max-width: 380px) {
+  .personBody {
+    padding: 12px;
+  }
+  .personActions {
+    flex-wrap: wrap;
+  }
+  .chatAction {
+    min-width: 100px;
+  }
+  .editActions > button {
+    padding-inline: 9px;
   }
 }

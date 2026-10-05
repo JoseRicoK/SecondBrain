@@ -10,7 +10,9 @@ const mock = vi.hoisted(() => ({
 vi.mock("@/lib/authenticated-fetch", () => ({
   authenticatedFetch: mock.fetch,
 }));
-vi.mock("@stripe/stripe-js", () => ({ loadStripe: mock.load }));
+vi.mock("@/lib/billing-navigation", () => ({
+  navigateToBilling: mock.redirect,
+}));
 const plan = {
   name: "Pro",
   price: 9.99,
@@ -24,7 +26,9 @@ beforeEach(() => {
   vi.resetModules();
   mock.load.mockResolvedValue({ redirectToCheckout: mock.redirect });
   mock.redirect.mockResolvedValue({});
-  mock.fetch.mockResolvedValue(new Response('{"sessionId":"cs_test"}'));
+  mock.fetch.mockResolvedValue(
+    new Response('{"checkoutUrl":"https://checkout.stripe.com/c/pay/cs_test"}'),
+  );
   vi.stubEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", "pk_test_fixture");
 });
 it("disabled checkout is visible but cannot call Stripe", async () => {
@@ -50,7 +54,10 @@ it("enabled checkout sends plan and redirects to returned session", async () => 
   await userEvent
     .setup()
     .click(screen.getByRole("button", { name: "Suscribirse a Pro" }));
-  expect(mock.redirect).toHaveBeenCalledWith({ sessionId: "cs_test" });
+  expect(mock.redirect).toHaveBeenCalledWith(
+    "https://checkout.stripe.com/c/pay/cs_test",
+    "checkout",
+  );
   expect(JSON.parse(mock.fetch.mock.calls[0][1].body)).toEqual({
     requestId: expect.any(String),
     planType: "pro",
@@ -72,15 +79,19 @@ it("API errors stay visible and never redirect", async () => {
   expect(await screen.findByText("Pagos no disponibles")).toBeVisible();
   expect(mock.redirect).not.toHaveBeenCalled();
 });
-it("missing publishable key keeps checkout off", async () => {
+it("hosted checkout works without loading a browser Stripe SDK or publishable key", async () => {
   vi.stubEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", "");
   const Component = (await import("@/components/CheckoutForm")).default;
   render(
     <Component plan={plan} userId="u" userEmail="u@test.invalid" enabled />,
   );
-  expect(
-    screen.getByRole("button", { name: "Pagos disponibles próximamente" }),
-  ).toBeDisabled();
+  await userEvent
+    .setup()
+    .click(screen.getByRole("button", { name: "Suscribirse a Pro" }));
+  expect(mock.redirect).toHaveBeenCalledWith(
+    "https://checkout.stripe.com/c/pay/cs_test",
+    "checkout",
+  );
   expect(mock.load).not.toHaveBeenCalled();
 });
 
@@ -96,5 +107,80 @@ it("a failed checkout retry reuses the same attempt to avoid duplicate sessions"
   await user.click(screen.getByRole("button", { name: "Suscribirse a Pro" }));
   const bodies = mock.fetch.mock.calls.map((call) => JSON.parse(call[1].body));
   expect(bodies[0].requestId).toBe(bodies[1].requestId);
-  expect(mock.redirect).toHaveBeenCalledWith({ sessionId: "cs_test" });
+  expect(mock.redirect).toHaveBeenCalledWith(
+    "https://checkout.stripe.com/c/pay/cs_test",
+    "checkout",
+  );
+});
+
+it("obsolete account checkout response never opens another account's payment session", async () => {
+  let finish: (value: Response) => void = () => {};
+  mock.fetch.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const Component = (await import("@/components/CheckoutForm")).default;
+  const view = render(
+    <Component plan={plan} userId="u" userEmail="u@test.invalid" enabled />,
+  );
+  await userEvent
+    .setup()
+    .click(screen.getByRole("button", { name: "Suscribirse a Pro" }));
+  view.rerender(
+    <Component
+      plan={plan}
+      userId="other"
+      userEmail="other@test.invalid"
+      enabled
+    />,
+  );
+  finish(
+    new Response(
+      JSON.stringify({ checkoutUrl: "https://checkout.stripe.com/c/pay/old" }),
+    ),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(mock.redirect).not.toHaveBeenCalled();
+});
+it("pending attempt can be canceled explicitly and the next retry has a new UUID", async () => {
+  mock.fetch
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: "Intento pendiente",
+          code: "CHECKOUT_PENDING",
+        }),
+        { status: 409 },
+      ),
+    )
+    .mockResolvedValueOnce(new Response(JSON.stringify({ success: true })))
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          checkoutUrl: "https://checkout.stripe.com/c/pay/new",
+        }),
+      ),
+    );
+  const Component = (await import("@/components/CheckoutForm")).default;
+  render(
+    <Component plan={plan} userId="u" userEmail="u@test.invalid" enabled />,
+  );
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Suscribirse a Pro" }));
+  await user.click(
+    screen.getByRole("button", { name: "Cancelar intento de pago pendiente" }),
+  );
+  await user.click(screen.getByRole("button", { name: "Suscribirse a Pro" }));
+  expect(mock.fetch.mock.calls[1][0]).toBe(
+    "/api/stripe/cancel-checkout-session",
+  );
+  expect(JSON.parse(mock.fetch.mock.calls[0][1].body).requestId).not.toBe(
+    JSON.parse(mock.fetch.mock.calls[2][1].body).requestId,
+  );
+  expect(mock.redirect).toHaveBeenCalledWith(
+    "https://checkout.stripe.com/c/pay/new",
+    "checkout",
+  );
 });

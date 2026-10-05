@@ -118,7 +118,7 @@ it("API failure preserves the recorded audio for retry", async () => {
   const u = await record();
   await u.click(screen.getByRole("button", { name: "Transcribir audio" }));
   expect(
-    await screen.findByText(/No se pudo realizar la transcripción/),
+    await screen.findByText(/No se pudo transcribir el audio/),
   ).toBeVisible();
   expect(screen.getByTitle("Reproducir")).toBeVisible();
   expect(mock.save).not.toHaveBeenCalled();
@@ -132,7 +132,7 @@ it("failed persistence keeps the preview and reports an error", async () => {
   const u = await record();
   await u.click(screen.getByRole("button", { name: "Transcribir audio" }));
   expect(
-    await screen.findByText(/No se pudo realizar la transcripción/),
+    await screen.findByText(/No se pudo guardar la transcripción/),
   ).toBeVisible();
   expect(mock.refresh).not.toHaveBeenCalled();
   expect(screen.getByTitle("Reproducir")).toBeVisible();

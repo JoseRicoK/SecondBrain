@@ -15,6 +15,7 @@ import {
 } from "react-icons/fa";
 import { FiZap } from "react-icons/fi";
 import { IconType } from "react-icons";
+import BillingPortalButton from "@/components/BillingPortalButton";
 import CheckoutForm from "@/components/CheckoutForm";
 
 interface PlanData {
@@ -270,6 +271,10 @@ function SubscriptionContent() {
           </p>
         </div>
 
+        {checkoutEnabled && userProfile?.subscription.stripeCustomerId && (
+          <BillingPortalButton userId={user.uid} />
+        )}
+
         {/* Plans Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           {Object.entries(plans).map(([key, plan]) => {
@@ -280,6 +285,16 @@ function SubscriptionContent() {
             return (
               <div
                 key={key}
+                role="button"
+                aria-label={`Seleccionar plan ${plan.name}`}
+                aria-pressed={isSelected}
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (["Enter", " "].includes(event.key)) {
+                    event.preventDefault();
+                    setSelectedPlan(key as keyof typeof basePlans);
+                  }
+                }}
                 onClick={() => setSelectedPlan(key as keyof typeof basePlans)}
                 className={`relative cursor-pointer transition-all duration-300 rounded-3xl p-8 border-2 hover:-translate-y-2 hover:rotate-1 ${
                   isSelected
@@ -291,7 +306,7 @@ function SubscriptionContent() {
                 {isPopular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg animate-pulse">
-                      ⭐ Más Popular
+                      Más conversaciones
                     </div>
                   </div>
                 )}
@@ -461,7 +476,7 @@ function SubscriptionContent() {
                             `Tu plan ${userCurrentPlan.toUpperCase()} permanecerá activo hasta: ${new Date(data.cancelAt).toLocaleDateString("es-ES")}\n\n` +
                             `Después cambiarás automáticamente al plan gratuito.`,
                         );
-                        router.push("/dashboard");
+                        router.push("/");
                       } else {
                         const errorData = await response.json();
                         alert(
@@ -481,13 +496,13 @@ function SubscriptionContent() {
 
                 <div className="mt-6 flex gap-4 justify-center">
                   <button
-                    onClick={() => router.push("/dashboard")}
+                    onClick={() => router.push("/")}
                     className="px-8 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-300 font-medium shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
                     Mantener Plan Actual
                   </button>
                   <button
-                    onClick={() => router.push("/dashboard?settings=true")}
+                    onClick={() => router.push("/?settings=true")}
                     className="px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:from-blue-600 hover:to-indigo-600 transition-all duration-300 font-medium shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
                     Gestionar en Settings
@@ -527,7 +542,7 @@ function SubscriptionContent() {
                         alert(
                           "✅ ¡Plan gratuito activado! Redirigiendo al dashboard...",
                         );
-                        window.location.href = "/dashboard";
+                        window.location.href = "/";
                       } else {
                         alert("❌ Error al activar el plan gratuito");
                       }
@@ -558,7 +573,7 @@ function SubscriptionContent() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <button
-                    onClick={() => router.push("/dashboard")}
+                    onClick={() => router.push("/")}
                     className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
                     Ir al Dashboard
@@ -572,7 +587,7 @@ function SubscriptionContent() {
                     </button>
                   )}
                   <button
-                    onClick={() => router.push("/dashboard?settings=true")}
+                    onClick={() => router.push("/?settings=true")}
                     className="px-8 py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-2xl hover:from-gray-700 hover:to-gray-800 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
                     Cancelar Suscripción
@@ -605,13 +620,6 @@ function SubscriptionContent() {
               {checkoutEnabled ? (
                 <button
                   onClick={() => {
-                    // Verificar downgrades no permitidos
-                    if (userCurrentPlan === "elite" && selectedPlan === "pro") {
-                      alert(
-                        "No puedes cambiar de Elite a Pro directamente. Primero cancela tu suscripción actual desde Settings.",
-                      );
-                      return;
-                    }
                     setShowCheckout(true);
                   }}
                   className={`inline-flex items-center gap-3 px-10 py-5 rounded-2xl text-white font-bold text-lg transition-all duration-300 bg-gradient-to-r ${currentPlan.color} hover:shadow-2xl hover:-translate-y-1 hover:rotate-1 group shadow-lg`}

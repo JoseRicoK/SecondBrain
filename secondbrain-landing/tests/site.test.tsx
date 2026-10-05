@@ -62,27 +62,43 @@ vi.mock("framer-motion", async () => {
 it.each(faqs)("FAQ toggles $question", async (faq) => {
   render(<FAQSection />);
   const u = userEvent.setup();
-  const trigger = screen.getByRole("button", { name: faq.question });
-  expect(screen.queryByText(faq.answer)).toBeNull();
+  const trigger = screen.getByText(faq.question);
+  expect(screen.getByText(faq.answer)).not.toBeVisible();
   await u.click(trigger);
   expect(screen.getByText(faq.answer)).toBeVisible();
   await u.click(trigger);
-  expect(screen.queryByText(faq.answer)).toBeNull();
-});
-it("only one FAQ answer is open at a time", async () => {
-  render(<FAQSection />);
-  const u = userEvent.setup();
-  await u.click(screen.getByRole("button", { name: faqs[0].question }));
-  await u.click(screen.getByRole("button", { name: faqs[1].question }));
-  expect(screen.queryByText(faqs[0].answer)).toBeNull();
-  expect(screen.getByText(faqs[1].answer)).toBeVisible();
+  expect(screen.getByText(faq.answer)).not.toBeVisible();
 });
 it.each([
   ["Comenzar Gratis", "free"],
   ["Comenzar Pro", "pro"],
   ["Comenzar Elite", "elite"],
 ])("pricing CTA %s keeps plan in the signup URL", async (label, plan) => {
-  render(<PricingSection />);
+  render(
+    <PricingSection
+      catalog={{
+        checkoutEnabled: true,
+        verified: true,
+        limits: {
+          free: {
+            personalChatMessages: 5,
+            personChatMessages: 10,
+            statisticsAccess: 0,
+          },
+          pro: {
+            personalChatMessages: 30,
+            personChatMessages: 100,
+            statisticsAccess: 10,
+          },
+          elite: {
+            personalChatMessages: 100,
+            personChatMessages: 500,
+            statisticsAccess: -1,
+          },
+        },
+      }}
+    />,
+  );
   expect(screen.getByRole("link", { name: label })).toHaveAttribute(
     "href",
     `https://app.secondbrainapp.com/signup?plan=${plan}`,
@@ -105,19 +121,26 @@ it("sitemap has unique canonical URLs for all actual public routes", () => {
   const urls = sitemap().map((row) => row.url);
   expect(new Set(urls).size).toBe(urls.length);
   expect(urls).toEqual(
-    ["", "/precios", "/privacidad", "/terminos", "/soporte"].map(
-      (path) => `https://secondbrainapp.com${path}`,
-    ),
+    [
+      "",
+      "/precios",
+      "/diario-personal-con-ia",
+      "/diario-de-voz",
+      "/como-empezar-un-diario",
+      "/privacidad",
+      "/terminos",
+      "/soporte",
+    ].map((path) => `https://www.secondbrainapp.com${path}`),
   );
   expect(urls.some((url) => url.includes("/en"))).toBe(false);
 });
 it("robots includes private-path exclusion and canonical sitemap", () => {
   const config = robots();
-  expect(config.sitemap).toBe("https://secondbrainapp.com/sitemap.xml");
+  expect(config.sitemap).toBe("https://www.secondbrainapp.com/sitemap.xml");
   const rules = config.rules as any[];
   expect(rules.find((rule) => rule.userAgent === "*")).toMatchObject({
     allow: "/",
-    disallow: ["/api/", "/_next/", "/admin/"],
+    disallow: ["/api/", "/admin/"],
   });
   for (const bot of [
     "Googlebot",

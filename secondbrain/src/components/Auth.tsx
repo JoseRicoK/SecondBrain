@@ -14,11 +14,12 @@ import { testSupabaseConnection } from '@/lib/supabase-test';
 import Image from 'next/image';
 
 interface AuthProps {
+  initialMode?: "login" | "signup";
   onAuthSuccess: (user: AuthUser, selectedPlan?: string) => void;
 }
 
-export default function Auth({ onAuthSuccess }: AuthProps) {
-  const [isLogin, setIsLogin] = useState(true);
+export default function Auth({ onAuthSuccess, initialMode = "login" }: AuthProps) {
+  const [isLogin, setIsLogin] = useState(initialMode === "login");
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');

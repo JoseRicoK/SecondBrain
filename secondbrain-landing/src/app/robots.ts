@@ -1,46 +1,24 @@
-import { MetadataRoute } from 'next'
- 
+import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/site";
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
-      {
-        userAgent: '*', 
-        allow: '/',
-        disallow: ['/api/', '/_next/', '/admin/'],
-      },
-      {
-        userAgent: 'Googlebot',
-        allow: '/',
-        disallow: ['/api/', '/_next/', '/admin/'],
-        crawlDelay: 1,
-      },
-      {
-        userAgent: 'Bingbot',
-        allow: '/',
-        disallow: ['/api/', '/_next/', '/admin/'],
-        crawlDelay: 1,
-      },
-      {
-        userAgent: 'GPTBot',
-        allow: '/',
-        disallow: ['/api/'],
-      },
-      {
-        userAgent: 'ChatGPT-User',
-        allow: '/',
-        disallow: ['/api/'],
-      },
-      {
-        userAgent: 'Google-Extended',
-        allow: '/',
-        disallow: ['/api/'],
-      },
-      ...['facebookexternalhit', 'Twitterbot', 'LinkedInBot', 'WhatsApp'].map(userAgent => ({
-        userAgent,
-        allow: '/',
-        disallow: ['/api/', '/_next/', '/admin/'],
-      })),
-    ],
-    sitemap: 'https://secondbrainapp.com/sitemap.xml',
-  }
+      "*",
+      "Googlebot",
+      "Bingbot",
+      "GPTBot",
+      "ChatGPT-User",
+      "Google-Extended",
+      "facebookexternalhit",
+      "Twitterbot",
+      "LinkedInBot",
+      "WhatsApp",
+    ].map((userAgent) => ({
+      userAgent,
+      allow: "/",
+      disallow: ["/api/", "/admin/"],
+    })),
+    sitemap: SITE_URL + "/sitemap.xml",
+    host: SITE_URL,
+  };
 }

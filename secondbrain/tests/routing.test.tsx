@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import Login from "@/app/login/page";
 import Signup from "@/app/signup/page";
-import Dashboard from "@/app/dashboard/page";
+import Dashboard from "@/app/billing/return/page";
 const mock = vi.hoisted(() => ({
   context: vi.fn(),
   fetch: vi.fn(),
@@ -99,17 +99,17 @@ it("signup with selected paid plan uses subscription page on status failure", as
     .click(screen.getByRole("button", { name: "Fixture login" }));
   expect(mock.push).toHaveBeenCalledWith("/subscription?plan=elite");
 });
-it("anonymous dashboard redirects to login", async () => {
+it("anonymous billing return redirects to login", async () => {
   render(<Dashboard />);
   expect(mock.push).toHaveBeenCalledWith("/login");
   expect(mock.fetch).not.toHaveBeenCalled();
 });
-it("dashboard without checkout session returns to the diary", async () => {
+it("billing return without checkout session returns to the diary", async () => {
   mock.context.mockReturnValue({ user: { uid: "u" }, loading: false });
   render(<Dashboard />);
   expect(mock.push).toHaveBeenCalledWith("/");
 });
-it("dashboard verifies payment before showing success or refreshing profile", async () => {
+it("billing return verifies payment before showing success or refreshing profile", async () => {
   mock.context.mockReturnValue({
     user: { uid: "u" },
     loading: false,
@@ -131,7 +131,7 @@ it("dashboard verifies payment before showing success or refreshing profile", as
     .click(screen.getByRole("button", { name: "Ir al diario" }));
   expect(mock.push).toHaveBeenCalledWith("/");
 });
-it("dashboard payment failure cannot appear as success", async () => {
+it("billing return payment failure cannot appear as success", async () => {
   mock.context.mockReturnValue({
     user: { uid: "u" },
     loading: false,

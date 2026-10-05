@@ -1,3 +1,10 @@
+import {
+  buildDiaryAnalytics,
+  analyticsRange,
+  entryMoodValues,
+  type AnalyticsPeriod,
+  type MoodKey,
+} from "../../secondbrain/src/lib/diary-analytics";
 import { PLAN_LIMITS } from "../../secondbrain/src/lib/subscription-policy";
 import { test as base, expect, type Page } from "@playwright/test";
 export { expect };
@@ -43,6 +50,15 @@ export type Backend = {
   aiError: boolean;
   limit: boolean;
   emailError: boolean;
+  feedbackError: boolean;
+  reanalysisDelay: number;
+  usage: {
+    personalChatMessages: number;
+    personChatMessages: number;
+    statisticsAccess: number;
+    month: string;
+    lastUpdated: string;
+  };
 };
 export const test = base.extend<{ backend: Backend }>({
   backend: async ({ page }, use) => {
@@ -54,10 +70,21 @@ export const test = base.extend<{ backend: Backend }>({
       aiError: false,
       limit: false,
       emailError: false,
+      feedbackError: false,
+      reanalysisDelay: 0,
+      usage: {
+        personalChatMessages: 2,
+        personChatMessages: 3,
+        statisticsAccess: 1,
+        month: date.slice(0, 7),
+        lastUpdated: fixtureUser.created_at,
+      },
       tables: {
+        reanalysis_jobs: [],
         profiles: [
           {
             uid,
+            admin: false,
             email: fixtureUser.email,
             display_name: "Ana Pruebas",
             is_google_user: false,
@@ -66,19 +93,15 @@ export const test = base.extend<{ backend: Backend }>({
             show_welcome_modal: false,
             created_at: fixtureUser.created_at,
             last_login_at: fixtureUser.created_at,
-            subscription: {
-              plan: "pro",
-              status: "active",
-              createdAt: fixtureUser.created_at,
-              updatedAt: fixtureUser.created_at,
-              monthlyUsage: {
-                personalChatMessages: 2,
-                personChatMessages: 3,
-                statisticsAccess: 1,
-                month: date.slice(0, 7),
-                lastUpdated: fixtureUser.created_at,
-              },
-            },
+          },
+        ],
+        subscriptions: [
+          {
+            user_id: uid,
+            plan: "pro",
+            status: "active",
+            created_at: fixtureUser.created_at,
+            updated_at: fixtureUser.created_at,
           },
         ],
         diary_entries: [
@@ -119,6 +142,7 @@ export const test = base.extend<{ backend: Backend }>({
             details: {},
           },
         ],
+        feedback_reports: [],
         audio_transcriptions: [],
         mood_data: [],
       },
@@ -202,6 +226,17 @@ export const test = base.extend<{ backend: Backend }>({
             selected = [];
           }
         }
+        if (
+          table === "profiles" &&
+          url.searchParams.get("select")?.includes("subscriptions")
+        )
+          selected = selected.map((row) => ({
+            ...row,
+            subscriptions:
+              backend.tables.subscriptions.find(
+                (subscription) => subscription.user_id === row.uid,
+              ) || null,
+          }));
         if (req.headers().accept?.includes("vnd.pgrst.object+json"))
           return respond(selected[0] || null);
         return respond(selected);
@@ -224,15 +259,18 @@ export const test = base.extend<{ backend: Backend }>({
         backend.calls.push({ path: url.pathname, method, body });
         if (url.pathname === "/api/subscription/status")
           return respond({
-            subscription: backend.tables.profiles[0].subscription,
+            subscription: {
+              ...backend.tables.subscriptions[0],
+              createdAt: backend.tables.subscriptions[0].created_at,
+              updatedAt: backend.tables.subscriptions[0].updated_at,
+            },
             isFirstLogin: false,
-            currentPlan: backend.tables.profiles[0].subscription.plan,
+            currentPlan: backend.tables.subscriptions[0].plan,
             planLimits:
               PLAN_LIMITS[
-                backend.tables.profiles[0].subscription
-                  .plan as keyof typeof PLAN_LIMITS
+                backend.tables.subscriptions[0].plan as keyof typeof PLAN_LIMITS
               ],
-            monthlyUsage: backend.tables.profiles[0].subscription.monthlyUsage,
+            monthlyUsage: backend.usage,
             resetAt: new Date(
               new Date().getFullYear(),
               new Date().getMonth() + 1,
@@ -253,6 +291,7 @@ export const test = base.extend<{ backend: Backend }>({
               stress: 10,
               tranquility: 70,
               sadness: 0,
+              neutral: 15,
             },
           });
         if (url.pathname === "/api/transcribe")
@@ -273,7 +312,7 @@ export const test = base.extend<{ backend: Backend }>({
               )
             : backend.aiError
               ? respond({ error: "IA no disponible" }, 500)
-              : (backend.tables.profiles[0].subscription.monthlyUsage[
+              : (backend.usage[
                   url.pathname === "/api/personal-chat"
                     ? "personalChatMessages"
                     : "personChatMessages"
@@ -282,11 +321,95 @@ export const test = base.extend<{ backend: Backend }>({
                   response: "Puedes reflexionar sobre tus relaciones.",
                   entriesAnalyzed: 1,
                 }));
+        if (url.pathname === "/api/statistics/person-emotions") {
+          if (backend.tables.subscriptions[0].plan === "free")
+            return respond({ error: "Plan de pago requerido" }, 403);
+          const emotion = url.searchParams.get("emotion") as MoodKey;
+          const person = url.searchParams.get("person");
+          const range = analyticsRange(
+            (url.searchParams.get("period") as AnalyticsPeriod) || "all",
+            date,
+          );
+          const cursor = url.searchParams.get("cursor")?.split("|");
+          const ranked = backend.tables.diary_entries
+            .filter(
+              (entry) =>
+                entry.user_id === uid &&
+                entry.content.trim() &&
+                entry.date <= date &&
+                (!range.start || entry.date >= range.start) &&
+                entry.mentioned_people.includes(person) &&
+                entryMoodValues(entry)[emotion] !== null,
+            )
+            .map((entry) => ({ date: entry.date, ...entryMoodValues(entry) }))
+            .filter(
+              (entry) =>
+                !cursor ||
+                entry[emotion]! < Number(cursor[0]) ||
+                (entry[emotion] === Number(cursor[0]) &&
+                  entry.date < cursor[1]),
+            )
+            .sort(
+              (a, b) =>
+                b[emotion]! - a[emotion]! || b.date.localeCompare(a.date),
+            );
+          const entries = ranked.slice(0, 12);
+          const last = entries.at(-1);
+          return respond({
+            entries,
+            nextCursor:
+              ranked.length > 12 && last
+                ? `${last[emotion]}|${last.date}`
+                : null,
+          });
+        }
+        if (url.pathname === "/api/statistics/connections") {
+          if (backend.tables.subscriptions[0].plan === "free")
+            return respond({ error: "Plan de pago requerido" }, 403);
+          const dates = (url.searchParams.get("dates") || "").split(",");
+          const source = url.searchParams.get("source");
+          const target = url.searchParams.get("target");
+          return respond({
+            entries: backend.tables.diary_entries
+              .filter(
+                (entry) =>
+                  entry.user_id === uid &&
+                  dates.includes(entry.date) &&
+                  entry.mentioned_people.includes(source) &&
+                  entry.mentioned_people.includes(target),
+              )
+              .sort((a, b) => b.date.localeCompare(a.date))
+              .slice(0, 12)
+              .map((entry) => ({
+                date: entry.date,
+                excerpt: entry.content.slice(0, 200),
+                ...entryMoodValues(entry),
+              })),
+          });
+        }
+        if (url.pathname === "/api/statistics/analytics") {
+          if (backend.tables.subscriptions[0].plan === "free")
+            return respond({ error: "Plan de pago requerido" }, 403);
+          return respond({
+            analytics: buildDiaryAnalytics(
+              backend.tables.diary_entries.filter(
+                (entry) => entry.user_id === uid,
+              ),
+              (url.searchParams.get("period") as AnalyticsPeriod) || "all",
+              date,
+            ),
+            report: {
+              weekSummary: "Has dedicado tiempo a tus amistades.",
+              instagramQuote: "Cada día es una oportunidad.",
+              generatedAt: new Date().toISOString(),
+            },
+          });
+        }
         if (
           url.pathname === "/api/statistics/report" ||
           url.pathname === "/api/statistics/access"
         ) {
-          if (backend.tables.profiles[0].subscription.plan === "free")
+          if (backend.tables.subscriptions[0].plan === "free")
             return respond(
               {
                 error: "Las estadísticas requieren un plan de pago",
@@ -302,9 +425,9 @@ export const test = base.extend<{ backend: Backend }>({
               },
               429,
             );
-          backend.tables.profiles[0].subscription.monthlyUsage
-            .statisticsAccess++;
+          backend.usage.statisticsAccess++;
           return respond({
+            generatedAt: new Date().toISOString(),
             weekSummary: "Has dedicado tiempo a tus amistades.",
             instagramQuote: "Cada día es una oportunidad.",
             topPeople: [{ name: "Ana", count: 3 }],
@@ -327,11 +450,228 @@ export const test = base.extend<{ backend: Backend }>({
               { date, happiness: 80, stress: 10, tranquility: 70, sadness: 0 },
             ],
           });
-        if (url.pathname === "/api/send-feedback")
-          return respond(
-            { success: !backend.emailError },
-            backend.emailError ? 500 : 200,
-          );
+        if (url.pathname === "/api/send-feedback") {
+          if (backend.feedbackError)
+            return respond(
+              { error: "No se pudo guardar tu mensaje. Inténtalo de nuevo." },
+              503,
+            );
+          const record = {
+            id: "11111111-1111-4111-8111-111111111111",
+            user_id: uid,
+            type: body.type,
+            message: body.message,
+            status: "open",
+            priority: "normal",
+            admin_notes: "",
+            email: user.email,
+            display_name: backend.tables.profiles[0].display_name,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          backend.tables.feedback_reports.push(record);
+          return respond({
+            success: true,
+            saved: true,
+            id: record.id,
+            notified: !backend.emailError,
+          });
+        }
+        if (url.pathname.startsWith("/api/dashboard/")) {
+          if (backend.tables.profiles[0].admin !== true)
+            return respond(
+              { error: "Esta pantalla está reservada a administradores" },
+              403,
+            );
+          if (url.pathname.endsWith("/reanalysis")) {
+            const rows = backend.tables.diary_entries.filter(
+              (row) => row.user_id === uid && row.content?.trim(),
+            );
+            let job = backend.tables.reanalysis_jobs[0] || null;
+            if (method === "GET")
+              return respond({
+                eligible: rows.length,
+                peoplePending: rows.filter((row) => !row.mood_analyzed_at)
+                  .length,
+                job,
+              });
+            if (body.action === "start") {
+              if (!job || job.status !== "running") {
+                job = {
+                  id: "55555555-5555-4555-8555-555555555555",
+                  userId: uid,
+                  status: "running",
+                  total: rows.length,
+                  done: 0,
+                  failed: 0,
+                  skipped: 0,
+                  pending: rows.length,
+                  peoplePending: rows.filter((row) => !row.mood_analyzed_at)
+                    .length,
+                  inFlight: false,
+                  createdAt: new Date().toISOString(),
+                  issues: [],
+                };
+                backend.tables.reanalysis_jobs = [job];
+              }
+            } else if (
+              body.action === "process" &&
+              job &&
+              job.status === "running"
+            ) {
+              if (backend.reanalysisDelay)
+                await new Promise((resolve) =>
+                  setTimeout(resolve, backend.reanalysisDelay),
+                );
+              const row = rows[job.done];
+              if (row)
+                Object.assign(row, {
+                  happiness: 0,
+                  tranquility: null,
+                  stress: 0,
+                  sadness: 0,
+                  neutral: 90,
+                  mood_analyzed_at: new Date().toISOString(),
+                });
+              job.done++;
+              job.pending--;
+              job.peoplePending = Math.max(0, job.peoplePending - 1);
+              if (!job.pending) job.status = "completed";
+            } else if (body.action === "cancel" && job) {
+              job.skipped += job.pending;
+              job.pending = 0;
+              job.status = "canceled";
+            }
+            return respond({ job });
+          }
+          if (url.pathname.endsWith("/overview"))
+            return respond({
+              users: 1,
+              admins: 1,
+              missingProfiles: 0,
+              newUsers30: 1,
+              activeUsers30: 1,
+              entries: 1,
+              people: 2,
+              transcriptions: 0,
+              analysedEntries: 1,
+              reports: 0,
+              plans: { pro: 1 },
+              subscriptionStates: { active: 1 },
+              providerSubscriptions: 0,
+              cancellations: 0,
+              feedback: {
+                open: backend.tables.feedback_reports.filter(
+                  (row) => row.status === "open",
+                ).length,
+                resolved: backend.tables.feedback_reports.filter(
+                  (row) => row.status === "resolved",
+                ).length,
+              },
+              feedbackTypes: {
+                problem: backend.tables.feedback_reports.filter(
+                  (row) => row.type === "problem",
+                ).length,
+                suggestion: backend.tables.feedback_reports.filter(
+                  (row) => row.type === "suggestion",
+                ).length,
+              },
+              usage: {
+                personalChatMessages: 2,
+                personChatMessages: 3,
+                statisticsAccess: 1,
+              },
+              pendingBillingEmails: 0,
+              failedBillingEmails: 0,
+              billingEvents30: 0,
+              catalog: Object.entries(PLAN_LIMITS).map(([id, limits]) => ({
+                id,
+                personal_chat_messages: limits.personalChatMessages,
+                person_chat_messages: limits.personChatMessages,
+                statistics_access: limits.statisticsAccess,
+              })),
+              monthly: [
+                { month: date.slice(0, 7) + "-01", users: 1, entries: 1 },
+              ],
+              generatedAt: new Date().toISOString(),
+              usageMonth: date.slice(0, 7) + "-01",
+              checkoutEnabled: false,
+              billingEmailsEnabled: false,
+            });
+          if (url.pathname.endsWith("/users")) {
+            const item = {
+              ...backend.tables.profiles[0],
+              ...backend.tables.subscriptions[0],
+              effective_plan: backend.tables.subscriptions[0].plan,
+              has_profile: true,
+              email_confirmed: true,
+              entries: 1,
+              people: 2,
+              lastEntry: date,
+              usage: backend.usage,
+            };
+            if (url.searchParams.has("id"))
+              return respond({
+                ...item,
+                transcriptions: 0,
+                analysedEntries: 1,
+                lastActivity: date,
+                reportGeneratedAt: null,
+                feedback: backend.tables.feedback_reports.length,
+                usageHistory: [],
+                billingEvents: [],
+              });
+            const query = (url.searchParams.get("q") || "").toLowerCase(),
+              plan = url.searchParams.get("plan") || "all";
+            const items =
+              (!query ||
+                (item.email + " " + item.display_name)
+                  .toLowerCase()
+                  .includes(query)) &&
+              (plan === "all" || plan === item.effective_plan)
+                ? [item]
+                : [];
+            return respond({
+              items,
+              total: items.length,
+              page: 1,
+              pageSize: 25,
+            });
+          }
+          if (url.pathname.endsWith("/feedback")) {
+            if (method === "PATCH") {
+              const record = backend.tables.feedback_reports.find(
+                (row) => row.id === body.id,
+              );
+              if (!record) return respond({ error: "No encontrado" }, 404);
+              Object.assign(record, {
+                status: body.status,
+                priority: body.priority,
+                admin_notes: body.notes,
+                updated_at: new Date().toISOString(),
+              });
+              return respond({ saved: true });
+            }
+            const type = url.searchParams.get("type") || "all",
+              status = url.searchParams.get("status") || "all",
+              query = (url.searchParams.get("q") || "").toLowerCase();
+            const items = backend.tables.feedback_reports.filter(
+              (row) =>
+                (type === "all" || row.type === type) &&
+                (status === "all" || row.status === status) &&
+                (!query ||
+                  (row.message + " " + row.email + " " + row.display_name)
+                    .toLowerCase()
+                    .includes(query)),
+            );
+            return respond({
+              items,
+              total: items.length,
+              page: 1,
+              pageSize: 20,
+            });
+          }
+        }
         if (url.pathname === "/api/account") return respond({ success: true });
         if (url.pathname === "/api/stripe/cancel-subscription")
           return respond({

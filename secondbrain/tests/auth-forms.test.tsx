@@ -140,3 +140,11 @@ it("reset shows provider errors", async () => {
   );
   expect(await screen.findByText("expired")).toBeVisible();
 });
+
+it("signup mode opens registration even without a plan query", () => {
+  render(<Auth initialMode="signup" onAuthSuccess={vi.fn()} />);
+  expect(screen.getByLabelText("Nombre")).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Registrarse", exact: true }),
+  ).toBeVisible();
+});

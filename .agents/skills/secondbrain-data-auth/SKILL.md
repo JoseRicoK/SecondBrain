@@ -5,9 +5,9 @@ description: Change or review SecondBrain Supabase tables, RLS, Auth, account da
 
 # SecondBrain data and identity
 
-Read [references/data-model.md](references/data-model.md) before changing schema, queries, auth, or private routes. Treat `secondbrain/supabase-schema.sql` as a code reference and verify the live project before making claims about deployed SQL; capture schema changes in a new reviewed, versioned SQL file under `secondbrain/supabase/`.
+Read [references/data-model.md](references/data-model.md) before changing schema, queries, auth, or private routes. Treat `secondbrain/supabase-schema.sql` as the historical bootstrap before the versioned migration chain and verify the live project before making claims about deployed SQL; capture schema changes in a new reviewed, versioned SQL file under `secondbrain/supabase/`.
 
-Supabase Auth user UUIDs are the owner keys. Preserve `auth.users` foreign keys, one diary entry per `(user_id, date)`, one person per `(user_id, name)`, and owner-scoped RLS. A client-supplied `userId`, `entryId`, or `person` is never sufficient proof of ownership.
+Supabase Auth user UUIDs are the owner keys. Preserve `auth.users` foreign keys, one diary entry per `(user_id, date)`, one person per owner plus normalized name, and owner-scoped RLS. A client-supplied `userId`, `entryId`, or `person` is never sufficient proof of ownership.
 
 `getDatabaseClient()` uses the service-role key on the server and bypasses RLS. Routes using it must authenticate the bearer token with `getRequestUser` or `getAuthenticatedUser`, derive or compare the owner, and check ownership of nested resources before reading or mutating. On the client, use the anon key and `authenticatedFetch` for private routes. Never put the service-role key in `NEXT_PUBLIC_*` or browser code.
 

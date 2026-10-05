@@ -1,0 +1,61 @@
+begin;
+insert into auth.users(id) values('11111111-1111-4111-8111-111111111111'),('22222222-2222-4222-8222-222222222222'),('33333333-3333-4333-8333-333333333333');
+insert into profiles(uid,email,admin) select id,'synthetic@test.invalid',id='11111111-1111-4111-8111-111111111111' from auth.users;
+insert into diary_entries(id,user_id,date,content,mentioned_people,mood_analyzed_at) values
+('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','22222222-2222-4222-8222-222222222222','2026-01-01','Una entrada ficticia con Ana',array['Ana'],now()),
+('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','22222222-2222-4222-8222-222222222222','2026-01-02','Entrada pendiente con Ana','{}',null),
+('cccccccc-cccc-4ccc-8ccc-cccccccccccc','22222222-2222-4222-8222-222222222222','2026-01-03','Texto que cambiará','{}',null),
+('dddddddd-dddd-4ddd-8ddd-dddddddddddd','33333333-3333-4333-8333-333333333333','2026-01-01','Otro propietario','{}',null);
+insert into people(user_id,name,details) values('22222222-2222-4222-8222-222222222222','Ana','{"relacion":{"entries":[{"value":"Amiga","date":"2026-01-01"}]}}');
+create temp table execution(data jsonb);
+set local role service_role;
+select test.raises($$select public.admin_start_reanalysis('22222222-2222-4222-8222-222222222222','22222222-2222-4222-8222-222222222222','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee')$$,'42501','non-admin cannot launch cross-owner or own reanalysis');
+reset role;
+insert into execution select public.admin_start_reanalysis('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
+select test.ok((select (data->>'total')::int=3 and (data->>'peoplePending')::int=2 from execution),'snapshot includes pending and analysed entries only for target owner');
+select test.ok(public.admin_start_reanalysis('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','ffffffff-ffff-4fff-8fff-ffffffffffff')->>'id'=(select data->>'id' from execution),'second tab shares the active job');
+update execution set data=public.admin_claim_reanalysis('11111111-1111-4111-8111-111111111111',(data->>'id')::uuid);
+select test.ok((select (data->'claim'->>'includePeople')::boolean=false from execution),'analysed entries only recalculate emotions');
+select test.ok((public.admin_claim_reanalysis('11111111-1111-4111-8111-111111111111',(select (data->'job'->>'id')::uuid from execution))->>'busy')::boolean,'parallel processing cannot claim a second entry');
+select test.ok((public.admin_finish_reanalysis('11111111-1111-4111-8111-111111111111',(select (data->'job'->>'id')::uuid from execution),'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','00000000-0000-4000-8000-000000000000','{}',null)->>'stale')::boolean,'wrong lease cannot overwrite scores');
+select public.admin_finish_reanalysis('11111111-1111-4111-8111-111111111111',(data->'job'->>'id')::uuid,(data->'claim'->>'entryId')::uuid,(data->'claim'->>'token')::uuid,'{"happiness":0,"tranquility":null,"stress":0,"sadness":0,"neutral":90}',null) from execution;
+select test.ok((select neutral=90 and tranquility is null and mentioned_people=array['Ana'] from diary_entries where id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),'nullable five moods saved without replacing existing mentions');
+select test.ok((public.admin_finish_reanalysis('11111111-1111-4111-8111-111111111111',(select (data->'job'->>'id')::uuid from execution),'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',(select (data->'claim'->>'token')::uuid from execution),'{}',null)->>'stale')::boolean,'repeated completion is idempotent');
+update execution set data=public.admin_claim_reanalysis('11111111-1111-4111-8111-111111111111',(data->'job'->>'id')::uuid);
+select public.admin_finish_reanalysis('11111111-1111-4111-8111-111111111111',(data->'job'->>'id')::uuid,(data->'claim'->>'entryId')::uuid,(data->'claim'->>'token')::uuid,'{"happiness":70,"tranquility":60,"stress":10,"sadness":0,"neutral":20}',
+ (select jsonb_build_array(jsonb_build_object('id',id,'name',name,'version',updated_at,'details',details)) from people where name='Ana')) from execution;
+select test.ok((select count(*)=1 from people where user_id='22222222-2222-4222-8222-222222222222'),'pending analysis reuses canonical person');
+select test.ok((select mention_count=2 and jsonb_array_length(details->'relacion'->'entries')=1 from people where name='Ana'),'facts and mention counts do not duplicate');
+update execution set data=public.admin_claim_reanalysis('11111111-1111-4111-8111-111111111111',(data->'job'->>'id')::uuid);
+update diary_entries set content='Contenido editado por el usuario',updated_at=clock_timestamp() where id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+select public.admin_finish_reanalysis('11111111-1111-4111-8111-111111111111',(data->'job'->>'id')::uuid,(data->'claim'->>'entryId')::uuid,(data->'claim'->>'token')::uuid,'{"happiness":0,"tranquility":0,"stress":0,"sadness":0,"neutral":90}','[]') from execution;
+select test.ok((select neutral is null and content='Contenido editado por el usuario' from diary_entries where id='cccccccc-cccc-4ccc-8ccc-cccccccccccc'),'concurrent edit preserved without partial mood writes');
+select test.ok((select neutral is null and mood_analyzed_at is null from diary_entries where user_id='33333333-3333-4333-8333-333333333333'),'other owner untouched');
+select test.ok(public.admin_start_reanalysis('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee')->>'status'='completed','retried start UUID returns completed job without another batch');
+update execution set data=public.admin_start_reanalysis('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','99999999-9999-4999-8999-999999999999');
+select public.admin_control_reanalysis('11111111-1111-4111-8111-111111111111',(data->>'id')::uuid,'cancel') from execution;
+select test.ok(public.admin_claim_reanalysis('11111111-1111-4111-8111-111111111111',(select (data->>'id')::uuid from execution))->'claim' is null,'canceled jobs cannot call provider');
+update execution set data=public.admin_start_reanalysis('11111111-1111-4111-8111-111111111111','33333333-3333-4333-8333-333333333333','88888888-8888-4888-8888-888888888888');
+update execution set data=public.admin_claim_reanalysis('11111111-1111-4111-8111-111111111111',(data->>'id')::uuid);
+select test.ok((public.admin_finish_reanalysis('11111111-1111-4111-8111-111111111111',(select (data->'job'->>'id')::uuid from execution),'dddddddd-dddd-4ddd-8ddd-dddddddddddd',(select (data->'claim'->>'token')::uuid from execution),'{"happiness":0,"tranquility":0,"stress":0,"sadness":0,"neutral":90}',(select jsonb_build_array(jsonb_build_object('id',id,'name',name,'version',updated_at,'details',details)) from people where name='Ana'))->>'conflict')::boolean,'foreign person ID cannot be merged into target owner');
+select test.ok((select neutral is null from diary_entries where id='dddddddd-dddd-4ddd-8ddd-dddddddddddd'),'person conflict produces no partial mood write');
+select public.admin_finish_reanalysis('11111111-1111-4111-8111-111111111111',(data->'job'->>'id')::uuid,(data->'claim'->>'entryId')::uuid,(data->'claim'->>'token')::uuid,null,null,'provider') from execution;
+select test.ok(public.admin_reanalysis_summary('11111111-1111-4111-8111-111111111111',(select (data->'job'->>'id')::uuid from execution))->>'failed'='1','provider failure remains retryable');
+select public.admin_control_reanalysis('11111111-1111-4111-8111-111111111111',(data->'job'->>'id')::uuid,'retry') from execution;
+select test.ok(public.admin_reanalysis_summary('11111111-1111-4111-8111-111111111111',(select (data->'job'->>'id')::uuid from execution))->>'pending'='1','retry queues only failed entries and reconciles progress');
+update execution set data=public.admin_claim_reanalysis('11111111-1111-4111-8111-111111111111',(data->'job'->>'id')::uuid);
+update public.diary_reanalysis_items set lease_until=now()-interval '1 minute' where job_id=(select (data->'job'->>'id')::uuid from execution);
+select test.ok(public.admin_claim_reanalysis('11111111-1111-4111-8111-111111111111',(select (data->'job'->>'id')::uuid from execution))->'claim' is null,'expired lease requires explicit retry, never another automatic model call');
+select public.admin_control_reanalysis('11111111-1111-4111-8111-111111111111',(data->'job'->>'id')::uuid,'retry') from execution;
+update execution set data=public.admin_claim_reanalysis('11111111-1111-4111-8111-111111111111',(data->'job'->>'id')::uuid);
+select public.admin_control_reanalysis('11111111-1111-4111-8111-111111111111',(data->'job'->>'id')::uuid,'cancel') from execution;
+select test.ok((public.admin_finish_reanalysis('11111111-1111-4111-8111-111111111111',(select (data->'job'->>'id')::uuid from execution),'dddddddd-dddd-4ddd-8ddd-dddddddddddd',(select (data->'claim'->>'token')::uuid from execution),'{"happiness":0,"tranquility":0,"stress":0,"sadness":0,"neutral":90}','[]')->>'stale')::boolean,'late provider response after cancellation cannot write');
+select test.ok((select neutral is null from diary_entries where id='dddddddd-dddd-4ddd-8ddd-dddddddddddd'),'cancellation preserves previous scores');
+set local role authenticated;
+select test.raises('select * from public.diary_reanalysis_jobs','42501','browser cannot read internal jobs');
+select test.raises('truncate public.diary_reanalysis_items','42501','browser cannot truncate queued work');
+select test.raises($$select public.admin_claim_reanalysis('11111111-1111-4111-8111-111111111111','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee')$$,'42501','browser cannot impersonate admin in RPC');
+reset role;
+select test.ok((select count(*)=4 from diary_entries),'reanalysis creates no diary copies');
+select count(*) as passed_reanalysis_checks from test.results;
+rollback;

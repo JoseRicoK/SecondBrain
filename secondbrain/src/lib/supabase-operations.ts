@@ -1,6 +1,14 @@
 import { v5 as uuidv5 } from "uuid";
 import type { User } from "@supabase/supabase-js";
 import { getDatabaseClient, supabase } from "./supabase";
+import {
+  cleanPersonName,
+  mergePersonInformation,
+  normalizePersonDetails,
+  localPersonDetailDate,
+} from "./person-information";
+
+import { MOOD_KEYS, entryMoodValues, type MoodValues } from "./diary-analytics";
 
 const NAMESPACE = "1b671a64-40d5-491e-99b0-da01ff1f3341";
 
@@ -24,11 +32,11 @@ export interface DiaryEntry {
   updated_at: string;
   user_id: string;
   mentioned_people?: string[];
-  happiness?: number;
-  stress?: number;
-  neutral?: number;
-  tranquility?: number;
-  sadness?: number;
+  happiness?: number | null;
+  stress?: number | null;
+  neutral?: number | null;
+  tranquility?: number | null;
+  sadness?: number | null;
   mood_analyzed_at?: string;
 }
 
@@ -125,7 +133,7 @@ function person(data: Record<string, unknown>): Person {
     created_at: iso(data.created_at as string),
     updated_at: iso(data.updated_at as string),
     mention_count: Number(data.mention_count || 0),
-    details: (data.details as Record<string, PersonDetailCategory>) || {},
+    details: normalizePersonDetails(data.details),
   } as Person;
 }
 
@@ -243,10 +251,23 @@ export async function getPeopleByUserId(userId: string): Promise<Person[]> {
     .eq("user_id", userId)
     .order("name");
   if (error) {
-    console.error("Error al obtener personas:", error);
-    return [];
+    throw getError(error);
   }
   return (data || []).map(person);
+}
+
+export async function getPersonByIdForUser(
+  id: string,
+  userId: string,
+): Promise<Person | null> {
+  const { data, error } = await getDatabaseClient()
+    .from("people")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw getError(error);
+  return data ? person(data) : null;
 }
 
 export async function savePerson(
@@ -254,21 +275,26 @@ export async function savePerson(
 ): Promise<Person | null> {
   const database = getDatabaseClient();
   const now = new Date().toISOString();
-  const { id, ...payload } = value;
-  const result = id
-    ? await database
+  const { id, updated_at: version, ...payload } = value;
+  if (payload.details)
+    payload.details = normalizePersonDetails(payload.details);
+  if (payload.name) payload.name = cleanPersonName(payload.name);
+  let update = id
+    ? database
         .from("people")
         .update({ ...payload, updated_at: now })
         .eq("id", id)
-        .select()
-        .single()
+    : null;
+  if (update && version) update = update.eq("updated_at", version);
+  const result = update
+    ? await update.select().single()
     : await database
         .from("people")
         .insert({ ...payload, created_at: now, updated_at: now })
         .select()
         .single();
   if (result.error) {
-    console.error("Error al guardar persona:", result.error);
+    console.warn("Person save failed", { code: result.error.code });
     return null;
   }
   return person(result.data);
@@ -390,21 +416,8 @@ export async function getUserInfo() {
 }
 
 export function getPersonDetailsWithDates(value: Person) {
-  return value.details || {};
+  return normalizePersonDetails(value.details);
 }
-const capitalize = (value: string) =>
-  value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
-const similar = (left: string, right: string) =>
-  left
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim() ===
-  right
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
 
 export async function saveExtractedPersonInfo(
   personName: string,
@@ -412,44 +425,47 @@ export async function saveExtractedPersonInfo(
   userId: string,
   entryDate?: string,
 ): Promise<Person | null> {
-  const { data, error } = await getDatabaseClient()
-    .from("people")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("name", personName)
-    .maybeSingle();
-  if (error) {
-    console.error("Error al buscar persona:", error);
-    return null;
+  const database = getDatabaseClient();
+  const name = cleanPersonName(personName);
+  if (!name) throw new Error("Se requiere el nombre de la persona");
+  const date = entryDate || localPersonDetailDate();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await database
+      .from("people")
+      .select("*")
+      .eq("user_id", userId)
+      .ilike("name", name.replace(/[\\%_]/g, "\\$&"))
+      .maybeSingle();
+    if (error) throw getError(error);
+    const details = mergePersonInformation(data?.details, information, date);
+    if (
+      data &&
+      JSON.stringify(details) ===
+        JSON.stringify(normalizePersonDetails(data.details))
+    )
+      return person(data);
+    const result = data
+      ? await database
+          .from("people")
+          .update({ details })
+          .eq("id", data.id)
+          .eq("user_id", userId)
+          .eq("updated_at", data.updated_at)
+          .select()
+          .maybeSingle()
+      : await database
+          .from("people")
+          .insert({ user_id: userId, name, details })
+          .select()
+          .maybeSingle();
+    if (result.error && result.error.code !== "23505")
+      throw getError(result.error);
+    if (result.data) return person(result.data);
+    // A concurrent update/create won. Read its latest version before merging.
   }
-  const current = data
-    ? person(data)
-    : { user_id: userId, name: personName, details: {} };
-  const details: Record<string, PersonDetailCategory> = current.details || {};
-  const date = entryDate || new Date().toISOString().slice(0, 10);
-  for (const [rawKey, rawValue] of Object.entries(information)) {
-    if (!rawValue) continue;
-    const key = rawKey === "cumpleanos" ? "cumpleaños" : rawKey;
-    const category = details[key] || { entries: [] };
-    const values = Array.isArray(rawValue) ? rawValue : [rawValue];
-    for (const raw of values) {
-      if (typeof raw !== "string") continue;
-      const value = capitalize(raw);
-      const unique = ["rol", "relacion", "cumpleaños", "direccion"].includes(
-        key,
-      );
-      const matching = category.entries.find((item) => item.date === date);
-      if (unique && matching) matching.value = value;
-      else if (
-        !category.entries.some(
-          (item) => item.date === date && similar(item.value, value),
-        )
-      )
-        category.entries.push({ value, date });
-    }
-    details[key] = category;
-  }
-  return savePerson({ ...current, details });
+  throw new Error(
+    "La persona se ha actualizado simultáneamente. Reintenta el análisis.",
+  );
 }
 
 export async function addPersonDetail(
@@ -552,34 +568,7 @@ export async function getMoodDataByPeriod(
     updated_at: iso(item.updated_at),
   }));
 }
-export async function incrementPersonMentionCount(
-  userId: string,
-  personName: string,
-) {
-  const { data } = await getDatabaseClient()
-    .from("people")
-    .select("id, mention_count")
-    .eq("user_id", userId)
-    .eq("name", personName)
-    .maybeSingle();
-  if (data)
-    await getDatabaseClient()
-      .from("people")
-      .update({
-        mention_count: Number(data.mention_count || 0) + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", data.id);
-}
-export async function updateEntryMoodData(
-  entryId: string,
-  mood: {
-    happiness: number;
-    stress: number;
-    tranquility: number;
-    sadness: number;
-  },
-) {
+export async function updateEntryMoodData(entryId: string, mood: MoodValues) {
   const { error } = await getDatabaseClient()
     .from("diary_entries")
     .update({
@@ -597,17 +586,14 @@ export async function getEntriesMoodDataByDateRange(
 ) {
   const { data, error } = await getDatabaseClient()
     .from("diary_entries")
-    .select("date, happiness, stress, tranquility, sadness")
+    .select("date, happiness, tranquility, stress, sadness, neutral")
     .eq("user_id", userId)
     .gte("date", startDate)
     .lte("date", endDate)
-    .not("happiness", "is", null);
+    .or(MOOD_KEYS.map((key) => `${key}.not.is.null`).join(","));
   if (error) throw error;
   return (data || []).map((item) => ({
     date: dateOnly(item.date),
-    happiness: Number(item.happiness || 0),
-    stress: Number(item.stress || 0),
-    tranquility: Number(item.tranquility || 0),
-    sadness: Number(item.sadness || 0),
+    ...entryMoodValues(item),
   }));
 }

@@ -11,20 +11,13 @@ const row = {
   is_google_user: false,
   created_at: "2026-01-01",
   last_login_at: "2026-01-01",
-  subscription: {
+  subscriptions: {
     plan: "pro",
     status: "active",
-    stripeCustomerId: "cus_test",
-    createdAt: "2026-01-01",
-    updatedAt: "2026-01-01",
-    currentPeriodEnd: "2026-12-31",
-    monthlyUsage: {
-      month: "2026-09",
-      personalChatMessages: 2,
-      personChatMessages: 3,
-      statisticsAccess: 4,
-      lastUpdated: "2026-09-01",
-    },
+    stripe_customer_id: "cus_test",
+    created_at: "2026-01-01",
+    updated_at: "2026-01-01",
+    current_period_end: "2026-12-31",
   },
 };
 beforeEach(() => {
@@ -33,7 +26,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-29T12:00:00Z"));
 });
-it("deserializes dates, usage and flags with owner filter", async () => {
+it("deserializes normalized dates and flags with owner filter", async () => {
   db.reply(row);
   expect(await repo.getUserProfile("u")).toMatchObject({
     uid: "u",
@@ -41,7 +34,6 @@ it("deserializes dates, usage and flags with owner filter", async () => {
     subscription: {
       plan: "pro",
       currentPeriodEnd: new Date("2026-12-31"),
-      monthlyUsage: { personChatMessages: 3 },
     },
   });
   expect(db.calls[0].steps).toContainEqual(["eq", "uid", "u"]);
@@ -103,7 +95,7 @@ it("missing subscriptions fail instead of inventing paid rows", async () => {
     repo.updateUserSubscription("u", { status: "active" }),
   ).rejects.toThrow("Subscription not found");
 });
-it("typed subscription rows take precedence over legacy JSON", async () => {
+it("reads normalized subscription without a profile JSON column", async () => {
   db.reply({
     ...row,
     subscriptions: {
@@ -133,7 +125,7 @@ it.each([
   ["pro", "active", true],
   ["elite", "past_due", false],
 ])("active subscription %s/%s", async (plan, status, expected) => {
-  db.reply({ ...row, subscription: { plan, status } });
+  db.reply({ ...row, subscriptions: { plan, status } });
   expect(await repo.hasActiveSubscription("u")).toBe(expected);
 });
 it.each([
@@ -233,4 +225,23 @@ it.each([
 it("propagates subscription persistence errors", async () => {
   db.reply(null, new Error("denied"));
   await expect(repo.updateUserSubscription("u", {})).rejects.toThrow("denied");
+});
+
+it("never grants access from an obsolete profile JSON when the relation is missing", async () => {
+  db.reply({
+    uid: "u",
+    created_at: "2026-01-01",
+    subscription: { plan: "elite", status: "active" },
+  });
+  expect((await repo.getUserProfile("u"))?.subscription).toMatchObject({
+    plan: "free",
+    status: "inactive",
+  });
+});
+it("reads the array form of the normalized PostgREST relation", async () => {
+  db.reply({ ...row, subscriptions: [row.subscriptions] });
+  expect((await repo.getUserProfile("u"))?.subscription).toMatchObject({
+    plan: "pro",
+    stripeCustomerId: "cus_test",
+  });
 });

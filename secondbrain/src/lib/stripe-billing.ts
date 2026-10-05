@@ -30,8 +30,13 @@ export function stripeSubscriptionData(
         ? "elite"
         : null;
   if (!plan) throw new Error("Unknown subscription price");
+  const invoice = subscription.latest_invoice;
+  const paid =
+    typeof invoice === "object" &&
+    invoice !== null &&
+    invoice.status === "paid";
   const status: UserSubscription["status"] =
-    subscription.status === "active"
+    subscription.status === "active" && paid
       ? "active"
       : subscription.status === "past_due"
         ? "past_due"
@@ -51,10 +56,17 @@ export async function syncStripeSubscription(
   subscription: Stripe.Subscription,
   event: { id: string; type: string; created: number },
   expectedOwner?: string,
+  stripe?: Stripe,
 ) {
   const customerId = stripeObjectId(subscription.customer);
   if (!customerId) throw new Error("Missing customer");
   const owner = await findUserByStripeCustomerId(customerId);
+  if (!owner && stripe) {
+    const customer = await stripe.customers.retrieve(customerId);
+    // Account deletion has already closed Stripe billing; acknowledge subsequent deletion events.
+    if (customer.deleted)
+      return { owner: null, snapshot: null, applied: false };
+  }
   if (
     !owner ||
     (expectedOwner && owner !== expectedOwner) ||
@@ -62,7 +74,7 @@ export async function syncStripeSubscription(
   )
     throw new Error("Subscription owner mismatch");
   const snapshot = stripeSubscriptionData(subscription);
-  const { error } = await getDatabaseClient().rpc("apply_billing_event", {
+  const { data, error } = await getDatabaseClient().rpc("apply_billing_event", {
     p_id: event.id,
     p_user_id: owner,
     p_type: event.type,
@@ -70,7 +82,7 @@ export async function syncStripeSubscription(
     p_subscription: snapshot,
   });
   if (error) throw error;
-  return { owner, snapshot };
+  return { owner, snapshot, applied: data !== false };
 }
 
 export async function verifyStripePrice(
