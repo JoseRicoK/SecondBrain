@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAN_PRICING } from "@/lib/plan-pricing";
 import { authenticatedFetch } from "@/lib/authenticated-fetch";
 
 import { useState, useEffect, Suspense } from "react";
@@ -51,7 +52,7 @@ const basePlans = {
   },
   pro: {
     name: "Pro",
-    price: 9.99,
+    price: PLAN_PRICING.amounts.pro / 100,
     description: "Para usuarios serios sobre su crecimiento",
     icon: FiZap,
     color: "from-purple-500 to-pink-500",
@@ -69,7 +70,7 @@ const basePlans = {
   },
   elite: {
     name: "Elite",
-    price: 19.99,
+    price: PLAN_PRICING.amounts.elite / 100,
     description: "Para profesionales que buscan lo mejor",
     icon: FaCrown,
     color: "from-orange-500 to-red-500",
@@ -353,7 +354,7 @@ function SubscriptionContent() {
                     ) : (
                       <div>
                         <span className="text-4xl font-bold text-gray-800">
-                          €{plan.price}
+                          {new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(plan.price)}
                         </span>
                         <span className="text-gray-600 text-lg">/mes</span>
                       </div>
@@ -627,11 +628,11 @@ function SubscriptionContent() {
                   <IconComponent className="w-6 h-6 transition-transform duration-300 group-hover:rotate-12" />
                   {userCurrentPlan === "free" ? (
                     <>
-                      Comenzar con {currentPlan.name} - €{currentPlan.price}/mes
+                      Comenzar con {currentPlan.name} - {new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(currentPlan.price)}/mes
                     </>
                   ) : (
                     <>
-                      Cambiar a {currentPlan.name} - €{currentPlan.price}/mes
+                      Cambiar a {currentPlan.name} - {new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(currentPlan.price)}/mes
                     </>
                   )}
                 </button>

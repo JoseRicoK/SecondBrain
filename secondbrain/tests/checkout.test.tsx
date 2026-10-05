@@ -15,7 +15,7 @@ vi.mock("@/lib/billing-navigation", () => ({
 }));
 const plan = {
   name: "Pro",
-  price: 9.99,
+  price: 4.99,
   priceId: "price_test",
   description: "Plan de prueba",
   icon: () => null,

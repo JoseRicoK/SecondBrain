@@ -1,0 +1,5 @@
+{
+  "currency": "eur",
+  "interval": "month",
+  "amounts": { "free": 0, "pro": 499, "elite": 999 }
+}

@@ -1,3 +1,4 @@
+import { PLAN_PRICING } from "@/lib/plan-pricing";
 import Link from "next/link";
 import { APP_URL, SIGNUP_URL } from "@/lib/site";
 import { FALLBACK_CATALOG, type Catalog } from "@/lib/plans";
@@ -12,7 +13,9 @@ export default function PricingSection({
     pro: "Más conversaciones y acceso a informes.",
     elite: "Más mensajes para reflexionar a tu ritmo.",
   };
-  const prices = { free: 0, pro: 9.99, elite: 19.99 };
+  const prices = Object.fromEntries(
+    Object.entries(PLAN_PRICING.amounts).map(([id, cents]) => [id, cents / 100]),
+  );
   const quantity = (n: number) => (n === -1 ? "Ilimitados" : String(n));
   return (
     <section id="pricing" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">

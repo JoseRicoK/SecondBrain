@@ -23,3 +23,5 @@ The public site and private app have separate Next/Tailwind versions. CTAs targe
 Keep features and quotas aligned with the server catalogue. All tiers use the same AI models. Do not add unimplemented priority support, model upgrades, invented reviews/user counts or clinical outcomes. Elite chats have finite monthly quotas; its statistics reports are unlimited. Graph period changes consume no report access. Software offers reflect actual checkout availability; do not invent ratings for rich-result eligibility.
 
 Read [the SEO guide](../../../../docs/LANDING-SEO.md). Run unit/catalogue tests and public desktop/mobile browser flows, including no-JavaScript content, native FAQ, menu keyboard focus, canonical URLs and unknown-route 404. Verify the normal landing build and [shared testing guide](../../../../docs/TESTING.md). Use the root lockfile and installation, never a separate workspace lockfile.
+
+Monthly prices and structured offers derive from root `shared/plan-pricing.json` via `src/lib/plan-pricing.ts`; never maintain a second numeric price table in marketing components.

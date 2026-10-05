@@ -1,3 +1,4 @@
+import { PLAN_PRICING } from "@/lib/plan-pricing";
 import type Stripe from "stripe";
 import { getDatabaseClient } from "./supabase";
 import {
@@ -91,12 +92,12 @@ export async function verifyStripePrice(
   priceId: string,
 ) {
   const price = await stripe.prices.retrieve(priceId);
-  const amount = plan === "pro" ? 999 : 1999;
+  const amount = PLAN_PRICING.amounts[plan];
   if (
     !price.active ||
-    price.currency !== "eur" ||
+    price.currency !== PLAN_PRICING.currency ||
     price.unit_amount !== amount ||
-    price.recurring?.interval !== "month" ||
+    price.recurring?.interval !== PLAN_PRICING.interval ||
     price.recurring.interval_count !== 1
   )
     throw new Error(

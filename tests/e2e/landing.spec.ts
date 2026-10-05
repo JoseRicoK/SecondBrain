@@ -71,7 +71,7 @@ test("pricing shows euros, current quotas and an honest disabled checkout", asyn
   backend,
 }) => {
   await page.goto("/precios");
-  await expect(page.getByText("9,99", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("4,99", { exact: false }).first()).toBeVisible();
   await expect(
     page.getByText(/todavía no puedes contratar ni pagar/),
   ).toBeVisible();

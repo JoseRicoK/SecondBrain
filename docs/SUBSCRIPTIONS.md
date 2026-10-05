@@ -57,7 +57,7 @@ El informe se reutiliza 30 minutos; actualizar el resumen/cita genera otro infor
 ## Stripe preparado, desactivado
 
 - `STRIPE_CHECKOUT_ENABLED` debe permanecer ausente o `false`. El servidor exige además todas las claves y precios para abrir checkout/portal. Checkout alojado devuelve una URL validada; no carga Stripe.js ni requiere clave publicable.
-- El servidor verifica que los precios configurados estén activos, en euros, mensuales y por 9,99/19,99 € antes de crear checkout; rechaza una configuración que no coincida con las tarjetas.
+- El servidor verifica que los precios configurados estén activos, en euros, mensuales y por 4,99/9,99 € antes de crear checkout; rechaza una configuración que no coincida con las tarjetas.
 - Se usa Stripe Node 22.6.2 y su API tipada `2026-08-26.dahlia`, eliminando la conversión de tipos que ocultaba un contrato antiguo. Las fechas vienen de los artículos de suscripción y las facturas de `parent.subscription_details`.
 - La creación/reutilización del cliente y los reintentos de checkout usan claves de idempotencia. Los clientes se vinculan al usuario autenticado antes de iniciar checkout.
 - Una suscripción existente se gestiona mediante Customer Portal; no se crea una segunda suscripción para cambiar de plan. El portal debe configurarse más adelante para permitir los productos/precios y la política de prorrateo elegida.

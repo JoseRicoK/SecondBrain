@@ -1,3 +1,4 @@
+import PLAN_PRICING from "../shared/plan-pricing.json" with { type: "json" };
 import { createRequire } from "node:module";
 const require = createRequire(
   new URL("../secondbrain/package.json", import.meta.url),
@@ -150,7 +151,7 @@ if (
           `price ${plan}`,
           price.active &&
             price.currency === "eur" &&
-            price.unit_amount === (plan === "pro" ? 999 : 1999) &&
+            price.unit_amount === PLAN_PRICING.amounts[plan] &&
             price.recurring?.interval === "month" &&
             price.recurring.interval_count === 1 &&
             price.livemode === live &&

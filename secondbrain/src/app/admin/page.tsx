@@ -1,5 +1,6 @@
 'use client';
 
+import { PLAN_PRICING } from "@/lib/plan-pricing";
 import { authenticatedFetch } from '@/lib/authenticated-fetch';
 
 import { useState } from 'react';
@@ -15,8 +16,8 @@ export default function AdminPage() {
 
   const plans = {
     free: { name: 'Gratuito', color: 'bg-gray-500', price: 'Gratis' },
-    pro: { name: 'Pro', color: 'bg-purple-500', price: '€9.99' },
-    elite: { name: 'Elite', color: 'bg-yellow-500', price: '€19.99' }
+    pro: { name: 'Pro', color: 'bg-purple-500', price: new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(PLAN_PRICING.amounts.pro / 100) },
+    elite: { name: 'Elite', color: 'bg-yellow-500', price: new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(PLAN_PRICING.amounts.elite / 100) }
   };
 
   const updateUserPlan = async () => {

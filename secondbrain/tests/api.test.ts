@@ -259,7 +259,7 @@ beforeEach(() => {
   mock.stripe.prices.retrieve.mockImplementation(async (id: string) => ({
     active: true,
     currency: "eur",
-    unit_amount: id === "price_elite" ? 1999 : 999,
+    unit_amount: id === "price_elite" ? 999 : 499,
     recurring: { interval: "month", interval_count: 1 },
   }));
   mock.stripe.billingPortal.sessions.create.mockReset();
@@ -1320,28 +1320,38 @@ describe("subscription maintenance", () => {
   });
 });
 describe("Stripe checkout and cancellation without charges", () => {
-  it("mismatched Stripe currency cannot create a charge", async () => {
-    mock.subscriptions.getUserProfile.mockResolvedValue(
-      profile("free", { status: "inactive", stripeSubscriptionId: undefined }),
-    );
-    mock.stripe.prices.retrieve.mockResolvedValue({
-      active: true,
-      currency: "usd",
-      unit_amount: 999,
-      recurring: { interval: "month", interval_count: 1 },
-    });
-    expect(
-      (
-        await invoke("stripe/create-checkout-session", {
-          userId: "u",
-          userEmail: "u@test.invalid",
-          planType: "pro",
-          requestId: "11111111-1111-4111-8111-111111111111",
-        })
-      ).status,
-    ).toBe(500);
-    expect(mock.stripe.checkout.sessions.create).not.toHaveBeenCalled();
-  });
+  it.each([
+    ["pro", "usd", 499],
+    ["pro", "eur", 999],
+    ["elite", "eur", 1999],
+  ])(
+    "rejects %s with mismatched currency %s or amount %i",
+    async (planType, currency, amount) => {
+      mock.subscriptions.getUserProfile.mockResolvedValue(
+        profile("free", {
+          status: "inactive",
+          stripeSubscriptionId: undefined,
+        }),
+      );
+      mock.stripe.prices.retrieve.mockResolvedValue({
+        active: true,
+        currency,
+        unit_amount: amount,
+        recurring: { interval: "month", interval_count: 1 },
+      });
+      expect(
+        (
+          await invoke("stripe/create-checkout-session", {
+            userId: "u",
+            userEmail: "u@test.invalid",
+            planType,
+            requestId: "11111111-1111-4111-8111-111111111111",
+          })
+        ).status,
+      ).toBe(500);
+      expect(mock.stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    },
+  );
   it("a paid return waits for the database webhook state without granting itself a plan", async () => {
     mock.subscriptions.getUserProfile.mockResolvedValue(
       profile("free", { status: "inactive" }),
@@ -1435,6 +1445,7 @@ describe("Stripe checkout and cancellation without charges", () => {
     ).toMatchObject({
       pro: "price_pro",
       elite: "price_elite",
+      prices: { free: 0, pro: 4.99, elite: 9.99 },
       checkoutEnabled: true,
     });
     mock.enabled.mockReturnValue(false);

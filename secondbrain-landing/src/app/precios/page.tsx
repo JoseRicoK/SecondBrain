@@ -1,3 +1,4 @@
+import { PLAN_PRICING } from "@/lib/plan-pricing";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PricingSection from "@/components/PricingSection";
@@ -12,7 +13,7 @@ export default async function PreciosPage() {
     .map((id) => ({
       "@type": "Offer",
       name: id === "free" ? "Gratuito" : id === "pro" ? "Pro" : "Elite",
-      price: id === "free" ? 0 : id === "pro" ? 9.99 : 19.99,
+      price: PLAN_PRICING.amounts[id] / 100,
       priceCurrency: "EUR",
       url: APP_URL + "/signup?plan=" + id,
     }));

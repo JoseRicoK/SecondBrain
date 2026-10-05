@@ -1,3 +1,4 @@
+import { PLAN_PRICING } from "@/lib/plan-pricing";
 import { hasBillingSchema } from "@/lib/billing-readiness";
 import { NextResponse } from "next/server";
 import { getDatabaseClient } from "@/lib/supabase";
@@ -21,6 +22,14 @@ export async function GET() {
     );
     const planIds = {
       limits,
+      prices: Object.fromEntries(
+        Object.entries(PLAN_PRICING.amounts).map(([id, cents]) => [
+          id,
+          cents / 100,
+        ]),
+      ),
+      currency: PLAN_PRICING.currency,
+      interval: PLAN_PRICING.interval,
       free: null,
       pro: process.env.STRIPE_PRO_PRICE_ID || null,
       elite: process.env.STRIPE_ELITE_PRICE_ID || null,
