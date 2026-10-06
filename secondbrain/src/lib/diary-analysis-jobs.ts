@@ -15,11 +15,17 @@ export type AnalysisJob = {
   attempts: number;
   published_generation: string | null;
   error_code: string | null;
+  error_person_name?: string | null;
   updated_at: string;
 };
-export const analysisError = (code: string | null) =>
+export const analysisError = (
+  code: string | null,
+  personName?: string | null,
+) =>
   code === "ambiguous"
-    ? "Hay una persona que no se puede identificar con seguridad. Aclara su relación en el texto y vuelve a guardar."
+    ? personName
+      ? `No se ha podido identificar a «${personName}» con seguridad. Aclara en el texto a quién te refieres y vuelve a guardar.`
+      : "Hay una persona que no se puede identificar con seguridad. Aclara su relación en el texto y vuelve a guardar."
     : code === "too_long"
       ? "El análisis admite hasta 50.000 caracteres. Tu entrada se ha guardado."
       : "Tu entrada está guardada. No se pudo completar el análisis; puedes reintentarlo con Analizar con IA.";
@@ -39,7 +45,10 @@ export function publicAnalysisJob(job: AnalysisJob | null) {
     ? {
         generation: job.generation,
         status: job.status,
-        error: job.status === "failed" ? analysisError(job.error_code) : null,
+        error:
+          job.status === "failed"
+            ? analysisError(job.error_code, job.error_person_name)
+            : null,
       }
     : null;
 }
@@ -107,7 +116,10 @@ export async function processAnalysisJob(jobId: string, generation: string) {
   } catch (error) {
     const result = await finish({
       p_mood: null,
-      p_people: null,
+      p_people:
+        error instanceof AmbiguousPersonError && error.personName
+          ? { ambiguousPersonName: error.personName }
+          : null,
       p_error: error instanceof AmbiguousPersonError ? "ambiguous" : "provider",
     });
     if (result?.retry)

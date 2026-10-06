@@ -17,6 +17,13 @@ do $$ declare j public.diary_analysis_jobs; c jsonb; r jsonb; g uuid; t uuid; be
  if exists(select 1 from public.diary_entries where id=j.entry_id and mood_analyzed_at is not null) then raise exception 'Stale mood persisted'; end if;
  select * into j from public.diary_analysis_jobs where id=j.id;
  c:=public.claim_diary_analysis(j.id,j.generation);
+ r:=public.finish_diary_analysis(j.id,j.generation,(c->>'token')::uuid,null,'{"ambiguousPersonName":"Teresa"}','ambiguous');
+ if (select error_person_name from public.diary_analysis_jobs where id=j.id) is distinct from 'Teresa' then raise exception 'Ambiguous mention not retained'; end if;
+ if exists(select 1 from public.diary_entries where id=j.entry_id and mood_analyzed_at is not null) then raise exception 'Ambiguity wrote partial result'; end if;
+ perform public.retry_diary_analysis(j.user_id,j.entry_id);
+ if (select error_person_name from public.diary_analysis_jobs where id=j.id) is not null then raise exception 'Retry retained old ambiguity'; end if;
+ select * into j from public.diary_analysis_jobs where id=j.id;
+ c:=public.claim_diary_analysis(j.id,j.generation);
  r:=public.finish_diary_analysis(j.id,j.generation,(c->>'token')::uuid,'{"happiness":10,"tranquility":20,"stress":30,"sadness":40,"neutral":50}','[]');
  if not (r->>'done')::boolean then raise exception 'Finish failed'; end if;
  if (select status from public.diary_analysis_jobs where id=j.id)<>'done' then raise exception 'Finish re-enqueued itself'; end if;

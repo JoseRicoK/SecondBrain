@@ -84,8 +84,18 @@ try {
       "secondbrain/supabase/migrations/20261005183128_increase_monthly_chat_limits.sql",
       "utf8",
     ) +
-    readFileSync("secondbrain/supabase/migrations/20261006085055_person_identity_mentions.sql", "utf8") +
-    readFileSync("secondbrain/supabase/migrations/20261006091542_automatic_diary_analysis.sql", "utf8") +
+    readFileSync(
+      "secondbrain/supabase/migrations/20261006085055_person_identity_mentions.sql",
+      "utf8",
+    ) +
+    readFileSync(
+      "secondbrain/supabase/migrations/20261006091542_automatic_diary_analysis.sql",
+      "utf8",
+    ) +
+    readFileSync(
+      "secondbrain/supabase/migrations/20261006141022_diary_analysis_ambiguity_name.sql",
+      "utf8",
+    ) +
     "begin;\n" +
     readFileSync("tests/database/automatic-analysis.sql", "utf8") +
     readFileSync("tests/database/security.sql", "utf8") +

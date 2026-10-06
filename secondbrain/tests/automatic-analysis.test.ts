@@ -25,6 +25,7 @@ import {
   publishAnalysisJob,
   getAnalysisJob,
   type AnalysisJob,
+  publicAnalysisJob,
 } from "@/lib/diary-analysis-jobs";
 import { GET, POST } from "@/app/api/diary-analysis/route";
 const db = mockDatabase();
@@ -53,15 +54,13 @@ beforeEach(() => {
     .mockResolvedValue([
       { id: null, name: "Ana", information: { relacion: "amiga" } },
     ]);
-  mocks.mood
-    .mockReset()
-    .mockResolvedValue({
-      happiness: 50,
-      tranquility: 20,
-      stress: null,
-      sadness: 0,
-      neutral: 10,
-    });
+  mocks.mood.mockReset().mockResolvedValue({
+    happiness: 50,
+    tranquility: 20,
+    stress: null,
+    sadness: 0,
+    neutral: 10,
+  });
   mocks.auth.mockReset().mockResolvedValue({ uid: "owner" });
   mocks.entry
     .mockReset()
@@ -175,4 +174,40 @@ it("returns a saved entry only after the owned job completes", async () => {
     entry: { content: claim.text },
   });
   expect(mocks.send).not.toHaveBeenCalled();
+});
+
+it("retains the ambiguous mention and does not save partial people or mood", async () => {
+  const { AmbiguousPersonError } = await import("@/lib/person-identity");
+  db.reply(claim);
+  db.reply({ retry: false });
+  mocks.extract.mockRejectedValue(new AmbiguousPersonError("Teresa"));
+  await processAnalysisJob(job.id, job.generation);
+  expect(db.rpc.mock.calls[1][1]).toMatchObject({
+    p_error: "ambiguous",
+    p_people: { ambiguousPersonName: "Teresa" },
+    p_mood: null,
+  });
+  expect(mocks.mood).not.toHaveBeenCalled();
+});
+it("names an ambiguous mention only for failed jobs and preserves the legacy fallback", () => {
+  expect(
+    publicAnalysisJob({
+      ...job,
+      status: "failed",
+      error_code: "ambiguous",
+      error_person_name: "Teresa",
+    })?.error,
+  ).toContain("«Teresa»");
+  expect(
+    publicAnalysisJob({ ...job, status: "failed", error_code: "ambiguous" })
+      ?.error,
+  ).toContain("Hay una persona");
+  expect(
+    publicAnalysisJob({
+      ...job,
+      status: "queued",
+      error_code: "ambiguous",
+      error_person_name: "Teresa",
+    })?.error,
+  ).toBeNull();
 });

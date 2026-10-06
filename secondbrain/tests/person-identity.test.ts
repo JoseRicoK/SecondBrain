@@ -132,3 +132,36 @@ it("validates both Teresa identities before saving and retains their separate fa
   expect(output.map((p) => p.id)).toEqual([mother.id, sister.id]);
   expect(output[0].information.detalles).toEqual(["Tomamos café"]);
 });
+
+it("identifies the mention flagged as ambiguous by the provider", async () => {
+  const create = vi
+    .fn()
+    .mockResolvedValue({
+      output_text: JSON.stringify({
+        people: [
+          {
+            id: null,
+            ambiguous: true,
+            name: "Teresa",
+            information: { detalles: [] },
+          },
+        ],
+      }),
+    });
+  await expect(
+    extractDiaryPeople("Vi a Teresa", "2026-01-01", [mother, sister], {
+      responses: { create },
+    } as any),
+  ).rejects.toMatchObject({ personName: "Teresa" });
+});
+it("identifies a conflicting catalogue identity in the ambiguity error", () => {
+  try {
+    resolveExtractedIdentity(mother.id, "Teresa", { relacion: "hermana" }, [
+      mother,
+    ]);
+  } catch (error) {
+    expect(error).toMatchObject({ personName: "Teresa" });
+    return;
+  }
+  throw new Error("Expected ambiguous identity");
+});

@@ -102,7 +102,7 @@ function validatePeople(
       Array.isArray(item.information)
     )
       throw new Error("Invalid extracted person");
-    if (item.ambiguous === true) throw new AmbiguousPersonError();
+    if (item.ambiguous === true) throw new AmbiguousPersonError(item.name);
     const identity = resolveExtractedIdentity(
       item.id,
       item.name,

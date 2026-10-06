@@ -6,10 +6,17 @@ import {
 
 export type KnownIdentity = { id?: string; name: string; details?: unknown };
 export class AmbiguousPersonError extends Error {
-  constructor() {
+  readonly personName: string | null;
+  constructor(name?: string) {
     super(
       "No se pudo distinguir con seguridad a las personas con el mismo nombre. Aclara en el texto a quién te refieres y vuelve a analizarlo.",
     );
+    this.personName =
+      name
+        ?.replace(/[\u0000-\u001f\u007f]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120) || null;
   }
 }
 const familyRole = (value: string) => {
@@ -70,12 +77,13 @@ export function resolveExtractedIdentity(
     if (typeof id !== "string") throw new Error("Invalid person identity");
     const match = known.find((person) => person.id === id);
     // Model IDs are selectors, never authorization; only owner catalogue identities are valid.
-    if (!match || personNameKey(name) !== personNameKey(match.name)) throw new Error("Invalid person identity");
-    if (hasMixedFamilyIdentity(match)) throw new AmbiguousPersonError();
+    if (!match || personNameKey(name) !== personNameKey(match.name))
+      throw new Error("Invalid person identity");
+    if (hasMixedFamilyIdentity(match)) throw new AmbiguousPersonError(name);
     const oldRole = familyRole(currentPersonValue(match.details, "relacion"));
     const newRole = familyRole(String(information.relacion || ""));
     if (oldRole && newRole && oldRole !== newRole)
-      throw new AmbiguousPersonError();
+      throw new AmbiguousPersonError(name);
     return match;
   }
   const candidates = known.filter(
@@ -90,11 +98,13 @@ export function resolveExtractedIdentity(
   if (
     role &&
     reliable.every((person) => {
-      const previous = personNameKey(currentPersonValue(person.details, "relacion"));
+      const previous = personNameKey(
+        currentPersonValue(person.details, "relacion"),
+      );
       return previous && previous !== role;
     })
   )
     return null;
   // Existing people must be selected by ID, never silently merged by name.
-  throw new AmbiguousPersonError();
+  throw new AmbiguousPersonError(name);
 }

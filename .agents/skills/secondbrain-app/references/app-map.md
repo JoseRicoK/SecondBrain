@@ -69,3 +69,5 @@ Diary analyses save human-readable `mentioned_people` alongside authoritative `m
 ## Automatic saved-entry analysis
 
 Browser diary saves use authenticated POST `/api/diary`; saving/transcribing/stylizing queues one analysis per changed content/date. Unchanged saves do not enqueue. The manual button saves first and POSTs `/api/diary-analysis`, reusing an active job or retrying a finished one (30-second cooldown). `useDiaryAnalysis` reads owner-scoped status only while pending, pauses in hidden tabs, aborts on date/account/unmount and limits polling to five minutes. Completion refreshes people and entry metadata only when the saved content still equals the current draft; never replace unsaved typing. A small editor status discloses queued/running/completed/failure. Old history is not automatically reanalysed.
+
+Automatic-analysis ambiguity notices name the unresolved mention when the worker retained it; ask the writer to clarify the reference and save again. Do not invent a person name for older generic errors or expose provider output.
