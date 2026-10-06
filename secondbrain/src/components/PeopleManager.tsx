@@ -6,7 +6,6 @@ import {
   mergePersonInformation,
   normalizePersonDetails,
   PROFILE_FIELDS,
-  detailValueKey,
   localPersonDetailDate,
 } from "@/lib/person-information";
 import {
@@ -30,6 +29,7 @@ import {
   getPersonDetailsWithDates,
 } from "@/lib/supabase-operations";
 import PersonChat from "./PersonChat";
+import PersonInformationEditor from "./PersonInformationEditor";
 import styles from "./PeopleManager.module.css";
 
 interface PeopleManagerProps {
@@ -55,12 +55,12 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [editedDetails, setEditedDetails] = useState<Record<string, unknown>>(
+  const [editedDetails, setEditedDetails] = useState<
+    Record<string, PersonDetailCategory>
+  >({});
+  const [profileValues, setProfileValues] = useState<Record<string, string>>(
     {},
   );
-  const [originalDates, setOriginalDates] = useState<
-    Record<string, Record<string, string[]>>
-  >({});
   const [editedVersion, setEditedVersion] = useState<string | undefined>();
   const [editedName, setEditedName] = useState<string>("");
   const [collapsed, setCollapsed] = useState(false);
@@ -139,41 +139,15 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({
       // Usar getPersonDetailsWithDates para asegurar formato correcto
       const detailsWithDates = getPersonDetailsWithDates(selectedPerson);
 
-      // Capturar las fechas originales para preservarlas durante la edición
-      const originalDatesMap: Record<string, Record<string, string[]>> = {};
-
-      // Inicializar las keys temporales de textarea para campos multi-valor
-      const editDetails: Record<string, unknown> = {};
-      const singleValueCategories = PROFILE_FIELDS;
-
-      for (const [key, value] of Object.entries(detailsWithDates)) {
-        editDetails[key] = value;
-
-        // Capturar fechas originales
-        if (isNewFormat(value)) {
-          originalDatesMap[key] = {};
-          sortEntriesByDate(value.entries).forEach((entry) => {
-            (originalDatesMap[key][detailValueKey(entry.value)] ||= []).push(
-              entry.date,
-            );
-          });
-        }
-
-        // Para campos multi-valor, inicializar la key temporal del textarea
-        if (
-          !singleValueCategories.includes(key.toLowerCase()) &&
-          isNewFormat(value)
-        ) {
-          const textContent = sortEntriesByDate(value.entries)
-            .map((entry) => entry.value)
-            .join("\n");
-          editDetails[key + "_textarea"] = textContent;
-        }
-      }
-
+      const editDetails = Object.fromEntries(
+        Object.entries(detailsWithDates).map(([key, value]) => [
+          key,
+          { entries: sortEntriesByDate(value.entries) },
+        ]),
+      );
       editSession.current++;
       setEditedVersion(selectedPerson.updated_at);
-      setOriginalDates(originalDatesMap);
+      setProfileValues({});
       setEditedDetails(editDetails);
       setEditedName(selectedPerson.name);
       setEditMode(true);
@@ -187,81 +161,24 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({
     try {
       setIsLoading(true);
 
-      // Limpiar y procesar los detalles antes de guardar
       const cleanedDetails: Record<string, PersonDetailCategory> = {};
-
-      for (const [key, value] of Object.entries(editedDetails)) {
-        // Saltar las keys temporales del textarea
-        if (key.endsWith("_textarea") || key.endsWith("_input")) continue;
-
-        const currentDate = localPersonDetailDate();
-
-        // Verificar si hay una versión de textarea para esta key
-        const inputValue = editedDetails[key + "_input"];
-        if (typeof inputValue === "string") {
-          if (inputValue.trim()) {
+      for (const [key, category] of Object.entries(editedDetails)) {
+        if (PROFILE_FIELDS.includes(key) && key in profileValues) {
+          const value = profileValues[key].trim();
+          if (value) {
             const merged = mergePersonInformation(
+              { [key]: category },
               { [key]: value },
-              { [key]: inputValue },
-              currentDate,
+              localPersonDetailDate(),
             );
             if (merged[key]) cleanedDetails[key] = merged[key];
           }
-          continue;
-        }
-        const originalDateQueues = Object.fromEntries(
-          Object.entries(originalDates[key] || {}).map(([value, dates]) => [
-            value,
-            [...dates],
-          ]),
-        );
-        const textareaValue = editedDetails[key + "_textarea"] as string;
-
-        if (textareaValue !== undefined) {
-          // Si hay valor de textarea, procesarlo línea por línea preservando fechas
-          const lines = textareaValue.split("\n").filter((line) => line.trim());
-
-          cleanedDetails[key] = {
-            entries: lines
-              .map((line) => {
-                const trimmedLine = line.trim();
-                const normalizedLine = detailValueKey(trimmedLine);
-
-                // Buscar la fecha original usando el mapeo capturado al inicio de la edición
-                const originalDate =
-                  originalDateQueues[normalizedLine]?.shift();
-
-                return {
-                  value: trimmedLine,
-                  date: originalDate ?? currentDate, // Solo usar fecha actual si es contenido completamente nuevo
-                };
-              })
-              .filter((entry) => entry.value), // Eliminar entradas vacías
-          };
-        } else if (value && typeof value === "object" && "entries" in value) {
-          // Valor normal con formato de categoría
-          const categoryValue = value as PersonDetailCategory;
-          cleanedDetails[key] = {
-            entries: categoryValue.entries
-              .map((entry) => ({
-                ...entry,
-                value: entry.value.trim(),
-              }))
-              .filter((entry) => entry.value), // Eliminar entradas vacías
-          };
         } else {
-          // Convertir valor simple al formato de categoría con entradas
-          const stringValue = String(value).trim();
-          if (stringValue) {
-            cleanedDetails[key] = {
-              entries: [
-                {
-                  value: stringValue,
-                  date: currentDate,
-                },
-              ],
-            };
-          }
+          cleanedDetails[key] = {
+            entries: category.entries
+              .map((entry) => ({ ...entry, value: entry.value.trim() }))
+              .filter((entry) => entry.value),
+          };
         }
       }
 
@@ -293,13 +210,8 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({
           ),
         );
 
-        // Limpiar los valores temporales del textarea
-        const cleanedEditedDetails: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(cleanedDetails)) {
-          cleanedEditedDetails[key] = value;
-        }
-        setEditedDetails(cleanedEditedDetails);
-        setOriginalDates({}); // Limpiar el mapeo de fechas originales
+        setEditedDetails(cleanedDetails);
+        setProfileValues({});
         setEditMode(false);
       }
     } catch (err) {
@@ -319,23 +231,7 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({
     editSession.current++;
     setEditMode(false);
     setEditedDetails({}); // Limpiar todas las keys temporales
-    setOriginalDates({}); // Limpiar el mapeo de fechas originales
-  };
-
-  // Función especializada para manejar cambios en textarea sin problemas de cursor
-  const handleTextareaChange = (key: string, newTextValue: string) => {
-    // Solo actualizar la key temporal del textarea, no procesar hasta guardar
-    setEditedDetails((prev) => ({
-      ...prev,
-      [key + "_textarea"]: newTextValue,
-    }));
-  };
-
-  const handleDetailChange = (key: string, value: unknown) => {
-    setEditedDetails((prev) => ({
-      ...prev,
-      [key + "_input"]: String(value ?? ""),
-    }));
+    setProfileValues({});
   };
 
   const handleChatClick = (person: Person, e: React.MouseEvent) => {
@@ -345,32 +241,6 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({
 
   const handleChatClose = () => {
     setChatPerson(null);
-  };
-
-  const handleAddDetail = () => {
-    const newKey = prompt("Introduce el nombre de la nueva categoría:");
-    if (newKey && newKey.trim() !== "") {
-      const currentDate = localPersonDetailDate();
-      setEditedDetails((prev) => ({
-        ...prev,
-        [newKey.trim()]: {
-          entries: [
-            {
-              value: "",
-              date: currentDate,
-            },
-          ],
-        },
-      }));
-    }
-  };
-
-  const handleRemoveDetail = (key: string) => {
-    setEditedDetails((prev) => {
-      const newDetails = { ...prev };
-      delete newDetails[key];
-      return newDetails;
-    });
   };
 
   // Orden preferido de las categorías
@@ -469,182 +339,70 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({
   };
 
   const renderPersonDetails = (person: Person) => {
-    const details = editMode
-      ? editedDetails
-      : normalizePersonDetails(person.details);
-
-    if (!details) return null;
-
-    // Ordenar las categorías según el orden preferido Y filtrar las keys temporales
-    const sortedEntries = Object.entries(details)
-      .filter(([key]) => !key.endsWith("_textarea") && !key.endsWith("_input")) // Filtrar las keys temporales del textarea
-      .sort((a, b) => {
-        const indexA = categoryOrder.indexOf(a[0]);
-        const indexB = categoryOrder.indexOf(b[0]);
-
-        // Si ambas categorías están en la lista, usar ese orden
-        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-        // Si solo una está en la lista, ponerla primero
-        if (indexA !== -1) return -1;
-        if (indexB !== -1) return 1;
-        // Si ninguna está en la lista, orden alfabético
-        return a[0].localeCompare(b[0]);
-      });
-
+    if (editMode)
+      return (
+        <PersonInformationEditor
+          details={editedDetails}
+          profileValues={profileValues}
+          onProfileChange={(key, value) =>
+            setProfileValues((prev) => ({ ...prev, [key]: value }))
+          }
+          onCategoryChange={(key, category) =>
+            setEditedDetails((prev) => ({ ...prev, [key]: category }))
+          }
+          onRemoveCategory={(key) => {
+            setEditedDetails((prev) => {
+              const next = { ...prev };
+              delete next[key];
+              return next;
+            });
+            setProfileValues((prev) => {
+              const next = { ...prev };
+              delete next[key];
+              return next;
+            });
+          }}
+        />
+      );
+    const details = normalizePersonDetails(person.details);
+    const sortedEntries = Object.entries(details).sort((a, b) => {
+      const first = categoryOrder.indexOf(a[0]);
+      const second = categoryOrder.indexOf(b[0]);
+      if (first !== -1 && second !== -1) return first - second;
+      if (first !== -1) return -1;
+      if (second !== -1) return 1;
+      return a[0].localeCompare(b[0]);
+    });
+    const labels: Record<string, string> = {
+      rol: "Profesión o rol",
+      relacion: "Relación",
+      detalles: "Recuerdos y detalles",
+      gustos: "Gustos",
+      cumpleaños: "Cumpleaños",
+      direccion: "Dirección",
+    };
     return (
-      <div className="mt-2 space-y-2 sm:mt-3 sm:space-y-3">
+      <div className="mt-2 space-y-3">
         {sortedEntries.map(([key, value]) => (
-          <div
-            key={key}
-            className="border-b border-slate-100 pb-1 sm:pb-3 last:border-b-0 last:pb-0"
-          >
-            <div className="w-full">
-              {editMode ? (
-                <div className="mb-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <label
-                      htmlFor={`detail-${key}`}
-                      className="font-medium text-slate-700 text-sm uppercase tracking-wide"
-                    >
-                      {key}
-                    </label>
-                    <button
-                      onClick={() => handleRemoveDetail(key)}
-                      className="p-1 text-red-500 hover:text-red-700 rounded-full hover:bg-red-50 transition-colors"
-                      title="Eliminar categoría"
-                    >
-                      <FiX size={16} />
-                    </button>
-                  </div>
-
-                  {/* Determinar si es un campo de valor único o múltiple */}
-                  {(() => {
-                    const singleValueCategories = PROFILE_FIELDS;
-                    const isSingleValueCategory =
-                      singleValueCategories.includes(key.toLowerCase());
-
-                    if (isSingleValueCategory) {
-                      // Para campos de valor único (rol, relación), usar input de texto
-                      const currentValue =
-                        typeof editedDetails[key + "_input"] === "string"
-                          ? (editedDetails[key + "_input"] as string)
-                          : currentPersonValue({ [key]: value }, key);
-
-                      return (
-                        <input
-                          type="text"
-                          id={`detail-${key}`}
-                          value={currentValue}
-                          onChange={(e) =>
-                            handleDetailChange(key, e.target.value)
-                          }
-                          className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                          placeholder={`Información sobre ${key}`}
-                          aria-label={`Información sobre ${key}`}
-                        />
-                      );
-                    } else {
-                      // Para campos de múltiples valores, usar textarea
-                      if (Array.isArray(value)) {
-                        const textareaValue =
-                          (editedDetails[key + "_textarea"] as
-                            string | undefined) ?? value.join("\n");
-                        return (
-                          <textarea
-                            id={`detail-${key}`}
-                            value={textareaValue}
-                            onChange={(e) =>
-                              handleTextareaChange(key, e.target.value)
-                            }
-                            className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                            rows={Math.min(4, value.length + 1)}
-                            placeholder={`Información sobre ${key} (un detalle por línea)`}
-                            aria-label={`Información sobre ${key}`}
-                          />
-                        );
-                      } else if (isNewFormat(value)) {
-                        const textareaValue =
-                          (editedDetails[key + "_textarea"] as
-                            string | undefined) ??
-                          sortEntriesByDate(value.entries)
-                            .map((entry) => entry.value)
-                            .join("\n");
-                        return (
-                          <textarea
-                            id={`detail-${key}`}
-                            value={textareaValue}
-                            onChange={(e) =>
-                              handleTextareaChange(key, e.target.value)
-                            }
-                            className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                            rows={Math.min(4, value.entries.length + 1)}
-                            placeholder={`Información sobre ${key} (un detalle por línea)`}
-                            aria-label={`Información sobre ${key}`}
-                          />
-                        );
-                      } else {
-                        return (
-                          <textarea
-                            id={`detail-${key}`}
-                            value={value as string}
-                            onChange={(e) =>
-                              handleDetailChange(key, e.target.value)
-                            }
-                            className="w-full p-2 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                            rows={2}
-                            placeholder={`Información sobre ${key}`}
-                            aria-label={`Información sobre ${key}`}
-                          />
-                        );
-                      }
-                    }
-                  })()}
-                </div>
-              ) : (
-                <section className={styles.detailCategory}>
-                  <h4>
-                    {(
-                      {
-                        rol: "Rol",
-                        relacion: "Relación",
-                        detalles: "Recuerdos y detalles",
-                        gustos: "Gustos",
-                        cumpleaños: "Cumpleaños",
-                        direccion: "Dirección",
-                      } as Record<string, string>
-                    )[key] || key}
-                  </h4>
-                  {isNewFormat(value) && value.entries.length ? (
-                    <ul className={styles.detailList}>
-                      {sortEntriesByDate(value.entries).map((entry, index) => (
-                        <li key={index} className={styles.detailEntry}>
-                          <span>{entry.value}</span>
-                          <time dateTime={entry.date || undefined}>
-                            <FiCalendar size={12} />
-                            {formatDate(entry.date)}
-                          </time>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className={styles.emptyDetail}>Sin información</p>
-                  )}
-                </section>
-              )}
-            </div>
-          </div>
+          <section key={key} className={styles.detailCategory}>
+            <h4>{labels[key] || key}</h4>
+            {value.entries.length ? (
+              <ul className={styles.detailList}>
+                {sortEntriesByDate(value.entries).map((entry, index) => (
+                  <li key={index} className={styles.detailEntry}>
+                    <span>{entry.value}</span>
+                    <time dateTime={entry.date || undefined}>
+                      <FiCalendar size={12} />
+                      {formatDate(entry.date)}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.emptyDetail}>Sin información</p>
+            )}
+          </section>
         ))}
-
-        {editMode && (
-          <div className="mt-4 text-center">
-            <button
-              onClick={handleAddDetail}
-              className="inline-flex items-center px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 transition-colors"
-            >
-              <span className="mr-1 font-bold">+</span> Añadir categoría
-            </button>
-          </div>
-        )}
       </div>
     );
   };

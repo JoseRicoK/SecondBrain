@@ -359,3 +359,124 @@
     padding-inline: 9px;
   }
 }
+
+.informationEditor {
+  display: grid;
+  gap: 20px;
+}
+.editorSection {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.editorSection h4 {
+  margin: 0;
+  color: #79608e;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.editorRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.editorRow > button {
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #9770b4;
+  border-radius: 8px;
+}
+.editorRow > button:hover {
+  background: #f3ecfa;
+}
+.editorRow > span,
+.profileEditor label,
+.addInformationPanel > label {
+  font-size: 12px;
+  color: #756381;
+}
+.profileEditor {
+  display: grid;
+  gap: 5px;
+}
+.informationEditor input,
+.informationEditor textarea,
+.informationEditor select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #e1d4ec;
+  border-radius: 9px;
+  background: white;
+  color: #51415d;
+  padding: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.informationEditor input:focus,
+.informationEditor textarea:focus,
+.informationEditor select:focus {
+  outline: 2px solid #ba96d7;
+  outline-offset: 1px;
+}
+.informationEditor textarea {
+  resize: vertical;
+  min-height: 85px;
+}
+.memoryEditor {
+  display: grid;
+  gap: 8px;
+  background: #fcfaff;
+  border: 1px solid #ede3f5;
+  border-radius: 12px;
+  padding: 12px;
+}
+.memoryDate {
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+  color: #9d85b0;
+}
+.memoryDate input {
+  font-size: 12px;
+  padding: 7px 9px;
+}
+.addInformation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #e8daf3;
+  border-radius: 9px;
+  padding: 8px 10px;
+  color: #9260bd;
+  background: #f7f1fc;
+  font-size: 12px;
+  min-height: 40px;
+}
+.addInformationPanel {
+  display: grid;
+  gap: 10px;
+  background: #faf7fd;
+  border: 1px solid #e8daf3;
+  border-radius: 12px;
+  padding: 12px;
+}
+@media (max-width: 768px) {
+  .informationEditor input,
+  .informationEditor textarea,
+  .informationEditor select {
+    font-size: 16px;
+  }
+  .editorRow > button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

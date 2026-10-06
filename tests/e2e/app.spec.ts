@@ -147,10 +147,10 @@ test("personal chat sends and shows responses, minimizes and closes", async ({
   await signIn(page);
   await page.goto("/");
   await openSidebar(page);
-  await page.getByRole("button", { name: "Chat personal", exact: true }).click();
-  const input = page.getByPlaceholder(
-    "Escribe lo que te gustaría explorar…",
-  );
+  await page
+    .getByRole("button", { name: "Chat personal", exact: true })
+    .click();
+  const input = page.getByPlaceholder("Escribe lo que te gustaría explorar…");
   await input.fill("¿Cómo va mi semana?");
   await input.press("Enter");
   await expect(
@@ -174,10 +174,10 @@ test("chat handles monthly quota rejection", async ({ page, backend }) => {
   await signIn(page);
   await page.goto("/");
   await openSidebar(page);
-  await page.getByRole("button", { name: "Chat personal", exact: true }).click();
-  const input = page.getByPlaceholder(
-    "Escribe lo que te gustaría explorar…",
-  );
+  await page
+    .getByRole("button", { name: "Chat personal", exact: true })
+    .click();
+  const input = page.getByPlaceholder("Escribe lo que te gustaría explorar…");
   await input.fill("Hola");
   await input.press("Enter");
   await expect(
@@ -288,10 +288,10 @@ test("chat success updates the usage displayed by settings", async ({
   await signIn(page);
   await page.goto("/");
   await openSidebar(page);
-  await page.getByRole("button", { name: "Chat personal", exact: true }).click();
-  const input = page.getByPlaceholder(
-    "Escribe lo que te gustaría explorar…",
-  );
+  await page
+    .getByRole("button", { name: "Chat personal", exact: true })
+    .click();
+  const input = page.getByPlaceholder("Escribe lo que te gustaría explorar…");
   await input.fill("Hola");
   await input.press("Enter");
   await expect(
@@ -415,7 +415,9 @@ test("manual analysis saves first and enqueues the saved entry identity", async 
   await page.getByTitle("Analizar con IA").click();
   await expect
     .poll(() =>
-      backend.calls.some((call) => call.path === "/api/diary-analysis" && call.method === "POST"),
+      backend.calls.some(
+        (call) => call.path === "/api/diary-analysis" && call.method === "POST",
+      ),
     )
     .toBe(true);
   const call = backend.calls.find(
@@ -1509,4 +1511,60 @@ test("emotion timeline retains real recent dates and truthful tooltips after a l
   expect(
     backend.calls.filter((call) => call.path === "/api/statistics/report"),
   ).toHaveLength(0);
+});
+
+test("person editor separates profile data and dated memories", async ({
+  page,
+  backend,
+}) => {
+  backend.tables.people[0].details = {
+    relacion: { entries: [{ value: "amiga", date: "2025-01-01" }] },
+    detalles: {
+      entries: [{ value: "Me invitó a un concierto", date: "2025-02-01" }],
+    },
+  };
+  await signIn(page);
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "Abrir panel de personas", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: /Ana amiga/ }).click();
+  await page
+    .getByRole("button", { name: "Editar", exact: true })
+    .last()
+    .click();
+  await expect(
+    page.getByRole("region", { name: "Datos de perfil" }),
+  ).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Recuerdo 1", exact: true })
+    .fill("Me invitó al teatro");
+  await expect(
+    page.getByLabel("Fecha del recuerdo 1", { exact: true }),
+  ).toHaveValue("2025-02-01");
+  await page
+    .getByRole("button", { name: "Añadir información", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "Qué quieres añadir" })
+    .selectOption("rol");
+  await page.getByRole("button", { name: "Añadir", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Información sobre rol" })
+    .fill("Profesora");
+  await noHorizontalOverflow(page);
+  await page
+    .getByRole("button", { name: "Guardar", exact: true })
+    .last()
+    .click();
+  await expect(
+    page.getByText("Me invitó al teatro", { exact: true }),
+  ).toBeVisible();
+  expect(backend.tables.people[0].details.detalles.entries).toEqual([
+    { value: "Me invitó al teatro", date: "2025-02-01" },
+  ]);
+  expect(backend.tables.people[0].details.rol.entries[0].value).toBe(
+    "Profesora",
+  );
 });

@@ -82,13 +82,14 @@ it("records a manual relationship change without erasing its previous history", 
     { value: "pareja", date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
   ]);
 });
-it("can clear a details textarea instead of restoring its old value", async () => {
+it("can clear one memory without restoring it or deleting the other memories", async () => {
   const user = await edit();
-  await user.clear(
-    screen.getByRole("textbox", { name: "Información sobre detalles" }),
-  );
+  await user.clear(screen.getByRole("textbox", { name: "Recuerdo 1" }));
   await user.click(screen.getByRole("button", { name: "Guardar" }));
-  expect(mock.save.mock.calls[0][0].details.detalles.entries).toEqual([]);
+  expect(mock.save.mock.calls[0][0].details.detalles.entries).toEqual([
+    { value: "Café", date: "2025-01-01" },
+    { value: "Nota sin fecha", date: "" },
+  ]);
 });
 it("keeps the editable draft and reports a concurrent save conflict", async () => {
   mock.save.mockResolvedValue(null);
@@ -143,4 +144,71 @@ it("opens the canonical profile when initial selection differs in case and spaci
   expect(
     await screen.findByRole("button", { name: "Chat con Mamá" }),
   ).toBeVisible();
+});
+
+it("edits a memory without changing its original date", async () => {
+  const user = await edit();
+  const memory = screen.getByRole("textbox", { name: "Recuerdo 1" });
+  await user.clear(memory);
+  await user.type(memory, "Me invitó a un café");
+  await user.click(screen.getByRole("button", { name: "Guardar" }));
+  expect(mock.save.mock.calls[0][0].details.detalles.entries[0]).toEqual({
+    value: "Me invitó a un café",
+    date: "2025-02-01",
+  });
+});
+it("adds fixed profile information without a free category prompt or overwriting old fields", async () => {
+  const user = await edit();
+  expect(screen.queryByText("Añadir categoría")).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Añadir información" }));
+  const selector = screen.getByRole("combobox", { name: "Qué quieres añadir" });
+  expect(screen.getAllByRole("option")).toHaveLength(5);
+  await user.selectOptions(selector, "rol");
+  await user.click(screen.getByRole("button", { name: "Añadir", exact: true }));
+  await user.type(
+    screen.getByRole("textbox", { name: "Información sobre rol" }),
+    "Profesora",
+  );
+  await user.click(screen.getByRole("button", { name: "Guardar" }));
+  expect(mock.save.mock.calls[0][0].details.rol.entries[0].value).toBe(
+    "Profesora",
+  );
+  expect(mock.save.mock.calls[0][0].details.relacion.entries[0].value).toBe(
+    "amiga",
+  );
+});
+it("deletes only the chosen memory and adds another with its own date", async () => {
+  const user = await edit();
+  await user.click(screen.getByRole("button", { name: "Eliminar recuerdo 1" }));
+  await user.click(screen.getByRole("button", { name: "Añadir recuerdo" }));
+  await user.type(
+    screen.getByRole("textbox", { name: "Recuerdo 3" }),
+    "Fuimos al teatro",
+  );
+  await user.click(screen.getByRole("button", { name: "Guardar" }));
+  const entries = mock.save.mock.calls[0][0].details.detalles.entries;
+  expect(entries).toHaveLength(3);
+  expect(entries[0]).toEqual({ value: "Café", date: "2025-01-01" });
+  expect(entries[2]).toMatchObject({
+    value: "Fuimos al teatro",
+    date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+  });
+});
+
+it("preserves existing custom categories and their dates when saving", async () => {
+  mock.read.mockResolvedValue([
+    {
+      ...person,
+      details: {
+        ...person.details,
+        gustos: { entries: [{ value: "Jazz", date: "2024-02-01" }] },
+      },
+    },
+  ]);
+  const user = await edit();
+  expect(screen.getByRole("textbox", { name: "gustos 1" })).toHaveValue("Jazz");
+  await user.click(screen.getByRole("button", { name: "Guardar" }));
+  expect(mock.save.mock.calls[0][0].details.gustos.entries).toEqual([
+    { value: "Jazz", date: "2024-02-01" },
+  ]);
 });
