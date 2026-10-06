@@ -146,12 +146,10 @@ test("personal chat sends and shows responses, minimizes and closes", async ({
 }) => {
   await signIn(page);
   await page.goto("/");
-  await page
-    .getByTitle(/Chat Personal/)
-    .filter({ visible: true })
-    .click();
+  await openSidebar(page);
+  await page.getByRole("button", { name: "Chat personal", exact: true }).click();
   const input = page.getByPlaceholder(
-    "Pregúntame sobre tu vida, patrones, crecimiento...",
+    "Escribe lo que te gustaría explorar…",
   );
   await input.fill("¿Cómo va mi semana?");
   await input.press("Enter");
@@ -175,12 +173,10 @@ test("chat handles monthly quota rejection", async ({ page, backend }) => {
   backend.limit = true;
   await signIn(page);
   await page.goto("/");
-  await page
-    .getByTitle(/Chat Personal/)
-    .filter({ visible: true })
-    .click();
+  await openSidebar(page);
+  await page.getByRole("button", { name: "Chat personal", exact: true }).click();
   const input = page.getByPlaceholder(
-    "Pregúntame sobre tu vida, patrones, crecimiento...",
+    "Escribe lo que te gustaría explorar…",
   );
   await input.fill("Hola");
   await input.press("Enter");
@@ -291,12 +287,10 @@ test("chat success updates the usage displayed by settings", async ({
 }) => {
   await signIn(page);
   await page.goto("/");
-  await page
-    .getByTitle(/Chat Personal/)
-    .filter({ visible: true })
-    .click();
+  await openSidebar(page);
+  await page.getByRole("button", { name: "Chat personal", exact: true }).click();
   const input = page.getByPlaceholder(
-    "Pregúntame sobre tu vida, patrones, crecimiento...",
+    "Escribe lo que te gustaría explorar…",
   );
   await input.fill("Hola");
   await input.press("Enter");
@@ -412,7 +406,7 @@ test("calendar selection creates a separate entry without changing today", async
     "Hoy paseé con Ana por el parque.",
   );
 });
-test("person extraction uses the entry date and ID", async ({
+test("manual analysis saves first and enqueues the saved entry identity", async ({
   page,
   backend,
 }) => {
@@ -421,16 +415,14 @@ test("person extraction uses the entry date and ID", async ({
   await page.getByTitle("Analizar con IA").click();
   await expect
     .poll(() =>
-      backend.calls.some((call) => call.path === "/api/extract-people"),
+      backend.calls.some((call) => call.path === "/api/diary-analysis" && call.method === "POST"),
     )
     .toBe(true);
   const call = backend.calls.find(
-    (call) => call.path === "/api/extract-people",
+    (call) => call.path === "/api/diary-analysis" && call.method === "POST",
   )!;
   expect(call.body).toMatchObject({
-    userId: uid,
     entryId: "entry-fixture",
-    entryDate: backend.tables.diary_entries[0].date,
   });
 });
 test("person chat uses the selected person context", async ({
@@ -453,7 +445,7 @@ test("person chat uses the selected person context", async ({
     .getByText("Ana", { exact: true })
     .click();
   await page.getByTitle("Chat con Ana").click();
-  const input = page.getByPlaceholder("Pregunta algo sobre Ana...");
+  const input = page.getByPlaceholder("Pregunta sobre Ana…");
   await input.fill("¿Qué le gusta?");
   await input.press("Enter");
   await expect(

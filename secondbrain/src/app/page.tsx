@@ -1,5 +1,6 @@
 "use client";
 
+import { useDiaryAnalysis } from "@/hooks/useDiaryAnalysis";
 import { authenticatedFetch } from "@/lib/authenticated-fetch";
 import { recordingFilename, transcribeAudio } from "@/lib/transcription-client";
 import { RECORDING_OPTIONS, RECORDING_LIMIT_NOTICE, recordingTime, startLimitedRecording } from "@/lib/audio-recording";
@@ -7,7 +8,6 @@ import { RECORDING_OPTIONS, RECORDING_LIMIT_NOTICE, recordingTime, startLimitedR
 import { useEffect, useState, useRef, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import PersonalChat from "@/components/PersonalChat";
-import PersonalChatButton from "@/components/PersonalChatButton";
 import Auth from "@/components/Auth";
 import Loading from "@/components/Loading";
 import Settings from "@/components/Settings";
@@ -63,7 +63,6 @@ export default function Home() {
 
   // Estados del diario
   const [content, setContent] = useState("");
-  const [secondaryContent, setSecondaryContent] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordingNotice, setRecordingNotice] = useState<string | null>(null);
@@ -78,6 +77,7 @@ export default function Home() {
   const [peopleRefreshTrigger, setPeopleRefreshTrigger] = useState(0);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [mentionedPeople, setMentionedPeople] = useState<string[]>([]);
+  const [mentionedPersonIds, setMentionedPersonIds] = useState<string[] | null>(null);
 
   // Estado para controlar el comportamiento responsive del panel de personas
   const [isDesktop, setIsDesktop] = useState(false);
@@ -95,6 +95,18 @@ export default function Home() {
   activeRecordingContext.current = recordingContext;
   const latestContent = useRef(content);
   latestContent.current = content;
+
+  const { analysis, restart: restartAnalysis } = useDiaryAnalysis(currentEntry, user?.uid, (entry) => {
+    const state = useDiaryStore.getState();
+    if (state.currentEntry?.id !== entry.id || state.currentDate !== entry.date || state.currentEntry.user_id !== entry.user_id) return;
+    setPeopleRefreshTrigger(value => value + 1);
+    // Refresh metadata only: an in-progress draft must never be replaced by a worker response.
+    if (state.currentEntry.content === entry.content && latestContent.current === entry.content) {
+      useDiaryStore.setState({ currentEntry: entry });
+      setMentionedPeople(entry.mentioned_people || []);
+      setMentionedPersonIds(entry.mentioned_person_ids ?? null);
+    }
+  });
 
   useEffect(() => {
     cancelRecordingTimer.current?.();
@@ -180,9 +192,11 @@ export default function Home() {
       if (currentEntry) {
         setContent(currentEntry.content || "");
         setMentionedPeople(currentEntry.mentioned_people || []);
+        setMentionedPersonIds(currentEntry.mentioned_person_ids ?? null);
       } else {
         setContent("");
         setMentionedPeople([]);
+        setMentionedPersonIds(null);
       }
       setError(null);
     }
@@ -196,7 +210,7 @@ export default function Home() {
     console.log("📝 DIARY: Guardando entrada...");
     console.log("📝 DIARY: Personas mencionadas a guardar:", mentionedPeople);
     try {
-      await saveCurrentEntry(content, user.uid, mentionedPeople);
+      await saveCurrentEntry(content, user.uid, mentionedPeople, mentionedPersonIds);
       console.log("📝 DIARY: Entrada guardada exitosamente");
     } catch (error) {
       console.error("📝 DIARY: Error al guardar:", error);
@@ -240,7 +254,7 @@ export default function Home() {
 
         // Guardar automáticamente la entrada estilizada
         try {
-          await saveCurrentEntry(data.stylizedText, user.uid, mentionedPeople);
+          await saveCurrentEntry(data.stylizedText, user.uid, mentionedPeople, mentionedPersonIds);
           console.log("📝 DIARY: Entrada estilizada guardada automáticamente");
         } catch (saveError) {
           console.error(
@@ -269,49 +283,18 @@ export default function Home() {
     setIsExtracting(true);
     setError(null);
     try {
-      const token = await user.getIdToken();
-      const response = await fetch("/api/extract-people", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          text: analyzedContent,
-          userId: user.uid,
-          entryDate: currentDate,
-          entryId: currentEntry?.id,
-        }),
+      await saveCurrentEntry(analyzedContent, user.uid, mentionedPeople, mentionedPersonIds);
+      if (activeRecordingContext.current !== context) return;
+      const state = useDiaryStore.getState();
+      if (state.error || !state.currentEntry) throw new Error(state.error || "No se pudo guardar la entrada.");
+      const response = await authenticatedFetch("/api/diary-analysis", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entryId: state.currentEntry.id }),
       });
       const data = await response.json();
       if (activeRecordingContext.current !== context) return;
-      if (!response.ok)
-        throw new Error(data.error || "No se pudo analizar esta entrada.");
-      if (!Array.isArray(data.peopleExtracted))
-        throw new Error("La respuesta de personas no es válida.");
-      setPeopleRefreshTrigger((prev) => prev + 1);
-      if (latestContent.current !== analyzedContent) {
-        setError(
-          "El texto cambió durante el análisis. Vuelve a analizarlo para actualizar sus menciones.",
-        );
-        return;
-      }
-      // The API returns all mentions, including known people with no new facts.
-      // Replace the previous list so removing a person from the text removes its mention.
-      const names = [
-        ...new Set<string>(
-          data.peopleExtracted
-            .map((person: { name: string }) => person.name)
-            .filter(Boolean),
-        ),
-      ];
-      await saveCurrentEntry(analyzedContent, user.uid, names);
-      if (activeRecordingContext.current !== context) return;
-      const saveError = useDiaryStore.getState().error;
-      if (saveError) throw new Error(saveError);
-      setMentionedPeople(names);
-      setPeopleRefreshTrigger((prev) => prev + 1);
-      if (data.warning) setError(data.warning);
+      if (!response.ok) throw new Error(data.error || "No se pudo iniciar el análisis.");
+      restartAnalysis();
     } catch (failure) {
       if (activeRecordingContext.current === context) {
         setError(
@@ -411,7 +394,7 @@ export default function Home() {
 
         // Guardar automáticamente después de la transcripción
         try {
-          await saveCurrentEntry(newContent, user.uid, mentionedPeople);
+          await saveCurrentEntry(newContent, user.uid, mentionedPeople, mentionedPersonIds);
           console.log(
             "📝 DIARY: Entrada guardada automáticamente después de la transcripción",
           );
@@ -436,7 +419,7 @@ export default function Home() {
       transcriptionPending.current = false;
       setIsProcessing(false);
     }
-  }, [audioBlob, user?.uid, content, saveCurrentEntry, mentionedPeople]);
+  }, [audioBlob, user?.uid, content, saveCurrentEntry, mentionedPeople, mentionedPersonIds]);
 
   // Sincronizar content con currentEntry
   useEffect(() => {
@@ -447,13 +430,16 @@ export default function Home() {
       // También sincronizar las personas mencionadas
       if (currentEntry?.mentioned_people) {
         setMentionedPeople(currentEntry.mentioned_people);
+        setMentionedPersonIds(currentEntry.mentioned_person_ids ?? null);
       } else {
         setMentionedPeople([]);
+        setMentionedPersonIds(null);
       }
     } else if (currentEntry === null) {
       // Si no hay entrada para esta fecha, limpiar el contenido
       setContent("");
       setMentionedPeople([]);
+        setMentionedPersonIds(null);
       setError(null);
       console.log(
         "📝 DIARY: Contenido limpiado - no hay entrada para esta fecha",
@@ -476,16 +462,6 @@ export default function Home() {
   }, [audioBlob, isProcessing, processTranscription]);
 
   // Funciones para manejar el chat personal
-  const handleChatToggle = () => {
-    if (isChatOpen) {
-      setIsChatOpen(false);
-      setIsChatMinimized(false);
-    } else {
-      setIsChatOpen(true);
-      setIsChatMinimized(false);
-    }
-  };
-
   const handleChatClose = () => {
     setIsChatOpen(false);
     setIsChatMinimized(false);
@@ -636,6 +612,12 @@ export default function Home() {
               setShowSettings(true);
               setShowStatistics(false);
               // Auto-cerrar sidebar en móvil al abrir configuración
+              setIsSidebarOpen(false);
+            }}
+            isChatOpen={isChatOpen}
+            onPersonalChatClick={() => {
+              setIsChatOpen(true);
+              setIsChatMinimized(false);
               setIsSidebarOpen(false);
             }}
             onStatisticsClick={() => {
@@ -867,7 +849,7 @@ export default function Home() {
 
                           <button
                             onClick={handleExtractPeople}
-                            disabled={isExtracting || !content}
+                            disabled={isExtracting || analysis?.status === "queued" || analysis?.status === "processing" || !content}
                             className={`flex items-center justify-center p-3 sm:px-4 sm:py-2 sm:space-x-2 rounded-xl transition-all duration-200 ${isExtracting ? "bg-purple-400" : "bg-purple-500"} text-white hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
                             title="Analizar con IA"
                           >
@@ -883,9 +865,11 @@ export default function Home() {
 
                   {/* Contenido principal mejorado con fondo unificado */}
                   <div className="flex-1 bg-gradient-to-r from-indigo-50 to-purple-50 overflow-y-auto">
-                    <p role="status" className="mx-4 mb-4 text-sm text-slate-600">
-                      {isRecording ? `Grabando ${recordingTime(recordingSeconds)} / 10:00 · Se detendrá y transcribirá automáticamente.` : recordingNotice || 'Máximo 10 minutos por grabación. Al detenerla, se transcribe automáticamente.'}
-                    </p>
+                    {(isRecording || recordingNotice) && (
+                      <p role="status" className="mx-4 mb-4 text-sm text-slate-600">
+                        {isRecording ? `Grabando ${recordingTime(recordingSeconds)} / 10:00 · Se detendrá y transcribirá automáticamente.` : recordingNotice}
+                      </p>
+                    )}
                     {/* Mensajes de error mejorados */}
                     {(error || storeError) && (
                       <div
@@ -994,6 +978,12 @@ export default function Home() {
                       </div>
                     )}
 
+                    {!isExtracting && analysis && analysis.status !== "skipped" && (
+                      <div role="status" className="mx-4 mb-4 rounded-xl border border-purple-100 bg-purple-50 px-4 py-3 text-sm text-purple-700">
+                        {analysis.status === "done" ? "Análisis actualizado" : analysis.status === "failed" ? analysis.error : "Analizando tu entrada… Puedes seguir escribiendo o cerrar la página."}
+                      </div>
+                    )}
+
                     {/* Indicador de extracción de personas */}
                     {isExtracting && (
                       <div className="mx-4 mb-4 p-4 bg-purple-50 border border-purple-200 text-purple-700 rounded-xl text-sm flex items-center space-x-3">
@@ -1032,15 +1022,6 @@ export default function Home() {
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="Escribe tu entrada del diario aquí... ✨"
                             className="w-full h-[500px] p-4 border-2 border-slate-200 rounded-2xl resize-none focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-400 text-slate-700 leading-relaxed text-lg bg-white/50 backdrop-blur-sm transition-all duration-200"
-                          />
-                          <input
-                            type="text"
-                            value={secondaryContent}
-                            onChange={(e) =>
-                              setSecondaryContent(e.target.value)
-                            }
-                            placeholder="Añade una nota rápida..."
-                            className="mt-4 w-full p-4 border-2 border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-400 text-slate-700 bg-white/50 backdrop-blur-sm transition-all duration-200"
                           />
                           <div className="absolute bottom-4 right-4 text-xs text-slate-400">
                             {content.length} caracteres
@@ -1198,51 +1179,18 @@ export default function Home() {
 
       {/* Botones flotantes */}
       <>
-        {/* Botón del Chat Personal para Desktop - al lado del sidebar */}
-        {!isChatOpen && (
-          <PersonalChatButton
-            onClick={handleChatToggle}
-            isActive={false}
-            className="hidden md:flex"
-          />
-        )}
-
-        {/* Botón del Chat Personal para Móvil e iPad - más visible - solo cuando sidebar está cerrado */}
-        {!isChatOpen && !isSidebarOpen && !showSettings && (
-          <button
-            onClick={handleChatToggle}
-            title="Chat Personal"
-            className="fixed bottom-6 left-6 z-40 md:hidden
-              flex flex-col items-center justify-center w-16 h-20
-              bg-gradient-to-br from-purple-500 to-blue-600 
-              hover:from-purple-600 hover:to-blue-700
-              text-white shadow-xl hover:shadow-2xl
-              rounded-2xl transition-all duration-300 hover:scale-105"
-          >
-            <div className="relative mb-1">
-              <FiZap size={20} />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full border-2 border-white animate-ping"></div>
-            </div>
-            <span className="font-bold text-xs text-center leading-tight">
-              CHAT
-            </span>
-            <span className="font-medium text-[10px] text-center leading-tight opacity-90">
-              Personal
-            </span>
-          </button>
-        )}
-
         {/* Botón flotante de personas para escritorio - solo visible cuando el panel está cerrado */}
         {!showPeoplePanel && isDesktop && (
           <button
             onClick={() => setShowPeoplePanel(true)}
-            className="fixed top-1/2 right-0 transform -translate-y-1/2 w-14 h-32 flex flex-col items-center justify-center transition-all duration-300 shadow-lg z-40 group bg-purple-500 text-white hover:bg-purple-600 translate-x-2 hover:translate-x-0 rounded-l-xl p-1"
+            className="fixed top-1/2 right-0 transform -translate-y-1/2 w-14 h-32 flex flex-col items-center justify-center transition-all duration-300 shadow-[0_0_12px_3px_rgba(121,78,184,0.48),0_0_32px_8px_rgba(139,106,193,0.35)] border border-r-0 border-white/20 z-40 group bg-[#8873b8] text-white hover:bg-[#7862aa] translate-x-2 hover:translate-x-0 rounded-l-xl p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2"
             title="Abrir panel de personas"
             aria-label="Abrir panel de personas"
           >
             <div className="floating-people-icon flex items-center justify-center">
               <FiUsers
-                size={20}
+                size={22}
+                strokeWidth={1.7}
                 className="group-hover:scale-110 transition-transform duration-200"
               />
             </div>
@@ -1258,13 +1206,14 @@ export default function Home() {
         {!showPeoplePanel && !isDesktop && !isSidebarOpen && !showSettings && (
           <button
             onClick={() => setShowPeoplePanel(true)}
-            className={`fixed right-6 w-16 h-16 bg-purple-500 hover:bg-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-40 group ${
+            className={`fixed right-6 w-16 h-16 bg-[#8873b8] hover:bg-[#7862aa] text-white rounded-full border border-white/20 shadow-[0_0_12px_3px_rgba(121,78,184,0.48),0_0_32px_8px_rgba(139,106,193,0.35)] transition-all duration-300 flex items-center justify-center z-40 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 ${
               isChatOpen ? "bottom-36" : "bottom-6"
             }`}
             title="Abrir panel de personas"
           >
             <FiUsers
               size={28}
+              strokeWidth={1.7}
               className="group-hover:scale-110 transition-transform duration-200"
             />
           </button>

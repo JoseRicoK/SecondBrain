@@ -1,3 +1,4 @@
+import { resolveExtractedIdentity } from "./person-identity";
 import { v5 as uuidv5 } from "uuid";
 import type { User } from "@supabase/supabase-js";
 import { getDatabaseClient, supabase } from "./supabase";
@@ -32,6 +33,7 @@ export interface DiaryEntry {
   updated_at: string;
   user_id: string;
   mentioned_people?: string[];
+  mentioned_person_ids?: string[] | null;
   happiness?: number | null;
   stress?: number | null;
   neutral?: number | null;
@@ -177,12 +179,23 @@ export async function getEntryByIdForUser(
 export async function saveEntry(
   value: Partial<DiaryEntry>,
 ): Promise<DiaryEntry | null> {
+  if (typeof window !== "undefined") {
+    const { authenticatedFetch } = await import("./authenticated-fetch");
+    const response = await authenticatedFetch("/api/diary", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(value),
+    });
+    if (!response.ok) return null;
+    return (await response.json()).entry as DiaryEntry;
+  }
   const database = getDatabaseClient();
   const now = new Date().toISOString();
   const payload = {
     content: value.content || "",
     mentioned_people: value.mentioned_people || [],
     updated_at: now,
+    ...(value.mentioned_person_ids !== undefined
+      ? { mentioned_person_ids: value.mentioned_person_ids }
+      : {}),
   };
   const result = value.id
     ? await database
@@ -424,19 +437,39 @@ export async function saveExtractedPersonInfo(
   information: Record<string, unknown>,
   userId: string,
   entryDate?: string,
+  identityId?: string | null,
 ): Promise<Person | null> {
   const database = getDatabaseClient();
   const name = cleanPersonName(personName);
   if (!name) throw new Error("Se requiere el nombre de la persona");
   const date = entryDate || localPersonDetailDate();
   for (let attempt = 0; attempt < 5; attempt++) {
-    const { data, error } = await database
-      .from("people")
-      .select("*")
-      .eq("user_id", userId)
-      .ilike("name", name.replace(/[\\%_]/g, "\\$&"))
-      .maybeSingle();
+    let query = database.from("people").select("*").eq("user_id", userId);
+    if (identityId === null) {
+      // New identity, even when another person has the same name.
+      const { data, error } = await database
+        .from("people")
+        .insert({
+          user_id: userId,
+          name,
+          details: mergePersonInformation(null, information, date),
+        })
+        .select()
+        .single();
+      if (error) throw getError(error);
+      return person(data);
+    }
+    query = identityId
+      ? query.eq("id", identityId)
+      : query.ilike("name", name.replace(/[\\%_]/g, "\\$&"));
+    const { data, error } = await query.maybeSingle();
+    if (identityId && !data && !error)
+      throw new Error("Person identity not found");
     if (error) throw getError(error);
+    if (identityId && data)
+      resolveExtractedIdentity(identityId, data.name, information, [
+        person(data),
+      ]);
     const details = mergePersonInformation(data?.details, information, date);
     if (
       data &&
@@ -486,6 +519,7 @@ export async function addPersonDetail(
     { [category]: value },
     current.user_id,
     date,
+    current.id,
   );
 }
 

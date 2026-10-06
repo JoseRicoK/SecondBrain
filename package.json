@@ -27,7 +27,8 @@
     "test:report": "playwright show-report",
     "test:database": "node scripts/test-database.mjs",
     "check:billing": "node scripts/check-billing-readiness.mjs",
-    "eval:mood": "node scripts/evaluate-mood.mjs"
+    "eval:mood": "node scripts/evaluate-mood.mjs",
+    "eval:people": "node scripts/evaluate-person-identity.mjs"
   },
   "overrides": {
     "postcss": "8.5.28",

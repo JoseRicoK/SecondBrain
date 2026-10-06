@@ -4,7 +4,7 @@ import {
   personNameKey,
 } from "./person-information";
 
-type KnownPerson = { name: string; details?: unknown };
+type KnownPerson = { id?: string; name: string; details?: unknown };
 // These are references to the writer's own parents, never 'su madre',
 // 'madre de ...', similar names, or matches inferred from dated profile facts.
 const parentReferences = [
@@ -20,6 +20,17 @@ const parentReferences = [
   },
 ];
 export function createPersonMentionResolver(people: KnownPerson[]) {
+  const sameName = (name: string) =>
+    people.filter(
+      (person) => personNameKey(person.name) === personNameKey(name),
+    );
+  const selector = (person: KnownPerson) =>
+    sameName(person.name).length > 1 && person.id
+      ? person.id
+      : cleanPersonName(person.name);
+  const byId = new Map(
+    people.filter((person) => person.id).map((person) => [person.id!, person]),
+  );
   const canonical = new Map(
     people.map((person) => [
       personNameKey(person.name),
@@ -48,8 +59,22 @@ export function createPersonMentionResolver(people: KnownPerson[]) {
   }
   return {
     resolve: (value: string) =>
-      canonical.get(personNameKey(value)) || cleanPersonName(value),
-    mentions(names: string[] | null | undefined, content: string) {
+      byId.has(value)
+        ? selector(byId.get(value)!)
+        : canonical.get(personNameKey(value)) || cleanPersonName(value),
+    mentions(
+      names: string[] | null | undefined,
+      content: string,
+      ids?: string[] | null,
+    ) {
+      if (Array.isArray(ids))
+        return [
+          ...new Set(
+            ids
+              .filter((id) => byId.has(id))
+              .map((id) => selector(byId.get(id)!)),
+          ),
+        ];
       const result = new Map<string, string>();
       for (const raw of names || []) {
         if (typeof raw !== "string" || !raw.trim()) continue;

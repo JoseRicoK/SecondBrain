@@ -59,7 +59,7 @@ it('keeps failed audio, shows the API reason and retries only on an explicit cli
   expect(screen.getByRole('link', { name: 'Descargar grabación' })).toHaveAttribute('download', 'recording.webm');
   mock.transcribe.mockResolvedValue({ text: 'Una entrada ficticia.', audioUrl: 'data:audio/webm;base64,AA==' });
   await user.click(screen.getByRole('button', { name: 'Reintentar transcripción' }));
-  await waitFor(() => expect(mock.save).toHaveBeenCalledWith('Una entrada ficticia.', 'u', []));
+  await waitFor(() => expect(mock.save).toHaveBeenCalledWith('Una entrada ficticia.', 'u', [], null));
   expect(mock.transcribe).toHaveBeenCalledTimes(2);
   expect(mock.transcribe.mock.calls[1][0]).toBe(mock.transcribe.mock.calls[0][0]);
   expect(screen.queryByRole('button', { name: 'Reintentar transcripción' })).toBeNull();
@@ -101,7 +101,7 @@ it('records beyond four minutes, stops at ten and automatically transcribes the 
   expect(mock.transcribe).toHaveBeenCalledOnce();
   expect(mock.transcribe.mock.calls[0][0].size).toBe(3000);
   expect(screen.getByRole('status')).toHaveTextContent('10 minutos');
-  expect(mock.save).toHaveBeenCalledWith('Todo el audio, incluido el final.', 'u', []);
+  expect(mock.save).toHaveBeenCalledWith('Todo el audio, incluido el final.', 'u', [], null);
   await act(async () => vi.advanceTimersByTime(60_000));
   expect(mock.transcribe).toHaveBeenCalledOnce();
   vi.useRealTimers();
@@ -115,6 +115,6 @@ it('cancels the duration timer when the diary date changes', async () => {
   await act(async () => vi.advanceTimersByTime(600_000));
   expect(mock.stop).toHaveBeenCalled();
   expect(mock.transcribe).not.toHaveBeenCalled();
-  expect(screen.getByRole('status')).not.toHaveTextContent('Se han alcanzado');
+  expect(screen.queryByRole('status')).toBeNull();
   vi.useRealTimers();
 });

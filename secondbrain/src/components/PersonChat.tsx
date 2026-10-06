@@ -1,12 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { FiSend, FiX, FiUser, FiLoader } from 'react-icons/fi';
-import { Person } from '@/lib/supabase-operations';
-import { useSubscription } from '@/hooks/useSubscription';
-import { useAuth } from '@/hooks/useAuth';
-
+import React, { useState, useRef, useEffect, useId } from "react";
+import { createPortal } from "react-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import styles from "./PersonalChat.module.css";
+import { FiSend, FiX, FiUser, FiLoader } from "react-icons/fi";
+import { Person } from "@/lib/supabase-operations";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: Date;
 }
@@ -17,29 +20,45 @@ interface PersonChatProps {
   onClose: () => void;
 }
 
-export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose }) => {
+export const PersonChat: React.FC<PersonChatProps> = ({
+  person,
+  isOpen,
+  onClose,
+}) => {
   const { user } = useAuth();
-  const { 
-    planLimits, 
+  const {
+    planLimits,
     monthlyUsage,
     loading: subscriptionLoading,
     checkCanSendPersonChatMessage,
-    refreshMonthlyUsage 
+    refreshMonthlyUsage,
   } = useSubscription();
-  
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputMessage, setInputMessage] = useState('');
+  const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
 
   // Auto-scroll al final cuando hay nuevos mensajes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Focus en el input cuando se abre el chat
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = overflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [isOpen]);
+
+  // Focus en el input después de recordar el elemento que abrió el chat.
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
@@ -49,86 +68,96 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
   // Mensaje de bienvenida inicial
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      setMessages([{
-        role: 'assistant',
-        content: `¡Hola! Soy tu asistente para analizar información sobre ${person.name}. Puedes preguntarme cualquier cosa sobre esta persona basándome en la información que has recopilado. ¿En qué puedo ayudarte?`,
-        timestamp: new Date()
-      }]);
+      setMessages([
+        {
+          role: "assistant",
+          content: `¿Qué te gustaría recordar sobre ${person.name}?\n\nPodemos explorar vuestros recuerdos y los detalles que has guardado en tu diario.`,
+          timestamp: new Date(),
+        },
+      ]);
     }
   }, [isOpen, person.name, messages.length]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading || subscriptionLoading) return;
     if (!monthlyUsage) {
-      setError('No se pudo comprobar tu cuota de mensajes. Recarga la página para reintentarlo.');
+      setError(
+        "No se pudo comprobar tu cuota de mensajes. Recarga la página para reintentarlo.",
+      );
       return;
     }
 
     // Verificar límites antes de enviar
     const canSend = await checkCanSendPersonChatMessage();
     if (!canSend) {
-      setError(`Has alcanzado el límite de ${planLimits.personChatMessages} mensajes de chat con personas para este mes. Actualiza tu plan para enviar más mensajes.`);
+      setError(
+        `Has alcanzado el límite de ${planLimits.personChatMessages} mensajes de chat con personas para este mes. Actualiza tu plan para enviar más mensajes.`,
+      );
       return;
     }
 
     const userMessage = inputMessage.trim();
-    setInputMessage('');
+    setInputMessage("");
     setError(null);
 
     // Añadir mensaje del usuario
     const newUserMessage: ChatMessage = {
-      role: 'user',
+      role: "user",
       content: userMessage,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, newUserMessage]);
+    setMessages((prev) => [...prev, newUserMessage]);
     setIsLoading(true);
 
     try {
       // Preparar historial de conversación para el contexto
-      const conversationHistory = messages.map(msg => ({
+      const conversationHistory = messages.map((msg) => ({
         role: msg.role,
-        content: msg.content
+        content: msg.content,
       }));
 
       // Obtener la fecha actual en horario de España
       const now = new Date();
-      const spainDate = new Intl.DateTimeFormat('es-ES', {
-        timeZone: 'Europe/Madrid',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        weekday: 'long'
+      const spainDate = new Intl.DateTimeFormat("es-ES", {
+        timeZone: "Europe/Madrid",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        weekday: "long",
       }).format(now);
 
       const token = await user?.getIdToken();
-      const response = await fetch('/api/chat-person', {
-        method: 'POST',
+      const response = await fetch("/api/chat-person", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: token ? `Bearer ${token}` : '',
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
         },
         body: JSON.stringify({
           person,
           message: userMessage,
           conversationHistory,
-          currentDate: spainDate
+          currentDate: spainDate,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        
+
         // Manejar errores de límite específicamente
-        if (response.status === 429 && errorData.code === 'LIMIT_EXCEEDED') {
-          setError(`Has alcanzado el límite de ${planLimits.personChatMessages} mensajes de chat con personas para este mes. Actualiza tu plan para enviar más mensajes.`);
+        if (response.status === 429 && errorData.code === "LIMIT_EXCEEDED") {
+          setError(
+            `Has alcanzado el límite de ${planLimits.personChatMessages} mensajes de chat con personas para este mes. Actualiza tu plan para enviar más mensajes.`,
+          );
           return;
         }
-        
-        throw new Error(errorData.error || 'Error en la respuesta del servidor');
+
+        throw new Error(
+          errorData.error || "Error en la respuesta del servidor",
+        );
       }
 
       const data = await response.json();
@@ -138,165 +167,209 @@ export const PersonChat: React.FC<PersonChatProps> = ({ person, isOpen, onClose 
 
       // Añadir respuesta del asistente
       const assistantMessage: ChatMessage = {
-        role: 'assistant',
+        role: "assistant",
         content: data.response,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
-
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
-      console.error('Error en chat:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-      
+      console.error("Error en chat:", err);
+      setError(err instanceof Error ? err.message : "Error desconocido");
+
       // Añadir mensaje de error
       const errorMessage: ChatMessage = {
-        role: 'assistant',
-        content: 'Lo siento, hubo un error al procesar tu mensaje. Por favor, inténtalo de nuevo.',
-        timestamp: new Date()
+        role: "assistant",
+        content:
+          "Lo siento, hubo un error al procesar tu mensaje. Por favor, inténtalo de nuevo.",
+        timestamp: new Date(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('es-ES', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return date.toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   if (!isOpen) return null;
 
-  return (
-    <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[9999] p-4"
-      onClick={handleOverlayClick}
-    >
-      <div className="bg-white/95 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 w-full max-w-2xl h-[85vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/30 bg-white/50 rounded-t-xl">
-          <div className="flex items-center space-x-3">
-            <div className="bg-purple-500/20 text-purple-600 p-2 rounded-full backdrop-blur-sm">
-              <FiUser size={16} />
-            </div>
+  return createPortal(
+    <div className={styles.personLayer}>
+      <div className={styles.backdrop} onClick={onClose} />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className={styles.chatContainer}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            onClose();
+          }
+          if (event.key !== "Tab") return;
+          const controls = [
+            ...event.currentTarget.querySelectorAll<HTMLElement>(
+              "button:not(:disabled), input:not(:disabled)",
+            ),
+          ].filter((el) => el.getClientRects().length > 0);
+          const first = controls[0],
+            last = controls[controls.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last?.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+          }
+        }}
+      >
+        <header className={styles.chatHeader}>
+          <div className={styles.identity}>
+            <span className={styles.chatIcon}>
+              <FiUser size={22} />
+            </span>
             <div>
-              <h3 className="font-medium text-slate-900">Chat con {person.name}</h3>
-              <div className="flex items-center space-x-2 text-sm text-slate-600">
-                <span>Asistente inteligente</span>
-                {monthlyUsage && (
-                  <span className="bg-slate-100 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
-                    {monthlyUsage.personChatMessages}/{planLimits.personChatMessages === -1 ? '∞' : planLimits.personChatMessages}
-                  </span>
-                )}
-              </div>
+              <h2 id={titleId}>Chat con {person.name}</h2>
+              <p>Recuerdos y detalles de tu diario</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            title="Cerrar chat"
-            aria-label="Cerrar chat"
-            className="text-slate-500 hover:text-slate-700 p-1 rounded-full hover:bg-white/50 transition-colors"
-          >
-            <FiX size={20} />
-          </button>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+          <div className={styles.headerActions}>
+            {monthlyUsage && (
+              <span
+                className={styles.quota}
+                title="Mensajes con personas utilizados este mes"
+              >
+                {monthlyUsage.personChatMessages} /{" "}
+                {planLimits.personChatMessages === -1
+                  ? "∞"
+                  : planLimits.personChatMessages}
+              </span>
+            )}
+            <button
+              onClick={onClose}
+              title="Cerrar chat"
+              aria-label="Cerrar chat"
+            >
+              <FiX />
+            </button>
+          </div>
+        </header>
+        <div className={styles.messagesArea}>
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`${styles.messageRow} ${message.role === "user" ? styles.userRow : ""}`}
             >
+              {message.role === "assistant" && (
+                <span className={styles.messageAvatar}>
+                  <FiUser size={15} />
+                </span>
+              )}
               <div
-                className={`max-w-[80%] rounded-xl p-3 backdrop-blur-sm ${
-                  message.role === 'user'
-                    ? 'bg-purple-500/90 text-white shadow-lg'
-                    : 'bg-white/80 text-slate-900 border border-white/30 shadow-sm'
-                }`}
+                className={`${styles.messageBody} ${message.role === "user" ? styles.userMessage : styles.assistantMessage}`}
               >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                <p className={`text-xs mt-1 ${
-                  message.role === 'user' ? 'text-purple-100' : 'text-slate-500'
-                }`}>
+                {message.role === "assistant" ? (
+                  <div className="chat-markdown">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className={styles.userText}>{message.content}</p>
+                )}
+                <time className={styles.timestamp}>
                   {formatTime(message.timestamp)}
-                </p>
+                </time>
               </div>
             </div>
           ))}
-          
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-white/80 text-slate-900 rounded-xl p-3 flex items-center space-x-2 backdrop-blur-sm border border-white/30 shadow-sm">
-                <FiLoader className="animate-spin" size={14} />
-                <span className="text-sm">Escribiendo...</span>
-              </div>
+          {messages.length === 1 && messages[0].role === "assistant" && (
+            <div className={styles.suggestions}>
+              {[
+                `¿Qué recuerdos comparto con ${person.name}?`,
+                `¿Qué sé sobre ${person.name}?`,
+                "¿Cómo ha evolucionado nuestra relación?",
+              ].map((question) => (
+                <button
+                  key={question}
+                  disabled={subscriptionLoading}
+                  onClick={() => {
+                    setInputMessage(question);
+                    inputRef.current?.focus();
+                  }}
+                >
+                  {question}
+                  <FiSend size={12} />
+                </button>
+              ))}
             </div>
           )}
-          
+          {isLoading && (
+            <div className={styles.loadingMessage} role="status">
+              <FiLoader className={styles.spinner} size={16} />
+              <span>Buscando en tus recuerdos…</span>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
-
-        {/* Error message */}
         {error && (
-          <div className="px-4 py-2 bg-red-100/80 backdrop-blur-sm border-t border-red-200/50">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className={styles.error} role="alert">
+            {error}
           </div>
         )}
-
         {subscriptionLoading && (
-          <p role="status" className="px-4 py-2 text-sm text-slate-500">Cargando cuota de mensajes…</p>
+          <p role="status" className={styles.quotaLoading}>
+            Cargando cuota de mensajes…
+          </p>
         )}
-
-        {/* Input */}
-        <div className="p-4 border-t border-white/30 bg-white/50 rounded-b-xl backdrop-blur-sm">
-          <div className="flex space-x-2">
+        <div className={styles.inputArea}>
+          <div className={styles.composer}>
             <input
               ref={inputRef}
               type="text"
+              aria-label="Escribe tu mensaje"
+              inputMode="text"
               value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
+              onChange={(event) => setInputMessage(event.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={`Pregunta algo sobre ${person.name}...`}
-              className="flex-1 px-3 py-2 border border-white/30 rounded-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 outline-none text-sm bg-white/80 backdrop-blur-sm shadow-sm"
+              placeholder={`Pregunta sobre ${person.name}…`}
+              className={styles.mobileInput}
+              autoComplete="off"
+              autoCapitalize="sentences"
               disabled={isLoading || subscriptionLoading}
             />
             <button
               onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isLoading || subscriptionLoading}
+              disabled={
+                !inputMessage.trim() || isLoading || subscriptionLoading
+              }
               title="Enviar mensaje"
               aria-label="Enviar mensaje"
-              className="px-4 py-2 bg-purple-500/90 text-white rounded-lg hover:bg-purple-600/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all backdrop-blur-sm shadow-lg flex items-center space-x-1"
             >
               {isLoading ? (
-                <FiLoader className="animate-spin" size={16} />
+                <FiLoader className={styles.spinner} size={19} />
               ) : (
-                <FiSend size={16} />
+                <FiSend size={19} />
               )}
             </button>
           </div>
-          <p className="text-xs text-slate-600 mt-2">
-            Presiona Enter para enviar • Shift+Enter para nueva línea
-          </p>
         </div>
-      </div>
-    </div>
+      </section>
+    </div>,
+    document.body,
   );
 };
 

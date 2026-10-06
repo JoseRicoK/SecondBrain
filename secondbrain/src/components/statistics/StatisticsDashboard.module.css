@@ -211,7 +211,7 @@
 .peopleGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 230px;
-  align-items: center;
+  align-items: start;
   gap: 25px;
   margin-top: 15px;
 }
@@ -1606,4 +1606,616 @@
   color: #8a809b;
   font-size: 10px;
   line-height: 1.5;
+}
+
+/* A quiet, tactile canvas. Positions and edge endpoints share one coordinate space. */
+.bubbleWorkspace {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #ebe5f3;
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse at 45% 45%, #eee6fa70, transparent 70%), #fcfbfe;
+  overflow: hidden;
+}
+.bubbleToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 2px 10px;
+  font-size: 11px;
+  color: #9688a8;
+}
+.bubbleToolbar > span,
+.bubbleToolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.bubbleToolbar button {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #e7def2;
+  border-radius: 12px;
+  color: #7a60a3;
+  background: #fff;
+}
+.bubbleToolbar button:hover {
+  background: #f3edf9;
+}
+.bubbles {
+  background-image: radial-gradient(#c7b8da55 0.8px, transparent 0.8px);
+  background-size: 18px 18px;
+  border-radius: 16px;
+}
+.bubble {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  padding: 0;
+  outline-offset: 5px;
+}
+.bubble > .bubbleSurface {
+  animation: none;
+  border: 1px solid #ffffff;
+  box-shadow:
+    0 5px 15px #58427512,
+    inset 0 0 0 1px #ffffff90;
+  transition:
+    box-shadow 180ms,
+    background 180ms,
+    border-color 180ms;
+}
+.bubble span {
+  font-size: clamp(8px, 13cqw, 13px);
+}
+.bubble strong {
+  font-weight: 500;
+  font-size: clamp(15px, 31cqw, 34px);
+  letter-spacing: -1.5px;
+}
+.bubble small {
+  font-size: clamp(7px, 9cqw, 9px);
+}
+.bubble0 {
+  background: radial-gradient(circle at 30% 20%, #fbf7ff, #e8dcf7);
+  color: #7653a4;
+}
+.bubble1 {
+  background: radial-gradient(circle at 30% 20%, #f6fcfb, #dcefe9);
+  color: #487f72;
+}
+.bubble2 {
+  background: radial-gradient(circle at 30% 20%, #fff8f7, #f3e1e9);
+  color: #9a637c;
+}
+.bubble3 {
+  background: radial-gradient(circle at 30% 20%, #f7f9ff, #e1e8f8);
+  color: #637dad;
+}
+.bubble[aria-pressed="true"] > .bubbleSurface {
+  color: #fff;
+  background: radial-gradient(circle at 30% 20%, #a28bd0, #7956b0);
+  border: 2px solid #fff;
+  box-shadow:
+    0 0 0 3px #b8a0db50,
+    0 8px 24px #7855ab30;
+}
+.bubble:hover > .bubbleSurface,
+.bubble:focus-visible > .bubbleSurface {
+  box-shadow:
+    0 0 0 3px #b8a0db45,
+    0 8px 24px #7855ab20;
+}
+.draggingBubble {
+  z-index: 5;
+  cursor: grabbing;
+}
+.draggingBubble > .bubbleSurface {
+  box-shadow:
+    0 0 0 3px #b8a0db60,
+    0 12px 28px #7855ab35;
+}
+.edgeStroke {
+  stroke: #bba6d580;
+}
+.edgeBadge {
+  fill: #fff;
+  stroke: #e7def2;
+}
+@media (max-width: 600px) {
+  .bubbleWorkspace {
+    padding: 8px;
+    border-radius: 18px;
+  }
+  .bubbleToolbar {
+    font-size: 10px;
+    gap: 6px;
+  }
+  .bubbleToolbar > span {
+    max-width: 65%;
+  }
+  .bubbleToolbar button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+  }
+  .bubbleToolbar button span {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble > .bubbleSurface {
+    transition: none;
+  }
+}
+
+.bubbleSurface > span {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.mobileMapHint {
+  display: none;
+}
+@media (max-width: 600px) {
+  .bubbleWorkspace {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .bubbles {
+    width: 600px;
+  }
+  .bubbleToolbar {
+    position: sticky;
+    left: 0;
+  }
+  .mobileMapHint {
+    display: block;
+    position: sticky;
+    left: 0;
+    margin: 8px 2px 2px;
+    font-size: 10px;
+    line-height: 1.6;
+    color: #9688a8;
+  }
+}
+
+.mapOverview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  margin: 16px 0;
+  border: 1px solid #e9e0f5;
+  border-radius: 18px;
+  background: #f6f1fc;
+}
+.mapOverview strong {
+  font-size: 15px;
+  color: #69508a;
+}
+.mapOverview p {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #8d7aa4;
+}
+.mapOverview button,
+.graphSelection button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  background: #8b65bb;
+  color: white;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.graphDialog {
+  position: fixed;
+  inset: 0;
+  width: calc(100vw - 40px);
+  height: calc(100dvh - 40px);
+  max-width: 1600px;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  border: 1px solid #e8def4;
+  border-radius: 24px;
+  color: #382f4b;
+  background: #fff;
+  overflow: hidden;
+}
+.graphDialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.graphDialog::backdrop {
+  background: rgba(35, 24, 51, 0.5);
+  backdrop-filter: blur(6px);
+}
+.graphHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #eee8f5;
+}
+.graphHeader h2 {
+  margin: 6px 0;
+  font-size: 23px;
+}
+.graphHeader p {
+  margin: 0;
+  color: #8e7caa;
+  font-size: 13px;
+}
+.graphIconButton {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  width: 44px;
+  flex-shrink: 0;
+  border: 1px solid #e8def4;
+  border-radius: 12px;
+  background: #faf7fe;
+  cursor: pointer;
+  font-size: 20px;
+}
+.graphBody {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+.graphMain {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.graphActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 18px;
+}
+.graphZoom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #80679e;
+  font-size: 12px;
+}
+.graphZoom button {
+  display: grid;
+  place-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  background: white;
+  border: 1px solid #e8def4;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.graphCanvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background:
+    radial-gradient(circle, #e8dff3 1px, transparent 1px) 0 0/22px 22px,
+    #fcfaff;
+  overflow: hidden;
+}
+.graphCanvas svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+.graphCanvas svg:active {
+  cursor: grabbing;
+}
+.graphNode {
+  cursor: grab;
+  outline: none;
+}
+.graphNode:focus-visible circle {
+  stroke: #65439b;
+  stroke-width: 5px;
+}
+.graphNode text {
+  pointer-events: none;
+  user-select: none;
+}
+.graphCanvas g[role="button"]:focus-visible line {
+  stroke: #65439b;
+  stroke-width: 4px;
+}
+.graphHint {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  text-align: center;
+  pointer-events: none;
+  font-size: 11px;
+  color: #927eac;
+  padding: 8px;
+  margin: 0;
+  background: #fcfaffdf;
+  border-radius: 10px;
+}
+.graphAside {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid #eee8f5;
+  padding: 18px;
+  background: #fdfbff;
+  overflow: auto;
+}
+.graphSelection {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e8def4;
+}
+.graphSelection h3 {
+  font-size: 22px;
+  margin: 0 0 6px;
+}
+.graphSelection p {
+  color: #927eac;
+  font-size: 13px;
+}
+.graphSelection button {
+  width: 100%;
+  margin-top: 8px;
+}
+.graphSelection button + button {
+  background: #eee6f7;
+  color: #7854a3;
+}
+.graphSearch {
+  display: block;
+  font-size: 12px;
+  color: #80679e;
+}
+.graphSearch input {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid #e8def4;
+  border-radius: 12px;
+  padding: 12px;
+  background: white;
+  color: #382f4b;
+}
+.graphListCount {
+  font-size: 11px;
+  color: #927eac;
+}
+.graphList {
+  overflow: auto;
+  min-height: 100px;
+}
+.graphList button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  margin-bottom: 5px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  color: #66527e;
+  cursor: pointer;
+}
+.graphList button[aria-pressed="true"] {
+  background: #eee5f8;
+  border-color: #dfd1ee;
+}
+.graphList button:hover {
+  background: #f1ebf8;
+}
+.graphList small {
+  color: #9a88ac;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+.graphFooter {
+  padding: 10px 20px;
+  border-top: 1px solid #eee8f5;
+  font-size: 11px;
+  color: #927eac;
+}
+@media (max-width: 700px) {
+  .mapOverview {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+  }
+  .mapOverview button {
+    min-height: 44px;
+  }
+  .graphDialog {
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    border-radius: 0;
+    border: 0;
+  }
+  .graphHeader {
+    padding: 14px;
+  }
+  .graphHeader h2 {
+    font-size: 19px;
+  }
+  .graphHeader p {
+    font-size: 11px;
+  }
+  .graphBody {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(260px, 1fr) minmax(150px, 34%);
+  }
+  .graphActions {
+    padding: 8px;
+    gap: 6px;
+  }
+  .graphActions .mapTabs {
+    max-width: 100%;
+  }
+  .graphActions .mapTabs button {
+    font-size: 11px;
+    padding: 10px;
+  }
+  .graphAside {
+    border-left: 0;
+    border-top: 1px solid #eee8f5;
+    padding: 12px;
+    display: block;
+  }
+  .graphSelection {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+  }
+  .graphSelection h3 {
+    font-size: 17px;
+  }
+  .graphSelection button {
+    display: inline-flex;
+    width: auto;
+    padding: 9px 12px;
+    margin-right: 6px;
+  }
+  .graphSelection p {
+    margin: 4px 0;
+  }
+  .graphFooter {
+    padding: 8px 12px;
+    font-size: 10px;
+  }
+}
+@media (max-width: 700px) {
+  .graphSelection button {
+    min-height: 44px;
+  }
+}
+
+/* Shared memories must remain readable inside the graph's narrow detail pane. */
+.graphAside .sharedMemories {
+  grid-template-columns: minmax(0, 1fr);
+}
+.graphAside .connectionDetails {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+  min-width: 0;
+}
+.graphAside .connectionDetails h3 {
+  font-size: 19px;
+  line-height: 1.35;
+}
+.graphAside .sharedMemory {
+  padding: 14px;
+}
+.graphAside .memoryExcerpt {
+  line-height: 1.65;
+}
+.memoryExpansion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.memoryExpansion > span {
+  color: #927eac;
+  font-size: 12px;
+}
+.memoryExpansion button {
+  min-height: 44px;
+}
+.graphAside .memoryExpansion {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 6px;
+}
+.bubbleFrame {
+  position: relative;
+  min-width: 0;
+}
+.bubblePager {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.bubblePager button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  background: #ffffffed;
+  color: #8b65bb;
+  border: 1px solid #e4d8f3;
+  border-radius: 50%;
+  box-shadow: 0 3px 12px #61418412;
+  cursor: pointer;
+  pointer-events: auto;
+  font-size: 23px;
+}
+.bubblePager button:hover:not(:disabled) {
+  background: #f1e8fc;
+}
+.bubblePager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.bubblePrevious {
+  left: 8px;
+}
+.bubbleNext {
+  right: 8px;
+}
+.bubblePager > span {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: #ffffffeb;
+  color: #8e75aa;
+  border: 1px solid #ede5f6;
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 11px;
+}
+@media (max-width: 600px) {
+  .bubblePager > span {
+    bottom: 33px;
+  }
 }

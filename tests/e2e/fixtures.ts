@@ -278,6 +278,14 @@ export const test = base.extend<{ backend: Backend }>({
             ).toISOString(),
             needsUpgrade: false,
           });
+        if (url.pathname === "/api/diary") {
+          if (backend.failSave) return respond({error:"No se pudo guardar la entrada"},500);
+          let entry=backend.tables.diary_entries.find((row:any)=>row.user_id===uid && (body.id ? row.id===body.id : row.date===body.date));
+          if(entry) Object.assign(entry,{content:body.content,updated_at:new Date().toISOString()});
+          else {entry={...body,id:`diary-${backend.tables.diary_entries.length+1}`,created_at:new Date().toISOString(),updated_at:new Date().toISOString()};backend.tables.diary_entries.push(entry);}
+          return respond({entry,analysis:null});
+        }
+        if (url.pathname === "/api/diary-analysis") return respond({analysis:null,entry:null});
         if (url.pathname === "/api/stylize")
           return backend.aiError
             ? respond({ error: "IA no disponible" }, 500)

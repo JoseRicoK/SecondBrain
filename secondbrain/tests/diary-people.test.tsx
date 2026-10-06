@@ -36,7 +36,7 @@ vi.mock("@/lib/store", () => ({
       fetchCurrentEntry: mock.load,
       toggleEditMode: vi.fn(),
     }),
-    { getState: () => ({ error: mock.error }) },
+    { getState: () => ({ error: mock.error, currentEntry: mock.entry }) },
   ),
 }));
 vi.mock("@/components/Sidebar", () => ({ default: () => null }));
@@ -50,6 +50,12 @@ vi.mock("@/components/PeopleManager", () => ({ default: () => null }));
 vi.mock("next/image", () => ({
   default: (props: any) => <img alt={props.alt} />,
 }));
+vi.mock("@/hooks/useDiaryAnalysis", () => ({
+  useDiaryAnalysis: () => ({ analysis: null, restart: vi.fn() }),
+}));
+vi.mock("@/lib/authenticated-fetch", () => ({
+  authenticatedFetch: (...args: unknown[]) => mock.fetch(...args),
+}));
 beforeEach(() => {
   mock.date = "2026-09-29";
   mock.owner = "u";
@@ -58,68 +64,32 @@ beforeEach(() => {
   mock.fetch
     .mockReset()
     .mockResolvedValue(
-      new Response(JSON.stringify({ peopleExtracted: [{ name: "Ana" }] })),
+      new Response(JSON.stringify({ analysis: { status: "queued" } })),
     );
-  vi.stubGlobal("fetch", mock.fetch);
 });
 async function analyze() {
-  const user = userEvent.setup();
-  await user.click(await screen.findByTitle("Analizar con IA"));
-  return user;
+  await userEvent.setup().click(await screen.findByTitle("Analizar con IA"));
 }
-it("replaces obsolete diary mentions instead of accumulating names on each analysis", async () => {
+it("saves the draft before requesting the shared background analysis", async () => {
   render(<Home />);
   await analyze();
   await waitFor(() =>
-    expect(mock.save).toHaveBeenCalledWith("Vi a Ana.", "u", ["Ana"]),
-  );
-});
-it("saves an empty mention list when the revised entry no longer contains people", async () => {
-  mock.fetch.mockResolvedValue(
-    new Response(JSON.stringify({ peopleExtracted: [] })),
-  );
-  render(<Home />);
-  await analyze();
-  await waitFor(() =>
-    expect(mock.save).toHaveBeenCalledWith("Vi a Ana.", "u", []),
-  );
-});
-it.each(["date", "owner"])(
-  "does not apply a delayed people response after changing %s",
-  async (change) => {
-    let resolve!: (value: any) => void;
-    mock.fetch.mockReturnValue(
-      new Promise((r) => {
-        resolve = r;
+    expect(mock.fetch).toHaveBeenCalledWith(
+      "/api/diary-analysis",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ entryId: "e" }),
       }),
-    );
-    const { rerender } = render(<Home />);
-    await analyze();
-    if (change === "date") mock.date = "2026-09-30";
-    else mock.owner = "other";
-    rerender(<Home />);
-    await act(async () =>
-      resolve(
-        new Response(JSON.stringify({ peopleExtracted: [{ name: "Ana" }] })),
-      ),
-    );
-    expect(mock.save).not.toHaveBeenCalled();
-  },
-);
-it("shows the safe API error and retains mentions on a failed extraction", async () => {
-  mock.fetch.mockResolvedValue(
-    new Response(JSON.stringify({ error: "Puedes reintentarlo." }), {
-      status: 500,
-    }),
+    ),
   );
-  render(<Home />);
-  await analyze();
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Puedes reintentarlo.",
+  expect(mock.save).toHaveBeenCalledWith(
+    "Vi a Ana.",
+    "u",
+    ["Ana", "Otra"],
+    null,
   );
-  expect(mock.save).not.toHaveBeenCalled();
 });
-it("surfaces failed diary persistence after extracting people", async () => {
+it("does not enqueue when the draft could not be saved", async () => {
   mock.save.mockImplementation(async () => {
     mock.error = "No se pudo guardar la entrada del diario";
   });
@@ -128,20 +98,37 @@ it("surfaces failed diary persistence after extracting people", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "No se pudo guardar",
   );
+  expect(mock.fetch).not.toHaveBeenCalled();
 });
-it("shows a partial mood warning after persisting successful people extraction", async () => {
+it("retains the saved draft when the queue request fails", async () => {
   mock.fetch.mockResolvedValue(
-    new Response(
-      JSON.stringify({
-        peopleExtracted: [{ name: "Ana" }],
-        warning: "No se pudo actualizar el análisis emocional.",
-      }),
-    ),
+    new Response(JSON.stringify({ error: "Puedes reintentarlo." }), {
+      status: 503,
+    }),
   );
   render(<Home />);
   await analyze();
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "análisis emocional",
+    "Puedes reintentarlo.",
   );
   expect(mock.save).toHaveBeenCalledOnce();
 });
+it.each(["date", "owner"])(
+  "ignores a late failure after changing %s",
+  async (change) => {
+    let resolve!: (value: Response) => void;
+    mock.fetch.mockReturnValue(new Promise((r) => (resolve = r)));
+    const { rerender } = render(<Home />);
+    await analyze();
+    await waitFor(() => expect(mock.fetch).toHaveBeenCalledOnce());
+    if (change === "date") mock.date = "2026-09-30";
+    else mock.owner = "other";
+    rerender(<Home />);
+    await act(async () =>
+      resolve(
+        new Response(JSON.stringify({ error: "Old failure" }), { status: 503 }),
+      ),
+    );
+    expect(screen.queryByText("Old failure")).not.toBeInTheDocument();
+  },
+);

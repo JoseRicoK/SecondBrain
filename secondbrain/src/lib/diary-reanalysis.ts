@@ -1,10 +1,11 @@
+import { randomUUID } from "node:crypto";
 import type { getDatabaseClient } from "./supabase";
 import {
   analyzeDiaryMood,
   extractDiaryPeople,
   type ExtractedPerson,
 } from "./diary-analysis";
-import { mergePersonInformation, personNameKey } from "./person-information";
+import { mergePersonInformation } from "./person-information";
 import type { ReanalysisJob } from "./diary-reanalysis-types";
 
 type Database = ReturnType<typeof getDatabaseClient>;
@@ -36,7 +37,7 @@ async function rpc<T>(
   if (error) throw new ReanalysisDatabaseError(error.code);
   return data as T;
 }
-async function readPeople(database: Database, owner: string) {
+export async function readAnalysisPeople(database: Database, owner: string) {
   const result: PersonRow[] = [];
   let after: string | null = null;
   for (;;) {
@@ -85,7 +86,7 @@ export async function processReanalysis(
       extracted = await extractDiaryPeople(
         claim.text,
         claim.date,
-        await readPeople(database, claim.userId),
+        await readAnalysisPeople(database, claim.userId),
       );
     mood = await analyzeDiaryMood(claim.text);
   } catch (error) {
@@ -102,14 +103,14 @@ export async function processReanalysis(
   for (let attempt = 0; attempt < 3; attempt++) {
     let people = null;
     if (extracted) {
-      const current = await readPeople(database, claim.userId);
-      const byName = new Map(
-        current.map((person) => [personNameKey(person.name), person]),
-      );
+      const current = await readAnalysisPeople(database, claim.userId);
+
       people = extracted.map((person) => {
-        const existing = byName.get(personNameKey(person.name));
+        const existing = person.id
+          ? current.find((p) => p.id === person.id)
+          : undefined;
         return {
-          id: existing?.id || null,
+          id: existing?.id || (person.id ||= randomUUID()),
           name: existing?.name || person.name,
           version: existing?.updated_at || null,
           details: mergePersonInformation(

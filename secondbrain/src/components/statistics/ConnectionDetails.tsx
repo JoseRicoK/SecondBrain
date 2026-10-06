@@ -16,16 +16,20 @@ export default function ConnectionDetails({
   period,
   onOpenEntry,
   onClose,
+  embedded = false,
 }: {
   connection: ConnectionMetric;
   period: AnalyticsPeriod;
   onOpenEntry?: (date: string) => void;
   onClose: () => void;
+  embedded?: boolean;
 }) {
   const panel = useRef<HTMLElement>(null);
   useEffect(() => {
-    panel.current?.scrollIntoView?.({ block: "start", behavior: "smooth" });
-  }, []);
+    if (!embedded)
+      panel.current?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+  }, [embedded]);
+  const [visibleCount, setVisibleCount] = useState(4);
   const [entries, setEntries] = useState<ConnectionEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,6 +47,8 @@ export default function ConnectionDetails({
     setLoading(true);
     setError("");
     setEntries([]);
+    setVisibleCount(4);
+    if (embedded) panel.current?.parentElement?.scrollTo?.({ top: 0 });
     void (async () => {
       try {
         const response = await authenticatedFetch(url, {
@@ -66,12 +72,12 @@ export default function ConnectionDetails({
       active = false;
       abort.abort();
     };
-  }, [url, retry]);
+  }, [url, retry, embedded]);
   return (
     <section
       ref={panel}
       className={s.connectionDetails}
-      aria-label={`Recuerdos con ${connection.source} y ${connection.target}`}
+      aria-label={`Recuerdos con ${connection.sourceLabel || connection.source} y ${connection.targetLabel || connection.target}`}
     >
       <div className={s.cardHeading}>
         <div>
@@ -79,7 +85,8 @@ export default function ConnectionDetails({
             <FiLink /> EN LAS MISMAS ENTRADAS
           </span>
           <h3>
-            {connection.source} y {connection.target}
+            {connection.sourceLabel || connection.source} y{" "}
+            {connection.targetLabel || connection.target}
           </h3>
         </div>
         <button
@@ -110,13 +117,13 @@ export default function ConnectionDetails({
       ) : entries.length ? (
         <>
           <div className={s.sharedMemories}>
-            {entries.map((entry) => (
+            {entries.slice(0, visibleCount).map((entry) => (
               <button
                 className={s.sharedMemory}
                 key={entry.date}
                 disabled={!onOpenEntry}
                 onClick={() => onOpenEntry?.(entry.date)}
-                aria-label={`Abrir recuerdo con ${connection.source} y ${connection.target} del ${fullDate(entry.date)}`}
+                aria-label={`Abrir recuerdo con ${connection.sourceLabel || connection.source} y ${connection.targetLabel || connection.target} del ${fullDate(entry.date)}`}
               >
                 <span className={s.memoryDate}>
                   {fullDate(entry.date)}
@@ -127,11 +134,38 @@ export default function ConnectionDetails({
               </button>
             ))}
           </div>
+          <div className={s.memoryExpansion}>
+            <span aria-live="polite">
+              Mostrando {Math.min(visibleCount, entries.length)} de{" "}
+              {entries.length} recuerdos
+            </span>
+            {visibleCount < entries.length && (
+              <button
+                className={s.textButton}
+                onClick={() => setVisibleCount((count) => count + 4)}
+              >
+                Ver más recuerdos
+              </button>
+            )}
+            {visibleCount > 4 && (
+              <button
+                className={s.textButton}
+                onClick={() => setVisibleCount(4)}
+              >
+                Mostrar menos recuerdos
+              </button>
+            )}
+          </div>
           <p className={s.footnote}>
-            Mostramos el inicio de {entries.length}{" "}
-            {entries.length === 1 ? "entrada" : "entradas"}
-            {connection.count > 12 ? ", las 12 más recientes" : ""}. Abre una
-            fecha para leer el recuerdo completo.
+            Mostramos el inicio de {Math.min(visibleCount, entries.length)}{" "}
+            {Math.min(visibleCount, entries.length) === 1
+              ? "entrada"
+              : "entradas"}
+            .
+            {connection.count > 12
+              ? " Esta lista incluye las 12 más recientes de la conexión."
+              : ""}{" "}
+            Abre una fecha para leer el recuerdo completo.
           </p>
         </>
       ) : (

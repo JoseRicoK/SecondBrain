@@ -41,6 +41,9 @@ import { PREVIEW_ANALYTICS } from "@/components/statistics/preview-data";
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status });
 beforeEach(() => {
+  SVGElement.prototype.setPointerCapture = vi.fn();
+  SVGElement.prototype.hasPointerCapture = vi.fn(() => true);
+  SVGElement.prototype.releasePointerCapture = vi.fn();
   mock.uid = "u";
   mock.fetch.mockReset();
   mock.refresh.mockReset();
@@ -570,18 +573,25 @@ it("connection failures keep graphs and person emotions visible and permit an ex
     await screen.findByText(/Estas referencias han cambiado/),
   ).toBeVisible();
 });
-it("focused connections reach neighbours beyond the normal twelve-person page", async () => {
-  const people = Array.from({ length: 25 }, (_, i) => ({
+it("opens every focused connection without paging and searches without hiding graph nodes", async () => {
+  const people = Array.from({ length: 52 }, (_, i) => ({
     ...PREVIEW_ANALYTICS.people[0],
     name: `Persona ${i}`,
   }));
-  const connections = people.slice(1).map((person, i) => ({
+  const connections = people.slice(1, 51).map((person, i) => ({
     key: `pair-${i}`,
     source: "Persona 0",
     target: person.name,
     count: 2,
     dates: ["2026-10-01"],
   }));
+  connections.push({
+    key: "other",
+    source: "Persona 50",
+    target: "Persona 51",
+    count: 1,
+    dates: ["2026-10-01"],
+  });
   mock.fetch.mockResolvedValue(
     json({
       analytics: { ...PREVIEW_ANALYTICS, people, connections },
@@ -594,24 +604,100 @@ it("focused connections reach neighbours beyond the normal twelve-person page", 
   await user.click(
     screen.getByRole("button", { name: "Conexiones de Persona 0" }),
   );
-  await user.click(screen.getByRole("button", { name: "Siguiente grupo" }));
-  await user.click(screen.getByRole("button", { name: "Siguiente grupo" }));
+  expect(screen.getByText(/Vista resumida: 11 de 50 conexiones/)).toBeVisible();
+  const navigation = screen.getByRole("navigation", {
+    name: "Grupos del mapa de personas",
+  });
   expect(
-    screen.getByRole("button", {
-      name: "Ver conexión entre Persona 0 y Persona 24: 2 entradas",
-    }),
-  ).toBeVisible();
+    within(navigation).getByRole("button", { name: "Anterior grupo" }),
+  ).toBeDisabled();
+  expect(within(navigation).getByText("1–11 de 50 conexiones")).toBeVisible();
+  await user.click(
+    within(navigation).getByRole("button", { name: "Siguiente grupo" }),
+  );
+  expect(within(navigation).getByText("12–22 de 50 conexiones")).toBeVisible();
   expect(
     screen.getByRole("button", { name: "Persona 0: 15 entradas" }),
-  ).toBeVisible();
+  ).toHaveAttribute("aria-pressed", "true");
   await user.click(
-    screen.getByRole("button", { name: "Persona 24: 15 entradas" }),
+    within(navigation).getByRole("button", { name: "Anterior grupo" }),
+  );
+  expect(within(navigation).getByText("1–11 de 50 conexiones")).toBeVisible();
+  const opener = screen.getByRole("button", {
+    name: "Explorar las 50 conexiones",
+  });
+  await user.click(opener);
+  const popup = await screen.findByRole("dialog");
+  expect(
+    within(popup).getAllByRole("button", { name: /^Seleccionar Persona/ }),
+  ).toHaveLength(51);
+  expect(
+    within(popup).getAllByRole("button", { name: /^Ver conexión entre/ }),
+  ).toHaveLength(50);
+  expect(
+    within(popup)
+      .getByRole("button", {
+        name: "Ver conexión entre Persona 0 y Persona 50: 2 entradas compartidas",
+      })
+      .querySelector("text"),
+  ).toHaveTextContent("2");
+  expect(mock.fetch).toHaveBeenCalledTimes(1);
+  await user.type(
+    within(popup).getByRole("textbox", { name: "Buscar en este mapa" }),
+    "Persona 50",
   );
   expect(
-    screen.getByRole("region", {
-      name: "Emociones en entradas con Persona 24",
+    within(popup).getByText("1 de 51 personas · toca para ver sus conexiones"),
+  ).toBeVisible();
+  expect(
+    within(popup).getAllByRole("button", { name: /^Seleccionar Persona/ }),
+  ).toHaveLength(51);
+  await user.click(
+    within(popup).getByRole("button", { name: /^Persona 50.*en común$/ }),
+  );
+  expect(
+    within(popup).getByRole("button", {
+      name: "Seleccionar Persona 50: 15 entradas",
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(
+    within(popup).getByRole("heading", { name: "Conexiones de Persona 50" }),
+  ).toBeVisible();
+  expect(
+    within(popup).getAllByRole("button", { name: /^Ver conexión entre/ }),
+  ).toHaveLength(2);
+  await user.click(within(popup).getByRole("button", { name: "Toda la red" }));
+  expect(
+    within(popup).getAllByRole("button", { name: /^Seleccionar Persona/ }),
+  ).toHaveLength(52);
+  expect(
+    within(popup).getAllByRole("button", { name: /^Ver conexión entre/ }),
+  ).toHaveLength(51);
+  await user.click(within(popup).getByRole("button", { name: "Acercar mapa" }));
+  expect(within(popup).getByText("130%")).toBeVisible();
+  mock.fetch.mockResolvedValueOnce(json({ entries: [] }));
+  await user.click(
+    within(popup).getByRole("button", {
+      name: "Ver conexión entre Persona 50 y Persona 51: 1 entradas compartidas",
+    }),
+  );
+  expect(
+    await within(popup).findByRole("region", {
+      name: "Recuerdos con Persona 50 y Persona 51",
     }),
   ).toBeVisible();
+  expect(mock.fetch.mock.calls[1][0]).toContain(
+    "/api/statistics/connections?source=Persona+50&target=Persona+51",
+  );
+  await user.click(
+    within(popup).getByRole("button", { name: "Cerrar recuerdos compartidos" }),
+  );
+
+  await user.click(
+    within(popup).getByRole("button", { name: "Cerrar mapa completo" }),
+  );
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(opener).toHaveFocus();
 });
 
 it("refreshes saved graphs on return to the tab, coalesces focus/visibility and cleans up", async () => {
@@ -697,4 +783,20 @@ it("a zero sum never invents Neutral 100% and leaves original zeros accessible",
     "0",
     "0",
   ]);
+});
+
+it("keeps homonym bubble selection tied to identity while displaying the unchanged name", async () => {
+ const ids=["11111111-1111-4111-8111-111111111111","22222222-2222-4222-8222-222222222222"];
+ mock.fetch.mockResolvedValue(json({analytics:{...PREVIEW_ANALYTICS,people:ids.map((id,index)=>({...PREVIEW_ANALYTICS.people[0],name:id,displayName:"Teresa",relationship:index ? "hermana" : "madre",count:2})),connections:[{key:"homonyms",source:ids[0],target:ids[1],sourceLabel:"Teresa",targetLabel:"Teresa",count:1,dates:[]}]},report:null}));
+ const user=userEvent.setup();
+ const open=vi.fn();
+ const {container}=render(<Statistics userId="u" onOpenPerson={open}/>);
+ const sister=await screen.findByRole("button",{name:"Teresa (hermana): 2 entradas"});
+ await user.click(sister);
+ expect(sister).toHaveAttribute("aria-pressed","true");
+ expect(screen.getByRole("button",{name:"Teresa (madre): 2 entradas"})).toHaveAttribute("aria-pressed","false");
+ await user.click(screen.getByRole("button",{name:/Ver ficha de Teresa/}));
+ expect(open).toHaveBeenCalledWith(ids[1]);
+ expect(container.textContent).not.toContain(ids[0]);
+ expect(container.textContent).not.toContain(ids[1]);
 });

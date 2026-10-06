@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "src/app/api/queues/diary-analysis/route.ts": {
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "diary-analysis",
+          "retryAfterSeconds": 60
+        }
+      ]
+    }
+  },
+  "crons": [{ "path": "/api/cron/diary-analysis", "schedule": "0 4 * * *" }]
+}

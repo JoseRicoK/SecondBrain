@@ -1,217 +1,383 @@
-/* Estilos base para el input */
-.mobileInput {
-  font-size: 16px !important; /* Previene zoom automático en móvil */
-  -webkit-appearance: none;
-  appearance: none;
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: #21152b66;
+  backdrop-filter: blur(5px);
 }
-
-/* Estilos para el contenedor de mensajes con scrollbar personalizada */
-.messagesContainer::-webkit-scrollbar {
-  width: 6px;
-}
-
-.messagesContainer::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.messagesContainer::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
-  border-radius: 3px;
-}
-
-.messagesContainer::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
-}
-
-/* Contenedor principal del chat */
 .chatContainer {
-  transition: all 0.3s ease;
+  position: fixed;
+  z-index: 50;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(800px, calc(100vw - 48px));
+  height: min(740px, 84dvh);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #eee5f5;
+  border-radius: 26px;
+  box-shadow: 0 32px 100px #25143140;
+  color: #3e314f;
 }
-
-/* Variable CSS para altura dinámica en móvil */
-.dynamicHeight {
-  height: var(--dynamic-viewport-height, 100vh) !important;
-}
-
-/* Header fijo en la parte superior */
 .chatHeader {
-  position: sticky;
-  top: 0;
-  z-index: 1001;
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
-  flex-shrink: 0; /* No se comprime */
-}
-
-/* Área de mensajes con scroll independiente */
-.messagesArea {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0; /* Importante para que funcione el flex */
-}
-
-/* Input fijo en la parte inferior */
-.inputArea {
-  flex-shrink: 0; /* No se comprime */
-  background: white;
-  border-top: 1px solid #e2e8f0;
-}
-
-/* Asegurar que el contenedor interno del input use todo el ancho disponible */
-.inputArea > div {
-  width: 100%;
   display: flex;
   align-items: center;
-  margin: 0 !important;
-  padding: 0 !important;
-  box-sizing: border-box;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 22px 24px;
+  border-bottom: 1px solid #ede7f3;
+  background: #fff;
+  flex-shrink: 0;
 }
-
-/* Remover cualquier espacio entre elementos del input */
-.inputArea * {
-  box-sizing: border-box;
+.identity {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  min-width: 0;
 }
-
-/* Optimización para móvil - Estrategia de posicionamiento fijo robusto */
-@media (max-width: 768px) {
-  .chatContainer {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100% !important;
-    height: 100vh !important;
-    height: 100dvh !important;
-    max-height: 100vh !important;
-    max-height: 100dvh !important;
-    display: block !important; /* Cambio a block para posicionamiento absoluto */
-    border-radius: 0 !important;
-    overflow: hidden !important;
-    z-index: 9999 !important;
-  }
-  
-  /* Header: FIJO en la parte superior, no se mueve nunca */
-  .chatHeader {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    z-index: 10001 !important;
-    height: 60px !important;
-    background: white !important;
-    border-bottom: 2px solid #e2e8f0 !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
-    display: flex !important;
-    align-items: center !important;
-    padding: 0 16px !important;
-  }
-
-  /* Área de mensajes: Entre header y input, scroll independiente */
-  .messagesArea {
-    position: fixed !important;
-    top: 60px !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 80px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding: 16px !important;
-    z-index: 10000 !important;
-    background: white !important;
-    /* Scroll suave en móvil */
-    scroll-behavior: smooth !important;
-  }
-
-  /* Input: FIJO en la parte inferior, no se mueve nunca */
-  .inputArea {
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    z-index: 10001 !important;
-    height: 80px !important;
-    background: white !important;
-    border-top: 2px solid #e2e8f0 !important;
-    box-shadow: 0 -2px 8px rgba(0,0,0,0.15) !important;
-    padding: 12px 16px !important;
-    padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-  
-  /* Asegurar que el contenedor del input use todo el ancho */
-  .inputArea > div {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    gap: 8px !important; /* Reemplaza space-x-2 con gap */
-  }
-  
-  .mobileInput {
-    -webkit-tap-highlight-color: transparent !important;
-    -webkit-user-select: text !important;
-    user-select: text !important;
-    min-height: 44px !important;
-    touch-action: manipulation !important;
-    font-size: 16px !important;
-    line-height: 1.4 !important;
-    /* Prevenir zoom automático */
-    transform: scale(1) !important;
-    transform-origin: left top !important;
-    /* Asegurar que el input use todo el ancho disponible */
-    flex: 1 !important;
-    width: 100% !important;
-    margin: 0 !important;
-    min-width: 0 !important; /* Permite que el flex funcione correctamente */
+.identity > div {
+  min-width: 0;
+}
+.identity h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.5px;
+}
+.identity p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #9685a9;
+}
+.chatIcon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  color: #9670c2;
+  background: #f1e9fa;
+  border: 1px solid #eadcf6;
+  border-radius: 15px;
+}
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.headerActions button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  border-radius: 12px;
+  color: #9a88ad;
+  cursor: pointer;
+  font-size: 19px;
+}
+.headerActions button:hover {
+  background: #f3edf9;
+  color: #77549f;
+}
+.quota {
+  background: #f7f3fb;
+  color: #a08caf;
+  border: 1px solid #eee5f5;
+  padding: 5px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  white-space: nowrap;
+  margin-right: 5px;
+}
+.messagesArea {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 28px 26px;
+  background:
+    radial-gradient(ellipse at top left, #f3edf966, transparent 70%), #fcfaff;
+  scrollbar-width: thin;
+  scrollbar-color: #d8c9e6 transparent;
+}
+.messageRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.userRow {
+  justify-content: flex-end;
+}
+.messageAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: #efe6f8;
+  color: #9270ba;
+  margin-top: 3px;
+}
+.messageBody {
+  max-width: 86%;
+  min-width: 0;
+  padding: 16px 19px 10px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.assistantMessage {
+  background: #fff;
+  color: #514260;
+  border: 1px solid #ece3f4;
+  border-top-left-radius: 5px;
+  box-shadow: 0 3px 12px #79549e06;
+}
+.userMessage {
+  color: #fff;
+  background: #9975c2;
+  border-bottom-right-radius: 5px;
+}
+.userText {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.timestamp {
+  display: block;
+  text-align: right;
+  margin-top: 7px;
+  font-size: 10px;
+  opacity: 0.5;
+}
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 22px 40px;
+}
+.suggestions button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  min-height: 40px;
+  padding: 9px 13px;
+  font-size: 12px;
+  color: #8e70aa;
+  border: 1px solid #e7daf2;
+  border-radius: 13px;
+  background: #faf7fd;
+  cursor: pointer;
+}
+.suggestions button:hover:not(:disabled) {
+  background: #efe5f8;
+}
+.suggestions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.loadingMessage {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: 40px;
+  color: #9b85af;
+  font-size: 13px;
+}
+.spinner {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
-
-/* CSS específico para móviles pequeños - Usar viewport estable */
+.inputArea {
+  flex-shrink: 0;
+  background: #fff;
+  border-top: 1px solid #eee6f5;
+  padding: 19px 24px 22px;
+}
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  border: 1px solid #e5d7f0;
+  border-radius: 18px;
+  background: #fcfaff;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.composer:focus-within {
+  border-color: #ae8dcb;
+  box-shadow: 0 0 0 3px #a581c511;
+}
+.mobileInput {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: 16px;
+  color: #514260;
+  appearance: none;
+}
+.mobileInput::placeholder {
+  color: #b09bc3;
+  font-size: 14px;
+}
+.composer button {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 13px;
+  background: #9870c0;
+  color: #fff;
+  cursor: pointer;
+}
+.composer button:hover:not(:disabled) {
+  background: #8460ad;
+}
+.composer button:disabled {
+  background: #e9dff2;
+  color: #c3afd6;
+  cursor: default;
+}
+.error {
+  flex-shrink: 0;
+  padding: 12px 24px;
+  background: #fff3f4;
+  color: #ad5c69;
+  font-size: 13px;
+  border-top: 1px solid #f5dade;
+}
+.quotaLoading {
+  flex-shrink: 0;
+  padding: 8px 24px;
+  color: #9685a9;
+  font-size: 12px;
+}
+.minimized {
+  top: auto;
+  left: auto;
+  right: 24px;
+  bottom: 24px;
+  transform: none;
+  width: 350px;
+  height: auto;
+  border-radius: 20px;
+}
+.minimized .chatHeader {
+  padding: 15px;
+  border-bottom: 0;
+}
+.chatContainer button:focus-visible {
+  outline: 2px solid #9870c0;
+  outline-offset: 3px;
+}
 @media (max-width: 767px) {
   .chatContainer {
-    height: 100vh !important;
-    height: 100svh !important; /* Small viewport height - no cambia con el teclado */
+    inset: 0;
+    transform: none;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: 0;
   }
-  
   .chatHeader {
-    /* Asegurar que el header nunca se mueva */
-    position: fixed !important;
-    top: 0 !important;
+    padding: 16px;
+    gap: 8px;
+    padding-top: max(16px, env(safe-area-inset-top));
   }
-  
-  .inputArea {
-    /* Asegurar que el input nunca se mueva */
-    position: fixed !important;
-    bottom: 0 !important;
+  .identity {
+    gap: 10px;
   }
-}
-
-/* CSS para dispositivos con soporte de viewport dinámico */
-@supports (height: 100dvh) {
-  @media (max-width: 768px) {
-    .chatContainer {
-      height: 100dvh !important; /* Dynamic viewport height */
-    }
+  .identity h2 {
+    font-size: 18px;
   }
-}
-
-/* Fallback adicional para casos extremos */
-@media (max-width: 480px) {
-  .chatHeader {
-    height: 56px !important; /* Header más pequeño en pantallas muy pequeñas */
+  .identity p {
+    font-size: 11px;
   }
-  
+  .chatIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+  }
+  .headerActions button {
+    width: 44px;
+    height: 44px;
+  }
+  .headerActions .minimizeButton {
+    display: none;
+  }
+  .quota {
+    font-size: 10px;
+    margin-right: 0;
+    padding: 4px 7px;
+  }
   .messagesArea {
-    top: 56px !important;
-    bottom: 76px !important;
+    padding: 22px 16px;
   }
-  
+  .messageBody {
+    max-width: calc(100% - 40px);
+    padding: 13px 15px 9px;
+  }
+  .userMessage {
+    max-width: 90%;
+  }
+  .suggestions {
+    margin-left: 40px;
+  }
+  .suggestions button {
+    min-height: 44px;
+  }
   .inputArea {
-    height: 76px !important;
+    padding: 14px 14px max(14px, env(safe-area-inset-bottom));
   }
+  .mobileInput {
+    padding-left: 7px;
+  }
+  .mobileInput::placeholder {
+    font-size: 13px;
+  }
+  .minimized {
+    inset: auto 12px 12px auto;
+    width: calc(100% - 24px);
+    height: auto;
+  }
+  .minimized .headerActions .minimizeButton {
+    display: grid;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+.personLayer .backdrop {
+  z-index: 100;
+}
+.personLayer .chatContainer {
+  z-index: 101;
+}
+.identity h2 {
+  overflow-wrap: anywhere;
 }

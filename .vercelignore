@@ -1,0 +1,10 @@
+**/node_modules/
+**/.next/
+**/.next-test/
+**/.vercel/
+**/.env*
+coverage/
+playwright-report/
+test-results/
+**/*.tsbuildinfo
+.git/

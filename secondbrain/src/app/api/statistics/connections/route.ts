@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     const { data, error } = await getDatabaseClient()
       .from("diary_entries")
       .select(
-        "date, content, mentioned_people, happiness, tranquility, stress, sadness, neutral",
+        "date, content, mentioned_people, mentioned_person_ids, happiness, tranquility, stress, sadness, neutral",
       )
       .eq("user_id", user.uid)
       .in("date", dates)
@@ -86,7 +86,11 @@ export async function GET(request: Request) {
         if (!dates.includes(entry.date) || !entry.content?.trim()) return false;
         const names = new Set(
           resolver
-            .mentions(entry.mentioned_people, entry.content)
+            .mentions(
+              entry.mentioned_people,
+              entry.content,
+              entry.mentioned_person_ids,
+            )
             .map(personNameKey),
         );
         return names.has(sourceKey) && names.has(targetKey);

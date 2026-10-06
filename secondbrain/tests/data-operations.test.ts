@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockDatabase } from "./helpers/database";
 import * as ops from "@/lib/supabase-operations";
 import { supabase, getDatabaseClient } from "@/lib/supabase";
@@ -45,6 +45,7 @@ beforeEach(() => {
   for (const fn of Object.values(auth) as any[])
     fn.mockReset().mockResolvedValue({ data: {}, error: null });
 });
+afterEach(() => vi.unstubAllGlobals());
 describe("diary, people, audio and mood persistence", () => {
   it("fetches an entry ID only when it belongs to the requested owner", async () => {
     db.reply(row);
@@ -89,6 +90,7 @@ describe("diary, people, audio and mood persistence", () => {
     },
   );
   it("inserts a new entry with its date and owner", async () => {
+    vi.stubGlobal("window", undefined);
     db.reply(row);
     await ops.saveEntry({ content: "Hoy", user_id: "u", date: row.date });
     expect(db.calls[0].steps).toContainEqual([
@@ -102,6 +104,7 @@ describe("diary, people, audio and mood persistence", () => {
     ]);
   });
   it("updates an existing entry without changing its identity or date", async () => {
+    vi.stubGlobal("window", undefined);
     db.reply(row);
     await ops.saveEntry({
       ...row,
@@ -116,6 +119,7 @@ describe("diary, people, audio and mood persistence", () => {
     expect(db.calls[0].steps[0][1]).not.toHaveProperty("user_id");
   });
   it("does not report a failed save as successful", async () => {
+    vi.stubGlobal("window", undefined);
     db.reply(null, { message: "denied" });
     expect(await ops.saveEntry(row)).toBeNull();
   });

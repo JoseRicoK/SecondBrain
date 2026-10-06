@@ -118,3 +118,24 @@ it.each(["personal", "person"])(
     expect(globalThis.fetch).not.toHaveBeenCalled();
   },
 );
+
+it.each([
+  ["personal", "¿Qué temas se repiten en mi diario?"],
+  ["person", "¿Qué sé sobre Ana?"],
+])(
+  "%s suggestions prepare a question without sending or consuming quota",
+  async (kind, question) => {
+    loading = false;
+    usage = { personalChatMessages: 0, personChatMessages: 0 };
+    render(chat(kind));
+    await userEvent.setup().click(
+      screen.getByRole("button", {
+        name: question,
+      }),
+    );
+    expect(screen.getByRole("textbox")).toHaveValue(question);
+    expect(screen.getByRole("textbox")).toHaveFocus();
+    expect(mock.check).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  },
+);

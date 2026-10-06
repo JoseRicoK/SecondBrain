@@ -1,3 +1,4 @@
+import { hasMixedFamilyIdentity } from "@/lib/person-identity";
 import React, { useState, useEffect, useRef } from "react";
 import {
   currentPersonValue,
@@ -86,11 +87,11 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({
   useEffect(() => {
     if (initialSelectedName && people.length > 0) {
       // Buscar la persona por nombre
-      const person = people.find(
-        (p) =>
-          personNameKey(p.name) === personNameKey(initialSelectedName) ||
-          p.id === initialSelectedName,
+      const byId = people.find((p) => p.id === initialSelectedName);
+      const byName = people.filter(
+        (p) => personNameKey(p.name) === personNameKey(initialSelectedName),
       );
+      const person = byId || (byName.length === 1 ? byName[0] : undefined);
       if (person) {
         setSelectedPersonId(person.id);
         setSearchTerm("");
@@ -799,6 +800,14 @@ export const PeopleManager: React.FC<PeopleManagerProps> = ({
                             id={`person-details-${person.id}`}
                             className={styles.personBody}
                           >
+                            {hasMixedFamilyIdentity(person) && (
+                              <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-relaxed text-amber-900">
+                                Esta ficha contiene relaciones de personas
+                                distintas. Sus datos anteriores se conservan
+                                pendientes de revisión; los nuevos análisis no
+                                los mezclarán.
+                              </p>
+                            )}
                             <div className={styles.personActions}>
                               <button
                                 onClick={(e) => handleChatClick(person, e)}

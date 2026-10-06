@@ -1,0 +1,31 @@
+-- Fictitious accounts and diary rows only; transaction rolls back with the suite.
+insert into auth.users(id,email) values('10000000-0000-4000-8000-000000000011','auto-a@example.test'),('10000000-0000-4000-8000-000000000012','auto-b@example.test');
+insert into public.diary_entries(id,user_id,date,content) values('20000000-0000-4000-8000-000000000011','10000000-0000-4000-8000-000000000011','2026-01-01','Con Teresa, mi madre.');
+do $$ declare j public.diary_analysis_jobs; c jsonb; r jsonb; g uuid; t uuid; begin
+ select * into j from public.diary_analysis_jobs where entry_id='20000000-0000-4000-8000-000000000011';
+ if j.status<>'queued' then raise exception 'Save did not enqueue'; end if;
+ g:=j.generation;
+ update public.diary_entries set content=content where id=j.entry_id;
+ if (select generation from public.diary_analysis_jobs where id=j.id)<>g then raise exception 'Unchanged save requeued'; end if;
+ c:=public.claim_diary_analysis(j.id,g); t:=(c->>'token')::uuid;
+ if c->>'userId'<>'10000000-0000-4000-8000-000000000011' then raise exception 'Wrong claim owner'; end if;
+ r:=public.claim_diary_analysis(j.id,g);
+ if not (r->>'busy')::boolean then raise exception 'Duplicate worker accepted'; end if;
+ update public.diary_entries set content='Con Teresa, mi hermana.' where id=j.entry_id;
+ r:=public.finish_diary_analysis(j.id,g,t,'{"happiness":10,"tranquility":20,"stress":30,"sadness":40,"neutral":50}','[]');
+ if not (r->>'stale')::boolean then raise exception 'Stale worker wrote'; end if;
+ if exists(select 1 from public.diary_entries where id=j.entry_id and mood_analyzed_at is not null) then raise exception 'Stale mood persisted'; end if;
+ select * into j from public.diary_analysis_jobs where id=j.id;
+ c:=public.claim_diary_analysis(j.id,j.generation);
+ r:=public.finish_diary_analysis(j.id,j.generation,(c->>'token')::uuid,'{"happiness":10,"tranquility":20,"stress":30,"sadness":40,"neutral":50}','[]');
+ if not (r->>'done')::boolean then raise exception 'Finish failed'; end if;
+ if (select status from public.diary_analysis_jobs where id=j.id)<>'done' then raise exception 'Finish re-enqueued itself'; end if;
+ if public.claim_diary_analysis(j.id,j.generation) is not null then raise exception 'Duplicate delivery calls AI'; end if;
+ if (select mentioned_person_ids from public.diary_entries where id=j.entry_id)<>'{}'::uuid[] then raise exception 'Empty membership not authoritative'; end if;
+ update public.diary_entries set content=' ' where id=j.entry_id;
+ if (select status from public.diary_analysis_jobs where id=j.id)<>'skipped' then raise exception 'Blank entry analyzed'; end if;
+ if public.retry_diary_analysis('10000000-0000-4000-8000-000000000012',j.entry_id) is not null then raise exception 'Cross-owner retry allowed'; end if;
+ if has_table_privilege('authenticated','public.diary_analysis_jobs','SELECT') or has_table_privilege('anon','public.diary_analysis_jobs','TRUNCATE') then raise exception 'Browser job access allowed'; end if;
+ if has_function_privilege('authenticated','public.claim_diary_analysis(uuid,uuid)','EXECUTE') then raise exception 'Browser claims allowed'; end if;
+end $$;
+delete from auth.users where id in('10000000-0000-4000-8000-000000000011','10000000-0000-4000-8000-000000000012');

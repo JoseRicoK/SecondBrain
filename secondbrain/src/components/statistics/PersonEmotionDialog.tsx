@@ -1,4 +1,6 @@
 "use client";
+
+import { personLabel } from "@/lib/diary-analytics";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FiArrowUpRight, FiX } from "react-icons/fi";
@@ -110,7 +112,7 @@ export default function PersonEmotionDialog({
     >
       <div className={s.emotionDialogHeader}>
         <div>
-          <span className={s.kicker}>TU DIARIO CON {person.name}</span>
+          <span className={s.kicker}>TU DIARIO CON {personLabel(person)}</span>
           <h2 id={titleId}>
             Entradas con más{" "}
             {emotion === "neutral"
@@ -157,7 +159,7 @@ export default function PersonEmotionDialog({
             key={entry.date}
             className={s.rankedEntry}
             disabled={!onOpenEntry}
-            aria-label={`Abrir entrada con ${person.name} del ${fullDate(entry.date)}`}
+            aria-label={`Abrir entrada con ${personLabel(person)} del ${fullDate(entry.date)}`}
             onClick={() => {
               onClose();
               onOpenEntry?.(entry.date);
@@ -219,8 +221,8 @@ export default function PersonEmotionDialog({
         )}
       </div>
       <p className={s.personEmotionNote}>
-        Estas emociones coinciden con menciones a {person.name}; no explican qué
-        las provocó.
+        Estas emociones coinciden con menciones a {personLabel(person)}; no
+        explican qué las provocó.
       </p>
     </dialog>,
     document.body,

@@ -1,4 +1,6 @@
 "use client";
+
+import { personLabel } from "@/lib/diary-analytics";
 import { FiArrowUpRight } from "react-icons/fi";
 import type { MoodValues, MoodKey, PersonMetric } from "@/lib/diary-analytics";
 import { emotions } from "./presentation";
@@ -38,7 +40,7 @@ export default function PersonEmotions({
   return (
     <section
       className={s.personEmotionSummary}
-      aria-label={`Emociones en entradas con ${person.name}`}
+      aria-label={`Emociones en entradas con ${personLabel(person)}`}
     >
       <h4>Emociones en sus entradas</h4>
       <p className={s.personAnalyzed}>
@@ -50,7 +52,7 @@ export default function PersonEmotions({
             key={emotion.key}
             disabled={preview || !data?.sampleCounts[emotion.key]}
             onClick={() => onSelectEmotion(emotion.key)}
-            aria-label={`Ver entradas con ${person.name} por ${emotion.label}`}
+            aria-label={`Ver entradas con ${personLabel(person)} por ${emotion.label}`}
             aria-haspopup="dialog"
             style={{ "--emotion-color": emotion.color } as React.CSSProperties}
           >
@@ -74,13 +76,6 @@ export default function PersonEmotions({
           </button>
         ))}
       </div>
-      <p className={s.personEmotionHint}>
-        Toca una emoción para ver las entradas de mayor a menor puntuación.
-      </p>
-      <p className={s.personEmotionNote}>
-        Medias del periodo. Son coincidencias en el diario; no indican qué causó
-        esas emociones.
-      </p>
     </section>
   );
 }

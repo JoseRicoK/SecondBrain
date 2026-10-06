@@ -44,7 +44,9 @@ select test.ok((select content='Actualizado' from diary_entries where date='2026
 delete from diary_entries where date='2026-09-28';
 select test.ok((select count(*)=1 from diary_entries),'own diary deletion succeeds');
 select test.raises($$insert into diary_entries(user_id,date) values (auth.uid(),'2026-09-29')$$,'23505','same owner/date diary is unique');
-select test.raises($$insert into people(user_id,name) values (auth.uid(),'Ana')$$,'23505','same owner/name person is unique');
+insert into people(user_id,name) values (auth.uid(),'Ana');
+select test.ok((select count(*)=2 from people where name='Ana'),'same owner can have homonyms with independent identities');
+delete from people where name='Ana' and id not in (select min(id::text)::uuid from people where name='Ana');
 select test.raises($$insert into mood_data(user_id,date) values (auth.uid(),'2026-09-29')$$,'23505','same owner/date mood is unique');
 select test.ok((select count(*)=1 from people where name='Ana'),'different owners can share person names');
 select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',true);

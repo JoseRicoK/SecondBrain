@@ -463,13 +463,13 @@ describe("AI, audio and statistics", () => {
   });
   it("groups case variants and includes a known person even when no facts changed", async () => {
     mock.data.getPeopleByUserId.mockResolvedValue([
-      { name: "Ana", details: {} },
+      { id: "ana-id", name: "Ana", details: {} },
     ]);
     mock.responses.mockResolvedValue({
       output_text: JSON.stringify({
         people: [
-          { name: "ana", information: { relacion: null, detalles: [] } },
-          { name: " Ana ", information: { relacion: null, detalles: [] } },
+          { id: "ana-id", name: "ana", information: { relacion: null, detalles: [] } },
+          { id: "ana-id", name: " Ana ", information: { relacion: null, detalles: [] } },
         ],
       }),
     });
@@ -484,6 +484,7 @@ describe("AI, audio and statistics", () => {
       { detalles: [] },
       "u",
       "2026-09-29",
+      "ana-id",
     );
     expect((await result.json()).totalPeopleProcessed).toBe(1);
   });
@@ -536,7 +537,7 @@ describe("AI, audio and statistics", () => {
       entryDate: "2025-02-01",
     });
     const context = JSON.parse(mock.responses.mock.calls[0][0].input);
-    expect(context.personasConocidas[0].relacion).toBe("amiga");
+    expect(context.personasConocidas[0].profile.relacion).toBe("amiga");
     expect(JSON.stringify(context)).not.toContain("pareja");
   });
   it("returns a warning and does not fabricate mood values on invalid output", async () => {
@@ -717,6 +718,7 @@ describe("AI, audio and statistics", () => {
         { rol: "amiga" },
         "u",
         "2026-09-29",
+        null,
       );
     },
   );

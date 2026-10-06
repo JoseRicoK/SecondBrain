@@ -207,6 +207,7 @@ describe("one entry worker", () => {
     db.reply({ job });
     mock.people.mockResolvedValue([
       {
+        id: entryId,
         name: "Ana",
         information: { relacion: "amiga", detalles: ["Fui a su casa"] },
       },

@@ -15,6 +15,7 @@ export type AnalyticsEntry = {
   date: string;
   content: string;
   mentioned_people?: string[] | null;
+  mentioned_person_ids?: string[] | null;
 } & Partial<Record<MoodKey, number | string | null>>;
 export type EntryEmotions = { date: string } & MoodValues;
 export type PersonEmotions = {
@@ -27,12 +28,16 @@ export type ConnectionMetric = {
   key: string;
   source: string;
   target: string;
+  sourceLabel?: string;
+  targetLabel?: string;
   count: number;
   dates: string[];
 };
 export type ConnectionEntry = EntryEmotions & { excerpt: string };
 export type PersonMetric = {
   name: string;
+  displayName?: string;
+  relationship?: string;
   count: number;
   share: number;
   firstDate: string;
@@ -40,6 +45,8 @@ export type PersonMetric = {
   dates: string[];
   emotions?: PersonEmotions;
 };
+export const personLabel = (person: Pick<PersonMetric, "name" | "displayName">) => person.displayName || person.name;
+
 export type SavedReport = {
   weekSummary: string;
   instagramQuote: string;

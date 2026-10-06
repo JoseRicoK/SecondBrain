@@ -1,3 +1,4 @@
+import { AmbiguousPersonError } from "@/lib/person-identity";
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/api-auth";
 import {
@@ -67,8 +68,10 @@ export async function POST(request: Request) {
         person.information,
         user.uid,
         entryDate,
+        person.id ?? null,
       );
       if (!saved) throw new Error("Person persistence failed");
+      person.id = saved.id;
       person.name = saved.name || person.name;
     }
     // mention_count is derived in PostgreSQL from distinct diary dates, never from AI attempts.
@@ -96,6 +99,8 @@ export async function POST(request: Request) {
         : "No se han encontrado personas en esta entrada.",
     });
   } catch (error) {
+    if (error instanceof AmbiguousPersonError)
+      return NextResponse.json({ error: error.message }, { status: 409 });
     // Never log diary text, addresses, relationship context, model output or provider headers.
     const failure = error as { code?: string; status?: number };
     console.warn("People extraction failed", {

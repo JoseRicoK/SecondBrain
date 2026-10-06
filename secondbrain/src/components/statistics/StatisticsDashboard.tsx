@@ -1,4 +1,6 @@
 "use client";
+
+import { personLabel } from "@/lib/diary-analytics";
 import { useState } from "react";
 import {
   Bar,
@@ -26,6 +28,7 @@ import {
 import { moodDistribution } from "@/lib/mood-distribution";
 import EmotionTooltip, { type EmotionChartPoint } from "./EmotionTooltip";
 import PeopleBubbles from "./PeopleBubbles";
+import PeopleGraphDialog from "./PeopleGraphDialog";
 import PersonEmotions from "./PersonEmotions";
 import PersonEmotionDialog from "./PersonEmotionDialog";
 import ConnectionDetails from "./ConnectionDetails";
@@ -59,10 +62,13 @@ export default function StatisticsDashboard({
       .replace(/[\u0300-\u036f]/g, "")
       .toLocaleLowerCase("es");
   const filteredPeople = data.people.filter((person) =>
-    searchKey(person.name).includes(searchKey(personSearch.trim())),
+    searchKey(`${personLabel(person)} ${person.relationship || ""}`).includes(
+      searchKey(personSearch.trim()),
+    ),
   );
   const [peoplePage, setPeoplePage] = useState(0);
   const [mapMode, setMapMode] = useState<"people" | "connections">("people");
+  const [fullMap, setFullMap] = useState(false);
   const [connectionKey, setConnectionKey] = useState("");
   const [rankedEmotion, setRankedEmotion] = useState<MoodKey | null>(null);
   const connections = data.connections || [];
@@ -203,8 +209,9 @@ export default function StatisticsDashboard({
           </div>
           <p className={s.caption}>
             Cuanto mayor la burbuja, más entradas donde aparece. Toca una
-            persona para ver sus emociones. Activa sus conexiones y toca una
-            línea para abrir recuerdos compartidos.
+            persona para ver sus emociones. Puedes arrastrar las burbujas.
+            Activa sus conexiones y toca una línea para abrir recuerdos
+            compartidos.
           </p>
           <input
             className={s.personSearch}
@@ -248,14 +255,40 @@ export default function StatisticsDashboard({
                   setConnectionKey("");
                 }}
               >
-                Conexiones de {selected?.name || "una persona"}
+                Conexiones de{" "}
+                {(selected ? personLabel(selected) : "") || "una persona"}
               </button>
             </div>
             <span>
               {mapMode === "connections"
-                ? `${neighbours.length} personas aparecen en entradas con ${selected?.name || "esta persona"}`
+                ? `${neighbours.length} personas aparecen en entradas con ${(selected ? personLabel(selected) : "") || "esta persona"}`
                 : "Activa las conexiones para explorar entradas en común"}
             </span>
+          </div>
+          <div className={s.mapOverview}>
+            <div>
+              <strong>
+                {mapMode === "connections"
+                  ? `${neighbours.length} conexiones de ${(selected ? personLabel(selected) : "") || "esta persona"}`
+                  : `${data.people.length} personas en tu historia`}
+              </strong>
+              <p>
+                {mapMode === "connections"
+                  ? neighbours.length > 11
+                    ? `Vista resumida: ${visiblePeople.length - 1} de ${neighbours.length} conexiones. Usa las flechas del mapa o ábrelo para verlas todas juntas.`
+                    : "Todas sus conexiones aparecen en este resumen."
+                  : "Explora el mapa completo para ver a todas las personas y sus conexiones."}
+              </p>
+            </div>
+            <button
+              onClick={() => setFullMap(true)}
+              disabled={!data.people.length}
+            >
+              {mapMode === "connections"
+                ? `Explorar las ${neighbours.length} conexiones`
+                : "Abrir mapa completo"}
+              <FiArrowUpRight />
+            </button>
           </div>
           <div className={s.peopleGrid}>
             <PeopleBubbles
@@ -267,14 +300,32 @@ export default function StatisticsDashboard({
               onSelectConnection={setConnectionKey}
               preview={preview}
               network={mapMode === "connections"}
+              pagination={
+                pageCount > 1
+                  ? {
+                      previous: page > 0,
+                      next: page < pageCount - 1,
+                      label: `${page * groupSize + 1}–${Math.min((page + 1) * groupSize, groupedPeople.length)} de ${groupedPeople.length} ${mapMode === "connections" ? "conexiones" : "personas"}`,
+                      onPrevious: () => {
+                        setPeoplePage(Math.max(0, page - 1));
+                        setConnectionKey("");
+                      },
+                      onNext: () => {
+                        setPeoplePage(Math.min(pageCount - 1, page + 1));
+                        setConnectionKey("");
+                      },
+                    }
+                  : undefined
+              }
             />
             <div className={s.personDetail}>
               {selected ? (
                 <>
                   <span className={s.personInitial}>
-                    {selected.name.slice(0, 1)}
+                    {personLabel(selected).slice(0, 1)}
                   </span>
-                  <h3>{selected.name}</h3>
+                  <h3>{personLabel(selected)}</h3>
+                  {selected.relationship && <p>{selected.relationship}</p>}
                   <strong>
                     {selected.count} <small>entradas</small>
                   </strong>
@@ -294,7 +345,7 @@ export default function StatisticsDashboard({
                     disabled={preview || !onOpenPerson}
                     onClick={() => onOpenPerson?.(selected.name)}
                   >
-                    Ver ficha de {selected.name}
+                    Ver ficha de {personLabel(selected)}
                     <FiArrowUpRight />
                   </button>
                 </>
@@ -306,31 +357,11 @@ export default function StatisticsDashboard({
               )}
             </div>
           </div>
-          {pageCount > 1 && (
-            <nav className={s.bubblePagination} aria-label="Grupos de personas">
-              <button
-                disabled={page === 0}
-                onClick={() => setPeoplePage(page - 1)}
-              >
-                Anterior grupo
-              </button>
-              <span>
-                {page * groupSize + 1}–
-                {Math.min((page + 1) * groupSize, groupedPeople.length)} de{" "}
-                {groupedPeople.length} personas
-              </span>
-              <button
-                disabled={page >= pageCount - 1}
-                onClick={() => setPeoplePage(page + 1)}
-              >
-                Siguiente grupo
-              </button>
-            </nav>
-          )}
           {mapMode === "connections" && !incident.length && (
             <p className={s.emotionEmpty}>
               No hay entradas del periodo donde{" "}
-              {selected?.name || "esta persona"} aparezca con otras personas.
+              {(selected ? personLabel(selected) : "") || "esta persona"}{" "}
+              aparezca con otras personas.
             </p>
           )}
           <p className={s.footnote}>
@@ -344,6 +375,17 @@ export default function StatisticsDashboard({
               period={data.period}
               onOpenEntry={onOpenEntry}
               onClose={() => setConnectionKey("")}
+            />
+          )}
+          {fullMap && (
+            <PeopleGraphDialog
+              data={data}
+              initialName={selected?.name || data.people[0]?.name || ""}
+              initialScope={mapMode === "connections" ? "person" : "all"}
+              preview={preview}
+              onClose={() => setFullMap(false)}
+              onOpenEntry={onOpenEntry}
+              onOpenPerson={onOpenPerson}
             />
           )}
           {selected && rankedEmotion && !preview && (

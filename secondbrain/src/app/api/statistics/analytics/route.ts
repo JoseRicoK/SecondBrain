@@ -1,3 +1,4 @@
+import { currentPersonValue } from "@/lib/person-information";
 import { readAnalyticsPeople } from "@/lib/statistics-data";
 import { createPersonMentionResolver } from "@/lib/person-mentions";
 import { NextResponse } from "next/server";
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
       let query = getDatabaseClient()
         .from("diary_entries")
         .select(
-          "date, content, mentioned_people, happiness, tranquility, stress, sadness, neutral",
+          "date, content, mentioned_people, mentioned_person_ids, happiness, tranquility, stress, sadness, neutral",
         )
         .eq("user_id", user.uid)
         .lte("date", today)
@@ -68,15 +69,38 @@ export async function GET(request: Request) {
       entry.mentioned_people = resolver.mentions(
         entry.mentioned_people,
         entry.content || "",
+        entry.mentioned_person_ids,
       );
+    const analytics = buildDiaryAnalytics(
+      entries,
+      period as AnalyticsPeriod,
+      today,
+    );
+    const labels = new Map<string, string>();
+    for (const metric of analytics.people) {
+      const match = people.find((person) => person.id === metric.name);
+      if (match) {
+        metric.displayName = match.name;
+        metric.relationship = currentPersonValue(match.details, "relacion");
+      } else if (
+        people.filter(
+          (person) =>
+            person.name.toLocaleLowerCase() === metric.name.toLocaleLowerCase(),
+        ).length > 1
+      ) {
+        metric.displayName = metric.name;
+        metric.relationship = "Menciones antiguas sin asignar";
+      }
+      labels.set(metric.name, metric.displayName || metric.name);
+    }
+    for (const edge of analytics.connections) {
+      edge.sourceLabel = labels.get(edge.source) || edge.source;
+      edge.targetLabel = labels.get(edge.target) || edge.target;
+    }
     const cached = await readStatisticsReport(user.uid);
     return NextResponse.json(
       {
-        analytics: buildDiaryAnalytics(
-          entries,
-          period as AnalyticsPeriod,
-          today,
-        ),
+        analytics,
         report: cached
           ? {
               weekSummary: cached.report.weekSummary,

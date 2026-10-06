@@ -73,7 +73,7 @@ export async function GET(request: Request) {
       let query = getDatabaseClient()
         .from("diary_entries")
         .select(
-          "date, content, mentioned_people, happiness, tranquility, stress, sadness, neutral",
+          "date, content, mentioned_people, mentioned_person_ids, happiness, tranquility, stress, sadness, neutral",
         )
         .eq("user_id", user.uid)
         .lte("date", today)
@@ -108,7 +108,11 @@ export async function GET(request: Request) {
           (!range.start || entry.date >= range.start) &&
           entry.content?.trim() &&
           resolver
-            .mentions(entry.mentioned_people, entry.content)
+            .mentions(
+              entry.mentioned_people,
+              entry.content,
+              entry.mentioned_person_ids,
+            )
             .some((name) => personNameKey(name) === personKey)
         )
           entries.push({ date: entry.date, ...values });
