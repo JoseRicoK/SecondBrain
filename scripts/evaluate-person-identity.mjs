@@ -27,6 +27,24 @@ const sister = {
 };
 const cases = [
   {
+    name: "writer_perspective",
+    known: [],
+    text: "Marta me invitó a su recital el sábado. Lucía trabaja limpiando mi oficina. Marta también invitó a su hermana Irene.",
+    check: (people) => {
+      const marta = people.find((p) => p.name === "Marta");
+      const lucia = people.find((p) => p.name === "Lucía");
+      const details = (marta?.information.detalles || []).join(" ");
+      return (
+        /me invit[oó]/i.test(details) &&
+        /mi oficina/i.test(lucia?.information.rol || "") &&
+        !/quien escribe|el autor|el usuario|el diarista/i.test(
+          JSON.stringify(people),
+        ) &&
+        !/la invit[eé]/i.test(details)
+      );
+    },
+  },
+  {
     name: "both_homonyms",
     known: [mother, sister],
     text: "Mi madre Teresa vino a tomar un café. Después fui al cine con mi hermana Teresa. Son dos personas distintas que se llaman igual.",
@@ -47,7 +65,30 @@ const cases = [
           /madre/i.test(p.information.relacion || ""),
       ),
   },
-  {name:"mixed_legacy_profile",known:[{...mother,details:{relacion:{entries:[...mother.details.relacion.entries,...sister.details.relacion.entries]}}}],text:"Hoy he tomado un café con mi madre Teresa.",check:people=>people.some(p=>p.id===null && p.name==="Teresa" && /madre/i.test(p.information.relacion || ""))},
+  {
+    name: "mixed_legacy_profile",
+    known: [
+      {
+        ...mother,
+        details: {
+          relacion: {
+            entries: [
+              ...mother.details.relacion.entries,
+              ...sister.details.relacion.entries,
+            ],
+          },
+        },
+      },
+    ],
+    text: "Hoy he tomado un café con mi madre Teresa.",
+    check: (people) =>
+      people.some(
+        (p) =>
+          p.id === null &&
+          p.name === "Teresa" &&
+          /madre/i.test(p.information.relacion || ""),
+      ),
+  },
   {
     name: "ambiguous_reference",
     known: [mother, sister],
